@@ -77,6 +77,8 @@ export const NUMERIC_SCORE_KEYS = [
   'heightINF',
   'widthINF',
   'boundingHexINF',
+  'sum',
+  'sum4',
 ] as const
 
 export type NumericScoreKey = (typeof NUMERIC_SCORE_KEYS)[number]
@@ -86,3 +88,23 @@ export const BOOL_SCORE_KEYS = ['overlap', 'trackless'] as const
 export type BoolScoreKey = (typeof BOOL_SCORE_KEYS)[number]
 
 export type BoolFilter = { [K in BoolScoreKey]: 'any' | 'true' | 'false' }
+
+export const METRIC_LABELS: Record<string, string> = {
+  cost: 'Cost',
+  instructions: 'Instructions',
+  cycles: 'Cycles',
+  area: 'Area',
+  height: 'Height',
+  width: 'Width',
+  boundingHex: 'Bounding Hex',
+  rate: 'Rate',
+  areaINFLevel: 'Area@∞ Level',
+  areaINFValue: 'Area@∞ Value',
+  heightINF: 'Height@∞',
+  widthINF: 'Width@∞',
+  boundingHexINF: 'Bounding Hex@∞',
+  sum: 'Sum',
+  sum4: 'Sum4',
+  overlap: 'Overlap',
+  trackless: 'Trackless',
+}

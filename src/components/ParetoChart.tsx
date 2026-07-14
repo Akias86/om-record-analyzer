@@ -13,8 +13,8 @@ import {
   useYAxisInverseScale,
 } from 'recharts'
 import { fetchRecords, fetchMetrics } from '../api/om'
-import type { OmRecordDTO, OmMetricDTO, NumericScoreKey, BoolFilter } from '../types'
-import { NUMERIC_SCORE_KEYS, BOOL_SCORE_KEYS } from '../types'
+import type { OmRecordDTO, OmMetricDTO, OmScoreDTO, NumericScoreKey, BoolFilter } from '../types'
+import { NUMERIC_SCORE_KEYS, BOOL_SCORE_KEYS, METRIC_LABELS } from '../types'
 import './ParetoChart.css'
 
 const MARGIN = { top: 16, right: 24, bottom: 40, left: 56 }
@@ -35,13 +35,45 @@ function isNumeric(val: unknown): val is number {
   return typeof val === 'number' && Number.isFinite(val)
 }
 
+function getMetricValue(score: OmScoreDTO, key: string): number | null {
+  if (key === 'sum') return score.cost + score.cycles + score.area
+  if (key === 'sum4') return score.cost + score.cycles + score.area + score.instructions
+  const val: unknown = score[key as keyof OmScoreDTO]
+  return isNumeric(val) ? val : null
+}
+
 function formatTick(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1)
 }
 
+function generateTicks(domain: [number, number], isInteger: boolean): number[] | undefined {
+  const [lo, hi] = domain
+  if (lo >= hi) return undefined
+  const range = hi - lo
+  const rawStep = range / 8
+  const mag = Math.pow(10, Math.floor(Math.log(rawStep) / Math.LN10))
+  const residual = rawStep / mag
+  let step = 1
+  if (residual <= 1.75) step = mag
+  else if (residual <= 3.5) step = 2 * mag
+  else if (residual <= 7.5) step = 5 * mag
+  else step = 10 * mag
+  const minStep = isInteger ? 1 : 0.5
+  step = Math.max(minStep, step)
+  const first = Math.ceil(lo / step) * step
+  const ticks: number[] = []
+  for (let t = first; t <= hi + 1e-9; t += step) {
+    ticks.push(Math.round(t * 1e10) / 1e10)
+  }
+  return ticks.length > 1 ? ticks : undefined
+}
+
 function computeParetoFrontier(points: ParetoPoint[]): ParetoPoint[] {
   if (points.length === 0) return []
-  const sorted = [...points].sort((a, b) => a.x - b.x)
+  const sorted = [...points].sort((a, b) => {
+    if (a.x !== b.x) return a.x - b.x
+    return a.y - b.y
+  })
   const frontier: ParetoPoint[] = []
   let minY = Infinity
   for (const p of sorted) {
@@ -262,7 +294,7 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
     if (records.length === 0) return []
     const numericKeys: NumericScoreKey[] = []
     for (const key of NUMERIC_SCORE_KEYS) {
-      if (records.some((r) => r.score !== null && isNumeric(r.score[key]))) {
+      if (records.some((r) => r.score !== null && getMetricValue(r.score, key) !== null)) {
         numericKeys.push(key)
       }
     }
@@ -274,9 +306,9 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
     const points: ParetoPoint[] = []
     for (const r of records) {
       if (r.score === null) continue
-      const x = r.score[xMetric]
-      const y = r.score[yMetric]
-      if (!isNumeric(x) || !isNumeric(y)) continue
+      const x = getMetricValue(r.score, xMetric)
+      const y = getMetricValue(r.score, yMetric)
+      if (x === null || y === null) continue
       let skip = false
       for (const key of BOOL_SCORE_KEYS) {
         const f = boolFilters[key]
@@ -286,7 +318,7 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
         }
       }
       if (skip) continue
-      points.push({ x: x as number, y: y as number, id: r.id ?? `${x}-${y}` })
+      points.push({ x, y, id: r.id ?? `${x}-${y}` })
     }
     return points
   }, [records, xMetric, yMetric, boolFilters])
@@ -312,6 +344,11 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
   const xDomain = zoomDomain?.x ?? defaultDomain?.x
   const yDomain = zoomDomain?.y ?? defaultDomain?.y
   const isZoomed = zoomDomain !== null
+
+  const xIsInteger = xMetric !== 'width'
+  const yIsInteger = yMetric !== 'width'
+  const xTicks = isZoomed && xDomain && xScale !== 'log' ? generateTicks(xDomain, xIsInteger) : undefined
+  const yTicks = isZoomed && yDomain && yScale !== 'log' ? generateTicks(yDomain, yIsInteger) : undefined
 
   const resetZoom = useCallback(() => setZoomDomain(null), [])
   const handleZoom = useCallback((d: ZoomDomain) => setZoomDomain(d), [])
@@ -342,7 +379,7 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
     return map
   }, [metrics])
 
-  const getLabel = useCallback((key: string) => metricLabels.get(key) ?? key, [metricLabels])
+  const getLabel = useCallback((key: string) => METRIC_LABELS[key] ?? metricLabels.get(key) ?? key, [metricLabels])
 
   const metricOptions = useMemo(
     () => availableMetrics.map((key) => ({ key, label: getLabel(key) })),
@@ -416,6 +453,7 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
                 domain={xDomain}
                 allowDataOverflow
                 scale={xScale}
+                ticks={xTicks}
                 tickFormatter={formatTick}
                 label={{ value: `${getLabel(xMetric)} →`, position: 'bottom', offset: 8, style: { fill: 'var(--text-h)', fontSize: 12, fontWeight: 600 } }}
                 tick={{ fill: 'var(--text)', fontSize: 11 }}
@@ -426,6 +464,7 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
                 domain={yDomain}
                 allowDataOverflow
                 scale={yScale}
+                ticks={yTicks}
                 tickFormatter={formatTick}
                 label={{ value: `${getLabel(yMetric)} →`, angle: -90, position: 'left', offset: 4, style: { fill: 'var(--text-h)', fontSize: 12, fontWeight: 600 } }}
                 tick={{ fill: 'var(--text)', fontSize: 11 }}
