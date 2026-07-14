@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Sidebar from './components/Sidebar'
+import ParetoChart from './components/ParetoChart'
 import './App.css'
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
         {selectedPuzzleId ? (
           <div className="app-content">
             <h1>{selectedPuzzleId}</h1>
+            <ParetoChart puzzleId={selectedPuzzleId} />
           </div>
         ) : (
           <div className="app-placeholder">

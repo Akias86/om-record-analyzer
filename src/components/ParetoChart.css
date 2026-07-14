@@ -1,0 +1,125 @@
+.pareto-chart-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pareto-chart-loading,
+.pareto-chart-error {
+  padding: 24px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.pareto-chart-error {
+  color: var(--danger, #e74c3c);
+}
+
+.pareto-chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0 16px;
+  flex-wrap: wrap;
+}
+
+.pareto-chart-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.pareto-chart-select {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--sidebar-bg);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.pareto-chart-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.pareto-chart-info {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.7;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pareto-chart-reset-btn {
+  padding: 2px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.pareto-chart-reset-btn:hover {
+  background: var(--accent-bg);
+}
+
+.pareto-chart-plot {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.pareto-chart-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text);
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.pareto-chart-scale {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.pareto-chart-scale-btn {
+  padding: 2px 6px;
+  border: none;
+  background: var(--sidebar-bg);
+  color: var(--text);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.pareto-chart-scale-btn:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+.pareto-chart-scale-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.pareto-chart-scale-btn:hover:not(.active) {
+  background: var(--sidebar-hover);
+}

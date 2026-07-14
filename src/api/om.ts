@@ -1,4 +1,4 @@
-import type { OmCollectionDTO, OmGroupDTO, OmPuzzleDTO } from '../types'
+import type { OmCollectionDTO, OmGroupDTO, OmPuzzleDTO, OmRecordDTO, OmMetricDTO } from '../types'
 
 const BASE = '/api/om'
 const CACHE_PREFIX = 'om-cache:'
@@ -56,4 +56,12 @@ export function fetchGroupsByCollection(collectionId: string, options?: RequestO
 
 export function fetchPuzzlesByGroup(groupId: string, options?: RequestOptions): Promise<OmPuzzleDTO[]> {
   return get<OmPuzzleDTO[]>(`${BASE}/group/${groupId}/puzzles`, options)
+}
+
+export function fetchRecords(puzzleId: string, options?: RequestOptions): Promise<OmRecordDTO[]> {
+  return get<OmRecordDTO[]>(`${BASE}/puzzle/${puzzleId}/records?includeFrontier=true`, options)
+}
+
+export function fetchMetrics(options?: RequestOptions): Promise<OmMetricDTO[]> {
+  return get<OmMetricDTO[]>(`${BASE}/metrics`, options)
 }
