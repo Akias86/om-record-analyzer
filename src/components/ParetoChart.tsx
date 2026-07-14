@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   ResponsiveContainer,
   ScatterChart,
@@ -92,52 +92,69 @@ function ZoomHandler({
   const plotArea = usePlotArea()
   const xInv = useXAxisInverseScale()
   const yInv = useYAxisInverseScale()
-  const [sel, setSel] = useState<{ x1: number; y1: number; x2: number; y2: number; svgEl: SVGSVGElement | null } | null>(null)
+  const [sel, setSel] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null)
+  const dragRef = useRef<{ x1: number; y1: number; svgEl: SVGSVGElement | null } | null>(null)
+  const ctxRef = useRef({ onZoom, xInv, yInv, plotArea })
+  ctxRef.current = { onZoom, xInv, yInv, plotArea }
 
   useEffect(() => {
-    if (!sel) return
-    const svgEl = sel.svgEl
+    const onMove = (e: MouseEvent) => {
+      const drag = dragRef.current
+      if (!drag) return
+      const coords = globalToSvgCoords(e.clientX, e.clientY, drag.svgEl)
+      if (!coords) return
+      setSel((prev) => (prev ? { ...prev, x2: coords.x, y2: coords.y } : null))
+    }
     const onUp = (e: MouseEvent) => {
-      setSel((prev) => {
-        if (!prev) return null
-        const coords = globalToSvgCoords(e.clientX, e.clientY, svgEl)
-        if (!coords) return null
-        const x1 = Math.min(prev.x1, coords.x)
-        const y1 = Math.min(prev.y1, coords.y)
-        const x2 = Math.max(prev.x1, coords.x)
-        const y2 = Math.max(prev.y1, coords.y)
-        if (Math.abs(x2 - x1) < 5 || Math.abs(y2 - y1) < 5) return null
-        if (!xInv || !yInv || !plotArea) return null
-        const dx1 = xInv(x1)
-        const dx2 = xInv(x2)
-        const dy1 = yInv(y1)
-        const dy2 = yInv(y2)
-        if (dx1 == null || dx2 == null || dy1 == null || dy2 == null) return null
-        onZoom({
-          x: [Math.min(Number(dx1), Number(dx2)), Math.max(Number(dx1), Number(dx2))],
-          y: [Math.min(Number(dy1), Number(dy2)), Math.max(Number(dy1), Number(dy2))],
-        })
-        return null
+      const drag = dragRef.current
+      if (!drag) return
+      dragRef.current = null
+      const { xInv: xi, yInv: yi, plotArea: pa, onZoom: oz } = ctxRef.current
+      const coords = globalToSvgCoords(e.clientX, e.clientY, drag.svgEl)
+      setSel(null)
+      if (!coords || !xi || !yi || !pa) return
+      const x1 = Math.min(drag.x1, coords.x)
+      const y1 = Math.min(drag.y1, coords.y)
+      const x2 = Math.max(drag.x1, coords.x)
+      const y2 = Math.max(drag.y1, coords.y)
+      if (Math.abs(x2 - x1) < 5 || Math.abs(y2 - y1) < 5) return
+      const cx1 = Math.max(pa.x, Math.min(pa.x + pa.width, x1))
+      const cx2 = Math.max(pa.x, Math.min(pa.x + pa.width, x2))
+      const cy1 = Math.max(pa.y, Math.min(pa.y + pa.height, y1))
+      const cy2 = Math.max(pa.y, Math.min(pa.y + pa.height, y2))
+      const dx1 = xi(cx1)
+      const dx2 = xi(cx2)
+      const dy1 = yi(cy1)
+      const dy2 = yi(cy2)
+      if (dx1 == null || dx2 == null || dy1 == null || dy2 == null) return
+      const nx1 = Number(dx1)
+      const nx2 = Number(dx2)
+      const ny1 = Number(dy1)
+      const ny2 = Number(dy2)
+      if (!Number.isFinite(nx1) || !Number.isFinite(nx2) || !Number.isFinite(ny1) || !Number.isFinite(ny2)) return
+      oz({
+        x: [Math.min(nx1, nx2), Math.max(nx1, nx2)],
+        y: [Math.min(ny1, ny2), Math.max(ny1, ny2)],
       })
     }
+    window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-    return () => window.removeEventListener('mouseup', onUp)
-  }, [sel, onZoom, xInv, yInv, plotArea])
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [])
 
   if (!plotArea) return null
 
   const onDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return
+    e.preventDefault()
+    const svgEl = (e.currentTarget as SVGElement).ownerSVGElement ?? null
     const coords = toSvgCoords(e)
-    if (!coords) return
-    setSel({ x1: coords.x, y1: coords.y, x2: coords.x, y2: coords.y, svgEl: (e.currentTarget as SVGElement).ownerSVGElement })
-  }
-
-  const onMove = (e: React.MouseEvent) => {
-    if (!sel) return
-    const coords = toSvgCoords(e)
-    if (!coords) return
-    setSel((prev) => (prev ? { ...prev, x2: coords.x, y2: coords.y } : null))
+    if (!coords || !svgEl) return
+    dragRef.current = { x1: coords.x, y1: coords.y, svgEl }
+    setSel({ x1: coords.x, y1: coords.y, x2: coords.x, y2: coords.y })
   }
 
   return (
@@ -149,7 +166,6 @@ function ZoomHandler({
         height={plotArea.height}
         fill="transparent"
         onMouseDown={onDown}
-        onMouseMove={onMove}
         onDoubleClick={onResetZoom}
         style={{ cursor: 'crosshair' }}
       />
@@ -299,6 +315,10 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
 
   const resetZoom = useCallback(() => setZoomDomain(null), [])
   const handleZoom = useCallback((d: ZoomDomain) => setZoomDomain(d), [])
+
+  useEffect(() => {
+    setZoomDomain(null)
+  }, [puzzleId, xMetric, yMetric, xScale, yScale, boolFilters])
 
   const handleXMetricChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value as NumericScoreKey | ''
