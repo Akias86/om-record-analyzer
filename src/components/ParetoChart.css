@@ -123,3 +123,42 @@
 .pareto-chart-scale-btn:hover:not(.active) {
   background: var(--sidebar-hover);
 }
+
+.pareto-chart-tooltip {
+  background: var(--sidebar-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text);
+  pointer-events: none;
+}
+
+.pareto-chart-tooltip-group {
+  margin-bottom: 6px;
+}
+
+.pareto-chart-tooltip-group:last-child {
+  margin-bottom: 0;
+}
+
+.pareto-chart-tooltip-pos {
+  opacity: 0.6;
+  margin-bottom: 2px;
+}
+
+.pareto-chart-tooltip-row {
+  padding-left: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pareto-chart-tooltip-cat {
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 0 4px;
+}

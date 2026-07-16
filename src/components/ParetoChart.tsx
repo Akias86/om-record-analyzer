@@ -6,6 +6,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
+  Tooltip,
   usePlotArea,
   useXAxisScale,
   useYAxisScale,
@@ -19,10 +20,23 @@ import './ParetoChart.css'
 
 const MARGIN = { top: 16, right: 24, bottom: 40, left: 56 }
 
+function loadSetting(key: string, fallback: string): string {
+  try { return localStorage.getItem(key) ?? fallback } catch { return fallback }
+}
+
+function saveSetting(key: string, value: string): void {
+  try {
+    if (value) localStorage.setItem(key, value)
+    else localStorage.removeItem(key)
+  } catch {}
+}
+
 interface ParetoPoint {
   x: number
   y: number
   id: string
+  score: string | null
+  categories: string | null
 }
 
 interface ParetoChartProps {
@@ -38,11 +52,32 @@ function isNumeric(val: unknown): val is number {
 function getMetricValue(score: OmScoreDTO, key: string): number | null {
   if (key === 'sum') return score.cost + score.cycles + score.area
   if (key === 'sum4') return score.cost + score.cycles + score.area + score.instructions
+  if (key === 'areaINF') {
+    if (!isNumeric(score.areaINFLevel) || !isNumeric(score.areaINFValue)) return null
+    return score.areaINFValue! * Math.pow(100000, score.areaINFLevel!)
+  }
   const val: unknown = score[key as keyof OmScoreDTO]
   return isNumeric(val) ? val : null
 }
 
 function formatTick(n: number): string {
+  const abs = Math.abs(n)
+  if (abs >= 1e12) {
+    const v = n / 1e12
+    return Number.isInteger(v) ? `${v}T` : `${v.toFixed(1)}T`
+  }
+  if (abs >= 1e9) {
+    const v = n / 1e9
+    return Number.isInteger(v) ? `${v}G` : `${v.toFixed(1)}G`
+  }
+  if (abs >= 1e6) {
+    const v = n / 1e6
+    return Number.isInteger(v) ? `${v}M` : `${v.toFixed(1)}M`
+  }
+  if (abs >= 1e3) {
+    const v = n / 1e3
+    return Number.isInteger(v) ? `${v}K` : `${v.toFixed(1)}K`
+  }
   return Number.isInteger(n) ? String(n) : n.toFixed(1)
 }
 
@@ -66,6 +101,22 @@ function generateTicks(domain: [number, number], isInteger: boolean): number[] |
     ticks.push(Math.round(t * 1e10) / 1e10)
   }
   return ticks.length > 1 ? ticks : undefined
+}
+
+function generateLogTicks(domain: [number, number]): number[] | undefined {
+  const [lo, hi] = domain
+  if (lo >= hi || lo <= 0) return undefined
+  const ticks: number[] = []
+  const startPow = Math.floor(Math.log10(lo))
+  const endPow = Math.ceil(Math.log10(hi))
+  for (let p = startPow; p <= endPow; p++) {
+    const base = Math.pow(10, p)
+    for (const m of [1, 2, 5]) {
+      const v = base * m
+      if (v >= lo && v <= hi) ticks.push(v)
+    }
+  }
+  return ticks.length > 0 ? ticks : undefined
 }
 
 function computeParetoFrontier(points: ParetoPoint[]): ParetoPoint[] {
@@ -252,10 +303,55 @@ function ParetoOverlay({ paretoPoints }: { paretoPoints: ParetoPoint[] }) {
   shadeD += ` Z`
 
   return (
-    <g>
-      <path d={shadeD} fill="var(--accent)" fillOpacity={0.12} stroke="none" />
-      <path d={stepD} fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinejoin="round" />
+    <g style={{ pointerEvents: 'none' }}>
+      <defs>
+        <clipPath id="pareto-plot-clip">
+          <rect x={plotArea.x} y={plotArea.y} width={plotArea.width} height={plotArea.height} />
+        </clipPath>
+      </defs>
+      <g clipPath="url(#pareto-plot-clip)">
+        <path d={shadeD} fill="var(--accent)" fillOpacity={0.12} stroke="none" />
+        <path d={stepD} fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinejoin="round" />
+      </g>
     </g>
+  )
+}
+
+function CustomTooltip({ active, payload, pointMap, xLabel, yLabel }: {
+  active?: boolean
+  payload?: { payload: ParetoPoint }[]
+  pointMap: Map<string, ParetoPoint[]>
+  xLabel: string
+  yLabel: string
+}) {
+  if (!active || !payload || payload.length === 0) return null
+  const seen = new Set<string>()
+  const groups: ParetoPoint[][] = []
+  for (const entry of payload) {
+    const p = entry.payload
+    const key = `${p.x}|${p.y}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const pts = pointMap.get(key)
+    if (pts && pts.length > 0) groups.push(pts)
+  }
+  if (groups.length === 0) return null
+  return (
+    <div className="pareto-chart-tooltip">
+      {groups.map((pts, gi) => (
+        <div key={gi} className="pareto-chart-tooltip-group">
+          <div className="pareto-chart-tooltip-pos">
+            {xLabel}: {formatTick(pts[0].x)} / {yLabel}: {formatTick(pts[0].y)}
+          </div>
+          {pts.map((p, pi) => (
+            <div key={pi} className="pareto-chart-tooltip-row">
+              {p.score || `${p.x} / ${p.y}`}
+              {p.categories && <span className="pareto-chart-tooltip-cat">{p.categories}</span>}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -264,11 +360,21 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
   const [metrics, setMetrics] = useState<OmMetricDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [xMetric, setXMetric] = useState<NumericScoreKey | ''>('')
-  const [yMetric, setYMetric] = useState<NumericScoreKey | ''>('')
-  const [boolFilters, setBoolFilters] = useState<BoolFilter>({ overlap: 'any', trackless: 'any' })
-  const [xScale, setXScale] = useState<'linear' | 'log'>('linear')
-  const [yScale, setYScale] = useState<'linear' | 'log'>('linear')
+  const [xMetric, setXMetric] = useState<NumericScoreKey | ''>(() =>
+    loadSetting('om-chart:xMetric', '') as NumericScoreKey | '')
+  const [yMetric, setYMetric] = useState<NumericScoreKey | ''>(() =>
+    loadSetting('om-chart:yMetric', '') as NumericScoreKey | '')
+  const [boolFilters, setBoolFilters] = useState<BoolFilter>(() => {
+    try {
+      const saved = localStorage.getItem('om-chart:boolFilters')
+      if (saved) return JSON.parse(saved) as BoolFilter
+    } catch {}
+    return { overlap: 'any', trackless: 'any' }
+  })
+  const [xScale, setXScale] = useState<'linear' | 'log'>(() =>
+    loadSetting('om-chart:xScale', 'linear') as 'linear' | 'log')
+  const [yScale, setYScale] = useState<'linear' | 'log'>(() =>
+    loadSetting('om-chart:yScale', 'linear') as 'linear' | 'log')
   const [zoomDomain, setZoomDomain] = useState<ZoomDomain | null>(null)
 
   useEffect(() => {
@@ -318,7 +424,7 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
         }
       }
       if (skip) continue
-      points.push({ x, y, id: r.id ?? `${x}-${y}` })
+      points.push({ x, y, id: r.id ?? `${x}-${y}`, score: r.smartFormattedScore, categories: r.smartFormattedCategories })
     }
     return points
   }, [records, xMetric, yMetric, boolFilters])
@@ -326,6 +432,16 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
   const paretoPoints = useMemo(() => computeParetoFrontier(allPoints), [allPoints])
   const paretoSet = useMemo(() => new Set(paretoPoints.map((p) => p.id)), [paretoPoints])
   const nonParetoPoints = useMemo(() => allPoints.filter((p) => !paretoSet.has(p.id)), [allPoints, paretoSet])
+
+  const pointMap = useMemo(() => {
+    const map = new Map<string, ParetoPoint[]>()
+    for (const p of allPoints) {
+      const key = `${p.x}|${p.y}`
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(p)
+    }
+    return map
+  }, [allPoints])
 
   const defaultDomain = useMemo(() => {
     if (allPoints.length === 0) return null
@@ -347,8 +463,17 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
 
   const xIsInteger = xMetric !== 'width'
   const yIsInteger = yMetric !== 'width'
-  const xTicks = isZoomed && xDomain && xScale !== 'log' ? generateTicks(xDomain, xIsInteger) : undefined
-  const yTicks = isZoomed && yDomain && yScale !== 'log' ? generateTicks(yDomain, yIsInteger) : undefined
+  const xTicks = xDomain ? (xScale === 'log' ? generateLogTicks(xDomain) : (isZoomed ? generateTicks(xDomain, xIsInteger) : undefined)) : undefined
+  const yTicks = yDomain ? (yScale === 'log' ? generateLogTicks(yDomain) : (isZoomed ? generateTicks(yDomain, yIsInteger) : undefined)) : undefined
+
+  const visibleNonPareto = useMemo(
+    () => (zoomDomain ? nonParetoPoints.filter((p) => p.x >= zoomDomain.x[0] && p.x <= zoomDomain.x[1] && p.y >= zoomDomain.y[0] && p.y <= zoomDomain.y[1]) : nonParetoPoints),
+    [nonParetoPoints, zoomDomain],
+  )
+  const visiblePareto = useMemo(
+    () => (zoomDomain ? paretoPoints.filter((p) => p.x >= zoomDomain.x[0] && p.x <= zoomDomain.x[1] && p.y >= zoomDomain.y[0] && p.y <= zoomDomain.y[1]) : paretoPoints),
+    [paretoPoints, zoomDomain],
+  )
 
   const resetZoom = useCallback(() => setZoomDomain(null), [])
   const handleZoom = useCallback((d: ZoomDomain) => setZoomDomain(d), [])
@@ -360,17 +485,37 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
   const handleXMetricChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value as NumericScoreKey | ''
     setXMetric(val)
-    if (val === yMetric) setYMetric('')
+    saveSetting('om-chart:xMetric', val)
+    if (val === yMetric) {
+      setYMetric('')
+      saveSetting('om-chart:yMetric', '')
+    }
   }, [yMetric])
 
   const handleYMetricChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value as NumericScoreKey | ''
     setYMetric(val)
-    if (val === xMetric) setXMetric('')
+    saveSetting('om-chart:yMetric', val)
+    if (val === xMetric) {
+      setXMetric('')
+      saveSetting('om-chart:xMetric', '')
+    }
   }, [xMetric])
 
   const handleBoolFilterChange = useCallback((key: string, value: string) => {
-    setBoolFilters((prev) => ({ ...prev, [key]: value as 'any' | 'true' | 'false' }))
+    const newFilters = { ...boolFilters, [key]: value as 'any' | 'true' | 'false' }
+    setBoolFilters(newFilters)
+    try { localStorage.setItem('om-chart:boolFilters', JSON.stringify(newFilters)) } catch {}
+  }, [boolFilters])
+
+  const handleXScale = useCallback((v: 'linear' | 'log') => {
+    setXScale(v)
+    saveSetting('om-chart:xScale', v)
+  }, [])
+
+  const handleYScale = useCallback((v: 'linear' | 'log') => {
+    setYScale(v)
+    saveSetting('om-chart:yScale', v)
   }, [])
 
   const metricLabels = useMemo(() => {
@@ -408,8 +553,8 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
             ))}
           </select>
           <span className="pareto-chart-scale">
-            <button type="button" className={`pareto-chart-scale-btn ${xScale === 'linear' ? 'active' : ''}`} onClick={() => setXScale('linear')}>lin</button>
-            <button type="button" className={`pareto-chart-scale-btn ${xScale === 'log' ? 'active' : ''}`} onClick={() => setXScale('log')}>log</button>
+            <button type="button" className={`pareto-chart-scale-btn ${xScale === 'linear' ? 'active' : ''}`} onClick={() => handleXScale('linear')}>lin</button>
+            <button type="button" className={`pareto-chart-scale-btn ${xScale === 'log' ? 'active' : ''}`} onClick={() => handleXScale('log')}>log</button>
           </span>
         </label>
         <label className="pareto-chart-label">
@@ -421,8 +566,8 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
             ))}
           </select>
           <span className="pareto-chart-scale">
-            <button type="button" className={`pareto-chart-scale-btn ${yScale === 'linear' ? 'active' : ''}`} onClick={() => setYScale('linear')}>lin</button>
-            <button type="button" className={`pareto-chart-scale-btn ${yScale === 'log' ? 'active' : ''}`} onClick={() => setYScale('log')}>log</button>
+            <button type="button" className={`pareto-chart-scale-btn ${yScale === 'linear' ? 'active' : ''}`} onClick={() => handleYScale('linear')}>lin</button>
+            <button type="button" className={`pareto-chart-scale-btn ${yScale === 'log' ? 'active' : ''}`} onClick={() => handleYScale('log')}>log</button>
           </span>
         </label>
         {BOOL_SCORE_KEYS.map((key) => (
@@ -469,14 +614,15 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
                 label={{ value: `${getLabel(yMetric)} →`, angle: -90, position: 'left', offset: 4, style: { fill: 'var(--text-h)', fontSize: 12, fontWeight: 600 } }}
                 tick={{ fill: 'var(--text)', fontSize: 11 }}
               />
-              {nonParetoPoints.length > 0 && (
-                <Scatter data={nonParetoPoints} fill="var(--text)" fillOpacity={0.25} isAnimationActive={false} />
-              )}
-              {paretoPoints.length > 0 && (
-                <Scatter data={paretoPoints} fill="var(--accent)" fillOpacity={1} isAnimationActive={false} />
-              )}
               <ParetoOverlay paretoPoints={paretoPoints} />
               <ZoomHandler onZoom={handleZoom} onResetZoom={resetZoom} />
+              {visibleNonPareto.length > 0 && (
+                <Scatter name="nonPareto" data={visibleNonPareto} fill="var(--text)" fillOpacity={0.25} isAnimationActive={false} />
+              )}
+              {visiblePareto.length > 0 && (
+                <Scatter name="pareto" data={visiblePareto} fill="var(--accent)" fillOpacity={1} isAnimationActive={false} />
+              )}
+              <Tooltip cursor={false} isAnimationActive={false} content={<CustomTooltip pointMap={pointMap} xLabel={getLabel(xMetric)} yLabel={getLabel(yMetric)} />} />
             </ScatterChart>
           </ResponsiveContainer>
         ) : (
