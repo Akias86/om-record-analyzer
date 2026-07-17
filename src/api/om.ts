@@ -1,4 +1,4 @@
-import type { OmCollectionDTO, OmGroupDTO, OmPuzzleDTO, OmRecordDTO, OmMetricDTO } from '../types'
+import type { OmRecordDTO, OmMetricDTO } from '../types'
 
 const BASE = '/api/om'
 const CACHE_PREFIX = 'om-cache:'
@@ -46,24 +46,100 @@ async function get<T>(url: string, options?: RequestOptions): Promise<T> {
   return data
 }
 
-export function fetchCollections(options?: RequestOptions): Promise<OmCollectionDTO[]> {
-  return get<OmCollectionDTO[]>(`${BASE}/collections`, options)
-}
-
-export function fetchGroupsByCollection(collectionId: string, options?: RequestOptions): Promise<OmGroupDTO[]> {
-  return get<OmGroupDTO[]>(`${BASE}/collection/${collectionId}/groups`, options)
-}
-
-export function fetchPuzzlesByGroup(groupId: string, options?: RequestOptions): Promise<OmPuzzleDTO[]> {
-  return get<OmPuzzleDTO[]>(`${BASE}/group/${groupId}/puzzles`, options)
-}
-
 export function fetchRecords(puzzleId: string, options?: RequestOptions): Promise<OmRecordDTO[]> {
   return get<OmRecordDTO[]>(`${BASE}/puzzle/${puzzleId}/records?includeFrontier=true`, options)
 }
 
 export function fetchMetrics(options?: RequestOptions): Promise<OmMetricDTO[]> {
   return get<OmMetricDTO[]>(`${BASE}/metrics`, options)
+}
+
+export interface OmPuzzleListDTO {
+  id: string
+  displayName: string
+  type: string
+  group: {
+    id: string
+    displayName: string
+    collection: {
+      id: string
+      displayName: string
+    }
+  }
+  altIds?: string[]
+}
+
+export function fetchPuzzleList(options?: RequestOptions): Promise<OmPuzzleListDTO[]> {
+  return get<OmPuzzleListDTO[]>(`${BASE}/puzzles`, options)
+}
+
+let puzzleMapPromise: Promise<Map<string, OmPuzzleListDTO>> | null = null
+
+function getPuzzleMap(): Promise<Map<string, OmPuzzleListDTO>> {
+  if (!puzzleMapPromise) {
+    puzzleMapPromise = fetchPuzzleList().then((list) => {
+      const map = new Map<string, OmPuzzleListDTO>()
+      for (const p of list) map.set(p.id, p)
+      return map
+    })
+    puzzleMapPromise.catch(() => {
+      puzzleMapPromise = null
+    })
+  }
+  return puzzleMapPromise
+}
+
+export function getPuzzleMeta(id: string): Promise<OmPuzzleListDTO | undefined> {
+  return getPuzzleMap().then((map) => map.get(id))
+}
+
+export interface PuzzleTreeNode {
+  id: string
+  displayName: string
+  type: string
+}
+
+export interface GroupTreeNode {
+  id: string
+  displayName: string
+  collectionId: string
+  puzzles: PuzzleTreeNode[]
+}
+
+export interface CollectionTreeNode {
+  id: string
+  displayName: string
+  groups: GroupTreeNode[]
+}
+
+let treePromise: Promise<CollectionTreeNode[]> | null = null
+
+export function getPuzzleTree(): Promise<CollectionTreeNode[]> {
+  if (!treePromise) {
+    treePromise = fetchPuzzleList().then((list) => {
+      const collections = new Map<string, CollectionTreeNode>()
+      const groups = new Map<string, GroupTreeNode>()
+      for (const p of list) {
+        const colId = p.group.collection.id
+        let colNode = collections.get(colId)
+        if (!colNode) {
+          colNode = { id: colId, displayName: p.group.collection.displayName, groups: [] }
+          collections.set(colId, colNode)
+        }
+        const grpKey = `${colId}/${p.group.id}`
+        let grpNode = groups.get(grpKey)
+        if (!grpNode) {
+          grpNode = { id: p.group.id, displayName: p.group.displayName, collectionId: colId, puzzles: [] }
+          groups.set(grpKey, grpNode)
+          colNode.groups.push(grpNode)
+        }
+        grpNode.puzzles.push({ id: p.id, displayName: p.displayName, type: p.type })
+      }
+      return [...collections.values()]
+    })
+    treePromise.catch(() => { treePromise = null })
+  }
+  return treePromise
 }
 
 export interface OmPuzzleDetail {
@@ -80,6 +156,10 @@ export interface OmPuzzleDetail {
   }
 }
 
-export function fetchPuzzleDetail(puzzleId: string, options?: RequestOptions): Promise<OmPuzzleDetail> {
-  return get<OmPuzzleDetail>(`${BASE}/puzzle/${puzzleId}`, options)
+export function fetchPuzzleDetail(puzzleId: string): Promise<OmPuzzleDetail> {
+  return getPuzzleMeta(puzzleId).then((meta) => {
+    if (!meta) throw new Error(`puzzle not found: ${puzzleId}`)
+    const { id, displayName, type, group } = meta
+    return { id, displayName, type, group }
+  })
 }

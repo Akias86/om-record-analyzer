@@ -1,6 +1,7 @@
 import { loadVerifier } from './verifier'
 import { identifyPuzzle } from './solution-parse'
 import { computeScore } from './metrics'
+import { getPuzzleMeta } from '../../api/om'
 import type { VerifiedScore, VerifySolutionOptions, VerifySolutionResult } from './types'
 
 export { loadVerifier, identifyPuzzle, computeScore }
@@ -15,19 +16,13 @@ export async function fetchPuzzleBytes(puzzleId: string): Promise<Uint8Array> {
   return new Uint8Array(await res.arrayBuffer())
 }
 
-const puzzleTypeCache = new Map<string, Promise<string>>()
-
-export function fetchPuzzleType(puzzleId: string): Promise<string> {
-  const cached = puzzleTypeCache.get(puzzleId)
-  if (cached) return cached
-  const p = (async (): Promise<string> => {
-    const res = await fetch(`/api/om/puzzle/${encodeURIComponent(puzzleId)}`)
-    if (!res.ok) return ''
-    const data = (await res.json()) as { type?: string }
-    return data.type ?? ''
-  })().catch(() => '')
-  puzzleTypeCache.set(puzzleId, p)
-  return p
+export async function fetchPuzzleType(puzzleId: string): Promise<string> {
+  try {
+    const meta = await getPuzzleMeta(puzzleId)
+    return meta?.type ?? ''
+  } catch {
+    return ''
+  }
 }
 
 export async function verifySolution(

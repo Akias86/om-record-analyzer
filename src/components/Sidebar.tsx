@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
-import { fetchCollections, fetchGroupsByCollection, fetchPuzzlesByGroup } from '../api/om'
-import type { OmCollectionDTO, OmGroupDTO, OmPuzzleDTO } from '../types'
+import { getPuzzleTree } from '../api/om'
+import type { CollectionTreeNode } from '../api/om'
 import './Sidebar.css'
 
 interface SidebarProps {
@@ -11,17 +11,15 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollectionId, expandGroupId }: SidebarProps) {
-  const [collections, setCollections] = useState<OmCollectionDTO[]>([])
+  const [tree, setTree] = useState<CollectionTreeNode[]>([])
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set())
-  const [groupsMap, setGroupsMap] = useState<Record<string, OmGroupDTO[]>>({})
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
-  const [puzzlesMap, setPuzzlesMap] = useState<Record<string, OmPuzzleDTO[]>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchCollections()
+    getPuzzleTree()
       .then((data) => {
-        setCollections(data)
+        setTree(data)
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -40,54 +38,28 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
   }, [expandGroupId])
 
   useEffect(() => {
-    for (const collectionId of expandedCollections) {
-      if (!groupsMap[collectionId]) {
-        fetchGroupsByCollection(collectionId).then((groups) => {
-          setGroupsMap((prev) => (prev[collectionId] ? prev : { ...prev, [collectionId]: groups }))
-        })
-      }
-    }
-  }, [expandedCollections, groupsMap])
-
-  useEffect(() => {
-    for (const groupId of expandedGroups) {
-      if (!puzzlesMap[groupId]) {
-        fetchPuzzlesByGroup(groupId).then((puzzles) => {
-          setPuzzlesMap((prev) => (prev[groupId] ? prev : { ...prev, [groupId]: puzzles }))
-        })
-      }
-    }
-  }, [expandedGroups, puzzlesMap])
-
-  useEffect(() => {
     if (!selectedPuzzleId) return
     const el = document.getElementById(`puzzle-${selectedPuzzleId}`)
     if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [selectedPuzzleId, expandedGroups, puzzlesMap])
+  }, [selectedPuzzleId, expandedGroups])
 
-  const toggleCollection = useCallback(
-    (collectionId: string) => {
-      setExpandedCollections((prev) => {
-        const next = new Set(prev)
-        if (next.has(collectionId)) next.delete(collectionId)
-        else next.add(collectionId)
-        return next
-      })
-    },
-    [],
-  )
+  const toggleCollection = useCallback((collectionId: string) => {
+    setExpandedCollections((prev) => {
+      const next = new Set(prev)
+      if (next.has(collectionId)) next.delete(collectionId)
+      else next.add(collectionId)
+      return next
+    })
+  }, [])
 
-  const toggleGroup = useCallback(
-    (groupId: string) => {
-      setExpandedGroups((prev) => {
-        const next = new Set(prev)
-        if (next.has(groupId)) next.delete(groupId)
-        else next.add(groupId)
-        return next
-      })
-    },
-    [],
-  )
+  const toggleGroup = useCallback((groupId: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(groupId)) next.delete(groupId)
+      else next.add(groupId)
+      return next
+    })
+  }, [])
 
   const handlePuzzleClick = useCallback(
     (puzzleId: string) => {
@@ -104,9 +76,8 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
     <aside className="sidebar">
       <div className="sidebar-header">Puzzles</div>
       <nav className="sidebar-nav">
-        {collections.map((col) => {
+        {tree.map((col) => {
           const isColExpanded = expandedCollections.has(col.id)
-          const groups = groupsMap[col.id] ?? []
           return (
             <div key={col.id} className="sidebar-node">
               <div
@@ -118,9 +89,8 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
               </div>
               {isColExpanded && (
                 <div className="sidebar-children">
-                  {groups.map((grp) => {
+                  {col.groups.map((grp) => {
                     const isGrpExpanded = expandedGroups.has(grp.id)
-                    const puzzles = puzzlesMap[grp.id] ?? []
                     return (
                       <div key={grp.id} className="sidebar-node">
                         <div
@@ -129,11 +99,11 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
                         >
                           <span className="sidebar-chevron">{isGrpExpanded ? '\u25BC' : '\u25B6'}</span>
                           <span className="sidebar-label">{grp.displayName}</span>
-                          <span className="sidebar-count">{puzzles.length > 0 ? puzzles.length : ''}</span>
+                          <span className="sidebar-count">{grp.puzzles.length}</span>
                         </div>
                         {isGrpExpanded && (
                           <div className="sidebar-children">
-                            {puzzles.map((puz) => (
+                            {grp.puzzles.map((puz) => (
                               <div
                                 key={puz.id}
                                 id={`puzzle-${puz.id}`}
