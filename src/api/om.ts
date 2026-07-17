@@ -65,3 +65,21 @@ export function fetchRecords(puzzleId: string, options?: RequestOptions): Promis
 export function fetchMetrics(options?: RequestOptions): Promise<OmMetricDTO[]> {
   return get<OmMetricDTO[]>(`${BASE}/metrics`, options)
 }
+
+export interface OmPuzzleDetail {
+  id: string
+  displayName: string
+  type: string
+  group: {
+    id: string
+    displayName: string
+    collection: {
+      id: string
+      displayName: string
+    }
+  }
+}
+
+export function fetchPuzzleDetail(puzzleId: string, options?: RequestOptions): Promise<OmPuzzleDetail> {
+  return get<OmPuzzleDetail>(`${BASE}/puzzle/${puzzleId}`, options)
+}

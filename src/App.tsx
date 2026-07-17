@@ -1,30 +1,86 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Sidebar from './components/Sidebar'
 import ParetoChart from './components/ParetoChart'
+import TestPage from './test/TestPage'
+import { fetchPuzzleDetail } from './api/om'
+import type { OmPuzzleDetail } from './api/om'
 import './App.css'
 
-const PUZZLE_KEY = 'om-selected-puzzle'
+interface Route {
+  solver: boolean
+  puzzleId: string | null
+}
+
+function parseHash(hash: string): Route {
+  const raw = hash.replace(/^#/, '')
+  if (raw === '/solver') return { solver: true, puzzleId: null }
+  const m = raw.match(/^\/puzzle\/(.+)$/)
+  if (m) return { solver: false, puzzleId: decodeURIComponent(m[1]) }
+  return { solver: false, puzzleId: null }
+}
 
 function App() {
-  const [selectedPuzzleId, setSelectedPuzzleId] = useState<string | null>(() => {
-    try { return localStorage.getItem(PUZZLE_KEY) } catch { return null }
-  })
+  const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash))
 
   useEffect(() => {
-    try {
-      if (selectedPuzzleId) localStorage.setItem(PUZZLE_KEY, selectedPuzzleId)
-      else localStorage.removeItem(PUZZLE_KEY)
-    } catch {}
-  }, [selectedPuzzleId])
+    const onChange = () => setRoute(parseHash(window.location.hash))
+    window.addEventListener('hashchange', onChange)
+    return () => window.removeEventListener('hashchange', onChange)
+  }, [])
+
+  const navigatePuzzle = useCallback((id: string | null) => {
+    if (id) {
+      window.location.hash = `/puzzle/${id}`
+    } else if (window.location.hash) {
+      history.replaceState(null, '', window.location.pathname + window.location.search)
+      setRoute({ solver: false, puzzleId: null })
+    }
+  }, [])
+
+  if (route.solver) return <TestPage />
+  return <MainApp puzzleId={route.puzzleId} onSelectPuzzle={navigatePuzzle} />
+}
+
+function MainApp({ puzzleId, onSelectPuzzle }: { puzzleId: string | null; onSelectPuzzle: (id: string | null) => void }) {
+  const [detail, setDetail] = useState<OmPuzzleDetail | null>(null)
+  const [expandCollectionId, setExpandCollectionId] = useState<string | null>(null)
+  const [expandGroupId, setExpandGroupId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!puzzleId) {
+      setDetail(null)
+      setExpandCollectionId(null)
+      setExpandGroupId(null)
+      return
+    }
+    let cancelled = false
+    setDetail(null)
+    fetchPuzzleDetail(puzzleId)
+      .then((d) => {
+        if (cancelled) return
+        setDetail(d)
+        setExpandCollectionId(d.group.collection.id)
+        setExpandGroupId(d.group.id)
+      })
+      .catch(() => setDetail(null))
+    return () => { cancelled = true }
+  }, [puzzleId])
+
+  const title = detail?.displayName ?? puzzleId
 
   return (
     <div className="app-layout">
-      <Sidebar selectedPuzzleId={selectedPuzzleId} onSelectPuzzle={setSelectedPuzzleId} />
+      <Sidebar
+        selectedPuzzleId={puzzleId}
+        onSelectPuzzle={onSelectPuzzle}
+        expandCollectionId={expandCollectionId}
+        expandGroupId={expandGroupId}
+      />
       <main className="app-main">
-        {selectedPuzzleId ? (
+        {puzzleId ? (
           <div className="app-content">
-            <h1>{selectedPuzzleId}</h1>
-            <ParetoChart puzzleId={selectedPuzzleId} />
+            <h1>{title}</h1>
+            <ParetoChart puzzleId={puzzleId} />
           </div>
         ) : (
           <div className="app-placeholder">

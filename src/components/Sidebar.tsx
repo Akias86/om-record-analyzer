@@ -6,9 +6,11 @@ import './Sidebar.css'
 interface SidebarProps {
   selectedPuzzleId: string | null
   onSelectPuzzle: (puzzleId: string | null) => void
+  expandCollectionId?: string | null
+  expandGroupId?: string | null
 }
 
-export default function Sidebar({ selectedPuzzleId, onSelectPuzzle }: SidebarProps) {
+export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollectionId, expandGroupId }: SidebarProps) {
   const [collections, setCollections] = useState<OmCollectionDTO[]>([])
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set())
   const [groupsMap, setGroupsMap] = useState<Record<string, OmGroupDTO[]>>({})
@@ -25,40 +27,66 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle }: SidebarPro
       .catch(() => setLoading(false))
   }, [])
 
-  const toggleCollection = useCallback(
-    async (collectionId: string) => {
-      const next = new Set(expandedCollections)
-      if (next.has(collectionId)) {
-        next.delete(collectionId)
-        setExpandedCollections(next)
-      } else {
-        next.add(collectionId)
-        setExpandedCollections(next)
-        if (!groupsMap[collectionId]) {
-          const groups = await fetchGroupsByCollection(collectionId)
-          setGroupsMap((prev) => ({ ...prev, [collectionId]: groups }))
-        }
+  useEffect(() => {
+    if (expandCollectionId) {
+      setExpandedCollections((prev) => (prev.has(expandCollectionId) ? prev : new Set(prev).add(expandCollectionId)))
+    }
+  }, [expandCollectionId])
+
+  useEffect(() => {
+    if (expandGroupId) {
+      setExpandedGroups((prev) => (prev.has(expandGroupId) ? prev : new Set(prev).add(expandGroupId)))
+    }
+  }, [expandGroupId])
+
+  useEffect(() => {
+    for (const collectionId of expandedCollections) {
+      if (!groupsMap[collectionId]) {
+        fetchGroupsByCollection(collectionId).then((groups) => {
+          setGroupsMap((prev) => (prev[collectionId] ? prev : { ...prev, [collectionId]: groups }))
+        })
       }
+    }
+  }, [expandedCollections, groupsMap])
+
+  useEffect(() => {
+    for (const groupId of expandedGroups) {
+      if (!puzzlesMap[groupId]) {
+        fetchPuzzlesByGroup(groupId).then((puzzles) => {
+          setPuzzlesMap((prev) => (prev[groupId] ? prev : { ...prev, [groupId]: puzzles }))
+        })
+      }
+    }
+  }, [expandedGroups, puzzlesMap])
+
+  useEffect(() => {
+    if (!selectedPuzzleId) return
+    const el = document.getElementById(`puzzle-${selectedPuzzleId}`)
+    if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [selectedPuzzleId, expandedGroups, puzzlesMap])
+
+  const toggleCollection = useCallback(
+    (collectionId: string) => {
+      setExpandedCollections((prev) => {
+        const next = new Set(prev)
+        if (next.has(collectionId)) next.delete(collectionId)
+        else next.add(collectionId)
+        return next
+      })
     },
-    [expandedCollections, groupsMap],
+    [],
   )
 
   const toggleGroup = useCallback(
-    async (groupId: string) => {
-      const next = new Set(expandedGroups)
-      if (next.has(groupId)) {
-        next.delete(groupId)
-        setExpandedGroups(next)
-      } else {
-        next.add(groupId)
-        setExpandedGroups(next)
-        if (!puzzlesMap[groupId]) {
-          const puzzles = await fetchPuzzlesByGroup(groupId)
-          setPuzzlesMap((prev) => ({ ...prev, [groupId]: puzzles }))
-        }
-      }
+    (groupId: string) => {
+      setExpandedGroups((prev) => {
+        const next = new Set(prev)
+        if (next.has(groupId)) next.delete(groupId)
+        else next.add(groupId)
+        return next
+      })
     },
-    [expandedGroups, puzzlesMap],
+    [],
   )
 
   const handlePuzzleClick = useCallback(
@@ -108,6 +136,7 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle }: SidebarPro
                             {puzzles.map((puz) => (
                               <div
                                 key={puz.id}
+                                id={`puzzle-${puz.id}`}
                                 className={`sidebar-item sidebar-item-puzzle ${selectedPuzzleId === puz.id ? 'selected' : ''}`}
                                 onClick={() => handlePuzzleClick(puz.id)}
                               >
