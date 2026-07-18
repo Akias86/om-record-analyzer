@@ -20,19 +20,33 @@ export interface VerifierModule {
   destroy(v: number): void
 }
 
+let modulePromise: Promise<WebAssembly.Module> | null = null
 let instancePromise: Promise<VerifierModule> | null = null
 
-export function loadVerifier(): Promise<VerifierModule> {
-  if (!instancePromise) instancePromise = init()
+export function compileVerifierModule(): Promise<WebAssembly.Module> {
+  if (!modulePromise) {
+    modulePromise = (async () => {
+      const url = new URL('./libverify.wasm', import.meta.url)
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`failed to load libverify.wasm: ${res.status}`)
+      return WebAssembly.compile(await res.arrayBuffer())
+    })()
+    modulePromise.catch(() => { modulePromise = null })
+  }
+  return modulePromise
+}
+
+export function loadVerifier(module?: WebAssembly.Module): Promise<VerifierModule> {
+  if (!instancePromise) {
+    instancePromise = init(module)
+    instancePromise.catch(() => { instancePromise = null })
+  }
   return instancePromise
 }
 
-async function init(): Promise<VerifierModule> {
-  const url = new URL('./libverify.wasm', import.meta.url)
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`failed to load libverify.wasm: ${res.status}`)
-  const bytes = await res.arrayBuffer()
-  const { instance } = await WebAssembly.instantiate(bytes, {
+async function init(module?: WebAssembly.Module): Promise<VerifierModule> {
+  const mod = module ?? await compileVerifierModule()
+  const instance = await WebAssembly.instantiate(mod, {
     env: { emscripten_notify_memory_growth: () => {} },
   })
   const e = instance.exports as unknown as VerifierExports

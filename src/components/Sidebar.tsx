@@ -157,6 +157,7 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
         <input
           ref={inputRef}
           type="file"
+          accept=".solution"
           className="sidebar-file-input"
           multiple
           onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }}
@@ -167,12 +168,12 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
           onClick={() => { if (!uploading) inputRef.current?.click() }}
           disabled={uploading}
         >
-          {uploading ? `验证中 ${progress?.done ?? 0}/${progress?.total ?? 0}` : '上传 .solution 文件夹'}
+          {uploading ? `Verifying ${progress?.done ?? 0}/${progress?.total ?? 0}` : 'Upload .solution files'}
         </button>
         {!uploading && records.length > 0 && (
           <div className="sidebar-upload-info">
-            <span>已加载 {records.length}{skipped > 0 ? `（skipped ${skipped}）` : ''}</span>
-            <button type="button" className="sidebar-clear-btn" onClick={clear}>清空</button>
+            <span>Loaded {records.length}{skipped > 0 ? ` (skipped ${skipped})` : ''}</span>
+            <button type="button" className="sidebar-clear-btn" onClick={clear}>Clear</button>
           </div>
         )}
         {!uploading && records.length === 0 && lastUploadTotal > 0 && (

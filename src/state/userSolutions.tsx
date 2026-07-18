@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { OmScoreDTO } from '../types'
-import { parseSolutionMeta, verifySolution, formatFullScore } from '../lib/verify'
+import { parseSolutionMeta, formatFullScore, verifyBatch } from '../lib/verify'
+import type { BatchInput, SolutionMeta } from '../lib/verify'
 import { verifiedToOmScore } from '../lib/verify/convert'
 
 export interface UserSolutionRecord {
@@ -83,44 +84,42 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
 
     const newRecords: UserSolutionRecord[] = []
     let skippedCount = 0
-    let done = 0
 
-    for (const file of all) {
-      try {
+    try {
+      const inputs: BatchInput[] = []
+      const metas: SolutionMeta[] = []
+      for (const file of all) {
         const bytes = new Uint8Array(await file.arrayBuffer())
         const meta = parseSolutionMeta(bytes)
-        if (!meta.puzzleId) {
+        metas.push(meta)
+        inputs.push({ bytes, puzzleId: meta.puzzleId })
+      }
+
+      const results = await verifyBatch(inputs, undefined, (done, total) =>
+        setProgress({ done, total }),
+      )
+
+      for (let i = 0; i < inputs.length; i++) {
+        const res = results[i]
+        const meta = metas[i]
+        if (!res || !res.passed || !res.score || !res.puzzleId) {
           skippedCount++
-          setSkipped(skippedCount)
-          done++
-          setProgress({ done, total: all.length })
           continue
         }
-        const result = await verifySolution(bytes)
-        if (!result.passed || !result.score || !result.puzzleId) {
-          skippedCount++
-          setSkipped(skippedCount)
-          done++
-          setProgress({ done, total: all.length })
-          continue
-        }
-        const score = verifiedToOmScore(result.score)
         newRecords.push({
           id: genId(),
-          puzzleId: result.puzzleId,
-          puzzleType: result.puzzleType ?? '',
+          puzzleId: res.puzzleId,
+          puzzleType: res.puzzleType ?? '',
           solutionName: meta.solutionName,
-          score,
-          fullScore: formatFullScore(result.score, result.puzzleType ?? undefined),
+          score: verifiedToOmScore(res.score),
+          fullScore: formatFullScore(res.score, res.puzzleType ?? undefined),
         })
-      } catch {
-        skippedCount++
-        setSkipped(skippedCount)
       }
-      done++
-      setProgress({ done, total: all.length })
+    } catch {
+      skippedCount = all.length
     }
 
+    setSkipped(skippedCount)
     setRecords(newRecords)
     setUploading(false)
     setProgress(null)

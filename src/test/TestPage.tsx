@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
-import { verifySolution, parseSolutionMeta, formatFullScore } from '../lib/verify'
+import { parseSolutionMeta, formatFullScore, verifyBatch } from '../lib/verify'
+import type { BatchInput } from '../lib/verify'
 
 type RowStatus = 'pending' | 'verifying' | 'done' | 'error' | 'skipped'
 
@@ -34,12 +35,12 @@ export default function TestPage() {
     setRunning(true)
     setProgress({ done: 0, total: all.length })
 
-    const cached: { bytes: Uint8Array }[] = []
+    const inputs: BatchInput[] = []
     const initial: Row[] = []
     for (const file of all) {
       const bytes = new Uint8Array(await file.arrayBuffer())
-      cached.push({ bytes })
       const meta = parseSolutionMeta(bytes)
+      inputs.push({ bytes, puzzleId: meta.puzzleId })
       initial.push({
         fileName: file.name,
         solutionName: meta.solutionName,
@@ -51,21 +52,19 @@ export default function TestPage() {
     setRows(initial)
 
     const pendingIndices = initial.map((r, i) => (r.status === 'pending' ? i : -1)).filter((i) => i >= 0)
-    let done = 0
-    for (const i of pendingIndices) {
-      setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, status: 'verifying' } : r)))
-      try {
-        const result = await verifySolution(cached[i].bytes)
+    setRows((prev) => prev.map((r, i) => (pendingIndices.includes(i) ? { ...r, status: 'verifying' } : r)))
+
+    await verifyBatch(
+      inputs,
+      (index, result) => {
         const fullScore = result.passed && result.score
           ? formatFullScore(result.score, result.puzzleType ?? undefined)
           : null
-        setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, fullScore, status: 'done' } : r)))
-      } catch {
-        setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, status: 'error' } : r)))
-      }
-      done++
-      setProgress({ done, total: all.length })
-    }
+        const status: RowStatus = result.puzzleId === null ? 'skipped' : 'done'
+        setRows((prev) => prev.map((r, i) => (i === index ? { ...r, fullScore, status } : r)))
+      },
+      (done, total) => setProgress({ done, total }),
+    )
 
     setRunning(false)
   }, [])
@@ -84,8 +83,8 @@ export default function TestPage() {
 
   return (
     <div className="tp">
-      <h1 className="tp-title">Opus Magnum 批量验证</h1>
-      <p className="tp-sub">选择包含 .solution 文件的文件夹，自动验证全部 · <a href="#/">返回</a></p>
+      <h1 className="tp-title">Opus Magnum Batch Verification</h1>
+      <p className="tp-sub">Select a folder containing .solution files, auto-verify all · <a href="#/">Back</a></p>
 
       <div
         className={`tp-drop ${running ? 'is-disabled' : ''}`}
@@ -96,18 +95,19 @@ export default function TestPage() {
         <input
           ref={inputRef}
           type="file"
+          accept=".solution"
           className="tp-file"
           multiple
           onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }}
         />
         {running
-          ? `验证中… ${doneCount}/${total}`
-          : '点击选择文件夹，或拖入 .solution 文件'}
+          ? `Verifying... ${doneCount}/${total}`
+          : 'Click to select folder, or drag .solution files here'}
       </div>
 
       {progress && (
         <div className="tp-progress">
-          共 {total} 个文件 · 通过 {passedCount} · 失败/留空 {failedCount}
+          Total {total} files · Passed {passedCount} · Failed/Empty {failedCount}
         </div>
       )}
 
@@ -115,8 +115,8 @@ export default function TestPage() {
         <table className="tp-batch-table">
           <thead>
             <tr>
-              <th>存档名称</th>
-              <th>关卡 ID</th>
+              <th>Save Name</th>
+              <th>Level ID</th>
               <th>fullFormattedScore</th>
             </tr>
           </thead>
