@@ -4,7 +4,7 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "om",
+	"name": "om-record-analyzer",
 	"main": "worker/index.ts",
 	"compatibility_date": "2026-07-11",
 	"assets": {
