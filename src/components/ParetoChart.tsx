@@ -29,7 +29,7 @@ function saveSetting(key: string, value: string): void {
   try {
     if (value) localStorage.setItem(key, value)
     else localStorage.removeItem(key)
-  } catch {}
+  } catch { }
 }
 
 interface ParetoPoint {
@@ -39,6 +39,43 @@ interface ParetoPoint {
   score: string | null
   categories: string | null
   recordIndex: number
+  overlap: boolean
+  trackless: boolean
+}
+
+type PointClass = 'overlap' | 'trackless' | 'normal'
+
+function classifyPoint(p: ParetoPoint): PointClass {
+  if (p.overlap) return 'overlap'
+  if (p.trackless) return 'trackless'
+  return 'normal'
+}
+
+const CLASS_ORDER: PointClass[] = ['overlap', 'trackless', 'normal']
+
+const CLASS_COLOR: Record<PointClass, string> = {
+  normal: 'var(--text)',
+  overlap: '#ff7bd7',
+  trackless: '#8389fc',
+}
+
+const CLASS_FRONTIER_COLOR: Record<PointClass, string> = {
+  normal: 'var(--accent)',
+  overlap: '#ff7bd7',
+  trackless: '#8389fc',
+}
+
+const FRONTIER_RADIUS = 5
+const NORMAL_RADIUS = 3
+const FRONTIER_OPACITY = 1
+const NORMAL_OPACITY = 0.35
+
+function makePointShape(radius: number, opacity: number, color: string) {
+  return (props: { cx?: number; cy?: number }) => {
+    const { cx, cy } = props
+    if (cx == null || cy == null) return null
+    return <circle cx={cx} cy={cy} r={radius} fill={color} fillOpacity={opacity} stroke={color} strokeWidth={0.5} />
+  }
 }
 
 interface ParetoChartProps {
@@ -346,6 +383,58 @@ function ParetoOverlay({ paretoPoints }: { paretoPoints: ParetoPoint[] }) {
   )
 }
 
+function ResetZoomButton({ onReset }: { onReset: () => void }) {
+  const plotArea = usePlotArea()
+  if (!plotArea) return null
+  const w = 84
+  const h = 22
+  const x = plotArea.x + plotArea.width - w
+  const y = plotArea.y + plotArea.height + 28
+  return (
+    <foreignObject x={x} y={y} width={w} height={h} style={{ overflow: 'visible' }}>
+      <button
+        type="button"
+        className="pareto-chart-reset-btn"
+        onClick={onReset}
+        style={{ width: '100%', height: '100%' }}
+      >
+        Reset zoom
+      </button>
+    </foreignObject>
+  )
+}
+
+function ChartLegend() {
+  const plotArea = usePlotArea()
+  if (!plotArea) return null
+  const items: { cls: PointClass; color: string; opacity: number }[] = CLASS_ORDER.map((cls) => ({
+    cls,
+    color: CLASS_COLOR[cls],
+    opacity: cls === 'normal' ? NORMAL_OPACITY : 1,
+  }))
+  const padX = 8
+  const padY = 6
+  const rowH = 16
+  const boxW = 92
+  const boxH = padY * 2 + items.length * rowH
+  const x = plotArea.x + plotArea.width - boxW - 8
+  const y = plotArea.y + 8
+  return (
+    <g style={{ pointerEvents: 'none' }}>
+      <rect x={x} y={y} width={boxW} height={boxH} rx={4}
+        fill="var(--sidebar-bg)" fillOpacity={0.92} stroke="var(--border)" strokeWidth={1} />
+      {items.map((it, i) => (
+        <g key={it.cls} transform={`translate(${x + padX}, ${y + padY + i * rowH + 9})`}>
+          <circle cx={5} cy={0} r={4.5} fill={it.color} fillOpacity={it.opacity} stroke={it.color} strokeWidth={0.5} />
+          <text x={14} y={3} fill="var(--text)" fontSize={11} style={{ textTransform: 'capitalize' }}>
+            {it.cls}
+          </text>
+        </g>
+      ))}
+    </g>
+  )
+}
+
 function CustomTooltip({ active, payload, pointMap, xLabel, yLabel }: {
   active?: boolean
   payload?: { payload: ParetoPoint }[]
@@ -397,7 +486,7 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
     try {
       const saved = localStorage.getItem('om-chart:boolFilters')
       if (saved) return JSON.parse(saved) as BoolFilter
-    } catch {}
+    } catch { }
     return { overlap: 'any', trackless: 'any' }
   })
   const [xScale, setXScale] = useState<'linear' | 'log'>(() =>
@@ -505,7 +594,7 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
         }
       }
       if (skip) return
-      points.push({ x, y, id: r.id ?? `${x}-${y}`, score: r.smartFormattedScore, categories: r.smartFormattedCategories, recordIndex: i })
+      points.push({ x, y, id: r.id ?? `${x}-${y}`, score: r.smartFormattedScore, categories: r.smartFormattedCategories, recordIndex: i, overlap: !!r.score.overlap, trackless: !!r.score.trackless })
     })
     return points
   }, [records, xMetric, yMetric, boolFilters, manifold, frontierRecordIndices])
@@ -561,6 +650,18 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
     [paretoPoints, zoomDomain],
   )
 
+  const frontierByClass = useMemo(() => {
+    const map: Record<PointClass, ParetoPoint[]> = { overlap: [], trackless: [], normal: [] }
+    for (const p of visiblePareto) map[classifyPoint(p)].push(p)
+    return map
+  }, [visiblePareto])
+
+  const nonFrontierByClass = useMemo(() => {
+    const map: Record<PointClass, ParetoPoint[]> = { overlap: [], trackless: [], normal: [] }
+    for (const p of visibleNonPareto) map[classifyPoint(p)].push(p)
+    return map
+  }, [visibleNonPareto])
+
   const resetZoom = useCallback(() => setZoomDomain(null), [])
   const handleZoom = useCallback((d: ZoomDomain) => setZoomDomain(d), [])
 
@@ -583,7 +684,7 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
   const handleBoolFilterChange = useCallback((key: string, value: string) => {
     const newFilters = { ...boolFilters, [key]: value as 'any' | 'true' | 'false' }
     setBoolFilters(newFilters)
-    try { localStorage.setItem('om-chart:boolFilters', JSON.stringify(newFilters)) } catch {}
+    try { localStorage.setItem('om-chart:boolFilters', JSON.stringify(newFilters)) } catch { }
   }, [boolFilters])
 
   const handleXScale = useCallback((v: 'linear' | 'log') => {
@@ -678,7 +779,6 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
             {manifold
               ? `${allPoints.length} on ${manifold.label} frontier (${boundaryPoints.length} on 2D boundary)`
               : `${allPoints.length} records (no frontier)`}
-            {isZoomed && <button type="button" className="pareto-chart-reset-btn" onClick={resetZoom}>Reset zoom</button>}
           </span>
         )}
       </div>
@@ -710,13 +810,25 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
                 tick={{ fill: 'var(--text)', fontSize: 11 }}
               />
               <ParetoOverlay paretoPoints={boundaryPoints} />
+              <ChartLegend />
               <ZoomHandler onZoom={handleZoom} onResetZoom={resetZoom} />
-              {visibleNonPareto.length > 0 && (
-                <Scatter name="nonPareto" data={visibleNonPareto} fill="var(--text)" fillOpacity={0.25} isAnimationActive={false} />
-              )}
-              {visiblePareto.length > 0 && (
-                <Scatter name="pareto" data={visiblePareto} fill="var(--accent)" fillOpacity={1} isAnimationActive={false} />
-              )}
+              {isZoomed && <ResetZoomButton onReset={resetZoom} />}
+              {CLASS_ORDER.flatMap((cls) => {
+                const nf = nonFrontierByClass[cls]
+                const fr = frontierByClass[cls]
+                const els: React.ReactElement[] = []
+                if (nf.length > 0) {
+                  els.push(
+                    <Scatter key={`nf-${cls}`} name={`non-frontier-${cls}`} data={nf} shape={makePointShape(NORMAL_RADIUS, NORMAL_OPACITY, CLASS_COLOR[cls])} isAnimationActive={false} />,
+                  )
+                }
+                if (fr.length > 0) {
+                  els.push(
+                    <Scatter key={`f-${cls}`} name={`frontier-${cls}`} data={fr} shape={makePointShape(FRONTIER_RADIUS, FRONTIER_OPACITY, CLASS_FRONTIER_COLOR[cls])} isAnimationActive={false} />,
+                  )
+                }
+                return els
+              })}
               <Tooltip cursor={false} isAnimationActive={false} content={<CustomTooltip pointMap={pointMap} xLabel={getLabel(xMetric)} yLabel={getLabel(yMetric)} />} />
             </ScatterChart>
           </ResponsiveContainer>
