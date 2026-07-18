@@ -1,14 +1,17 @@
 import { loadVerifier } from './verifier'
-import { identifyPuzzle } from './solution-parse'
+import { identifyPuzzle, parseSolutionMeta } from './solution-parse'
+import type { SolutionMeta } from './solution-parse'
 import { computeScore } from './metrics'
+import { formatFullScore } from './format'
 import { getPuzzleMeta } from '../../api/om'
 import type { VerifiedScore, VerifySolutionOptions, VerifySolutionResult } from './types'
 
-export { loadVerifier, identifyPuzzle, computeScore }
+export { loadVerifier, identifyPuzzle, parseSolutionMeta, computeScore, formatFullScore }
 export { diffScores } from './compare'
 export type { VerifiedScore, VerifySolutionOptions, VerifySolutionResult }
 export type { VerifierModule } from './verifier'
 export type { ScoreDiffEntry } from './compare'
+export type { SolutionMeta }
 
 export async function fetchPuzzleBytes(puzzleId: string): Promise<Uint8Array> {
   const res = await fetch(`/puzzles/${encodeURIComponent(puzzleId)}.puzzle`)

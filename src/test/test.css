@@ -14,7 +14,7 @@ body {
 }
 
 .tp {
-  max-width: 640px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 32px 20px 60px;
 }
@@ -47,8 +47,76 @@ body {
   background: #eef4fb;
 }
 
+.tp-drop.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .tp-file {
   display: none;
+}
+
+.tp-progress {
+  margin-top: 14px;
+  font-size: 13px;
+  color: #555;
+}
+
+.tp-batch-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 16px;
+}
+
+.tp-batch-table thead th {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 2px solid #ccc;
+  color: #555;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tp-batch-table tbody td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #e8e8e8;
+  vertical-align: top;
+}
+
+.tp-cell-name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tp-cell-id {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #444;
+}
+
+.tp-cell-score {
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+
+.tp-row--verifying {
+  opacity: 0.6;
+}
+
+.tp-row--error .tp-cell-score,
+.tp-row--skipped .tp-cell-score {
+  color: #aaa;
+}
+
+.tp-row--done .tp-cell-score {
+  color: #1a1a1a;
+}
+
+.tp-spin {
+  color: #4a90d9;
 }
 
 .tp-error,
