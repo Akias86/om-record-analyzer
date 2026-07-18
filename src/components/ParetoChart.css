@@ -162,3 +162,79 @@
   border-radius: 4px;
   padding: 0 4px;
 }
+
+.pareto-chart-tooltip-user {
+  border-top: 1px dashed var(--border);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+.pareto-chart-tooltip-user-name {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.pareto-chart-tooltip-user-score {
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+  opacity: 0.85;
+}
+
+.pareto-chart-user-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.pareto-chart-user-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text);
+  flex-wrap: wrap;
+}
+
+.pareto-chart-user-row-name {
+  font-weight: 600;
+  color: var(--text-h);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pareto-chart-user-row-score {
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+  opacity: 0.8;
+  flex: 1;
+  min-width: 0;
+}
+
+.pareto-chart-user-chip {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--sidebar-bg);
+  color: var(--text);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.pareto-chart-user-chip:hover {
+  background: var(--sidebar-hover);
+}
+
+.pareto-chart-user-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}

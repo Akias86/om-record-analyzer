@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Sidebar from './components/Sidebar'
 import ParetoChart from './components/ParetoChart'
 import TestPage from './test/TestPage'
 import { fetchPuzzleDetail } from './api/om'
 import type { OmPuzzleDetail } from './api/om'
+import { UserSolutionsProvider, useUserSolutions } from './state/userSolutions'
 import './App.css'
 
 interface Route {
@@ -38,13 +39,18 @@ function App() {
   }, [])
 
   if (route.solver) return <TestPage />
-  return <MainApp puzzleId={route.puzzleId} onSelectPuzzle={navigatePuzzle} />
+  return (
+    <UserSolutionsProvider>
+      <MainApp puzzleId={route.puzzleId} onSelectPuzzle={navigatePuzzle} />
+    </UserSolutionsProvider>
+  )
 }
 
 function MainApp({ puzzleId, onSelectPuzzle }: { puzzleId: string | null; onSelectPuzzle: (id: string | null) => void }) {
   const [detail, setDetail] = useState<OmPuzzleDetail | null>(null)
   const [expandCollectionId, setExpandCollectionId] = useState<string | null>(null)
   const [expandGroupId, setExpandGroupId] = useState<string | null>(null)
+  const { records: userRecords } = useUserSolutions()
 
   useEffect(() => {
     if (!puzzleId) {
@@ -68,6 +74,11 @@ function MainApp({ puzzleId, onSelectPuzzle }: { puzzleId: string | null; onSele
 
   const title = detail?.displayName ?? puzzleId
 
+  const puzzleUserRecords = useMemo(
+    () => (puzzleId ? userRecords.filter((r) => r.puzzleId === puzzleId) : []),
+    [userRecords, puzzleId],
+  )
+
   return (
     <div className="app-layout">
       <Sidebar
@@ -80,7 +91,7 @@ function MainApp({ puzzleId, onSelectPuzzle }: { puzzleId: string | null; onSele
         {puzzleId ? (
           <div className="app-content">
             <h1>{title}</h1>
-            <ParetoChart puzzleId={puzzleId} />
+            <ParetoChart puzzleId={puzzleId} userRecords={puzzleUserRecords} />
           </div>
         ) : (
           <div className="app-placeholder">

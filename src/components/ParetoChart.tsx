@@ -16,7 +16,8 @@ import {
 import { fetchRecords, fetchMetrics } from '../api/om'
 import type { OmRecordDTO, OmMetricDTO, OmScoreDTO, NumericScoreKey, BoolFilter } from '../types'
 import { NUMERIC_SCORE_KEYS, BOOL_SCORE_KEYS, METRIC_LABELS } from '../types'
-import { getManifold, manifoldsForType, computeFrontierIndices, supportsScore, type Manifold, type OmType, type MetricId } from '../lib/manifold'
+import { getManifold, manifoldsForType, computeFrontierIndices, supportsScore, partialCompare, type Manifold, type OmType, type MetricId } from '../lib/manifold'
+import type { UserSolutionRecord } from '../state/userSolutions'
 import './ParetoChart.css'
 
 const MARGIN = { top: 16, right: 24, bottom: 40, left: 56 }
@@ -41,6 +42,10 @@ interface ParetoPoint {
   recordIndex: number
   overlap: boolean
   trackless: boolean
+  isUser?: boolean
+  name?: string | null
+  fullScore?: string
+  green?: boolean
 }
 
 type PointClass = 'overlap' | 'trackless' | 'normal'
@@ -78,8 +83,23 @@ function makePointShape(radius: number, opacity: number, color: string) {
   }
 }
 
+const USER_DIAMOND_RADIUS = 5
+const USER_GREEN = '#22c55e'
+const USER_RED = '#ef4444'
+
+function makeDiamondShape(color: string) {
+  const r = USER_DIAMOND_RADIUS
+  return (props: { cx?: number; cy?: number }) => {
+    const { cx, cy } = props
+    if (cx == null || cy == null) return null
+    const d = `M ${cx},${cy - r} L ${cx + r},${cy} L ${cx},${cy + r} L ${cx - r},${cy} Z`
+    return <path d={d} fill={color} fillOpacity={1} stroke={color} strokeWidth={0.5} />
+  }
+}
+
 interface ParetoChartProps {
   puzzleId: string
+  userRecords: UserSolutionRecord[]
 }
 
 type ZoomDomain = { x: [number, number]; y: [number, number] }
@@ -404,18 +424,25 @@ function ResetZoomButton({ onReset }: { onReset: () => void }) {
   )
 }
 
-function ChartLegend() {
+function ChartLegend({ hasUserPoints }: { hasUserPoints: boolean }) {
   const plotArea = usePlotArea()
   if (!plotArea) return null
-  const items: { cls: PointClass; color: string; opacity: number }[] = CLASS_ORDER.map((cls) => ({
-    cls,
-    color: CLASS_COLOR[cls],
-    opacity: cls === 'normal' ? NORMAL_OPACITY : 1,
-  }))
+  const items: { key: string; color: string; opacity: number; shape: 'circle' | 'diamond'; label: string }[] =
+    CLASS_ORDER.map((cls) => ({
+      key: cls,
+      color: CLASS_COLOR[cls],
+      opacity: cls === 'normal' ? NORMAL_OPACITY : 1,
+      shape: 'circle',
+      label: cls,
+    }))
+  if (hasUserPoints) {
+    items.push({ key: 'user-green', color: USER_GREEN, opacity: 1, shape: 'diamond', label: 'user (frontier)' })
+    items.push({ key: 'user-red', color: USER_RED, opacity: 1, shape: 'diamond', label: 'user (off frontier)' })
+  }
   const padX = 8
   const padY = 6
   const rowH = 16
-  const boxW = 92
+  const boxW = hasUserPoints ? 132 : 92
   const boxH = padY * 2 + items.length * rowH
   const x = plotArea.x + plotArea.width - boxW - 8
   const y = plotArea.y + 8
@@ -423,14 +450,19 @@ function ChartLegend() {
     <g style={{ pointerEvents: 'none' }}>
       <rect x={x} y={y} width={boxW} height={boxH} rx={4}
         fill="var(--sidebar-bg)" fillOpacity={0.92} stroke="var(--border)" strokeWidth={1} />
-      {items.map((it, i) => (
-        <g key={it.cls} transform={`translate(${x + padX}, ${y + padY + i * rowH + 9})`}>
-          <circle cx={5} cy={0} r={4.5} fill={it.color} fillOpacity={it.opacity} stroke={it.color} strokeWidth={0.5} />
-          <text x={14} y={3} fill="var(--text)" fontSize={11} style={{ textTransform: 'capitalize' }}>
-            {it.cls}
-          </text>
-        </g>
-      ))}
+      {items.map((it, i) => {
+        const marker = it.shape === 'diamond'
+          ? <path d="M 5,-4.5 L 9.5,0 L 5,4.5 L 0.5,0 Z" fill={it.color} fillOpacity={it.opacity} stroke={it.color} strokeWidth={0.5} />
+          : <circle cx={5} cy={0} r={4.5} fill={it.color} fillOpacity={it.opacity} stroke={it.color} strokeWidth={0.5} />
+        return (
+          <g key={it.key} transform={`translate(${x + padX}, ${y + padY + i * rowH + 9})`}>
+            {marker}
+            <text x={14} y={3} fill="var(--text)" fontSize={11} style={{ textTransform: it.shape === 'diamond' ? 'none' : 'capitalize' }}>
+              {it.label}
+            </text>
+          </g>
+        )
+      })}
     </g>
   )
 }
@@ -456,24 +488,34 @@ function CustomTooltip({ active, payload, pointMap, xLabel, yLabel }: {
   if (groups.length === 0) return null
   return (
     <div className="pareto-chart-tooltip">
-      {groups.map((pts, gi) => (
-        <div key={gi} className="pareto-chart-tooltip-group">
-          <div className="pareto-chart-tooltip-pos">
-            {xLabel}: {formatTick(pts[0].x)} / {yLabel}: {formatTick(pts[0].y)}
-          </div>
-          {pts.map((p, pi) => (
-            <div key={pi} className="pareto-chart-tooltip-row">
-              {p.score || `${p.x} / ${p.y}`}
-              {p.categories && <span className="pareto-chart-tooltip-cat">{p.categories}</span>}
+      {groups.map((pts, gi) => {
+        const leaderboardPts = pts.filter((p) => !p.isUser)
+        const userPts = pts.filter((p) => p.isUser)
+        return (
+          <div key={gi} className="pareto-chart-tooltip-group">
+            <div className="pareto-chart-tooltip-pos">
+              {xLabel}: {formatTick(pts[0].x)} / {yLabel}: {formatTick(pts[0].y)}
             </div>
-          ))}
-        </div>
-      ))}
+            {leaderboardPts.map((p, pi) => (
+              <div key={pi} className="pareto-chart-tooltip-row">
+                {p.score || `${p.x} / ${p.y}`}
+                {p.categories && <span className="pareto-chart-tooltip-cat">{p.categories}</span>}
+              </div>
+            ))}
+            {userPts.map((p, pi) => (
+              <div key={`u-${pi}`} className="pareto-chart-tooltip-user">
+                <div className="pareto-chart-tooltip-user-name">{p.name ?? '(unnamed)'}</div>
+                <div className="pareto-chart-tooltip-user-score">{p.fullScore ?? ''}</div>
+              </div>
+            ))}
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-export default function ParetoChart({ puzzleId }: ParetoChartProps) {
+export default function ParetoChart({ puzzleId, userRecords }: ParetoChartProps) {
   const [records, setRecords] = useState<OmRecordDTO[]>([])
   const [metrics, setMetrics] = useState<OmMetricDTO[]>([])
   const [loading, setLoading] = useState(true)
@@ -521,6 +563,51 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
   }, [records])
 
   const availableManifolds = useMemo(() => (puzzleType ? manifoldsForType(puzzleType) : []), [puzzleType])
+
+  const puzzleUserRecords = useMemo(
+    () => (puzzleType ? userRecords.filter((r) => r.puzzleType === puzzleType) : []),
+    [userRecords, puzzleType],
+  )
+
+  const userFrontierByManifold = useMemo<Map<string, Set<string>>>(() => {
+    const map = new Map<string, Set<string>>()
+    if (!puzzleType || puzzleUserRecords.length === 0) return map
+    const manifolds = manifoldsForType(puzzleType)
+    if (manifolds.length === 0) return map
+    const leaderboardScores: OmScoreDTO[] = []
+    for (const r of records) {
+      if (r.score !== null) leaderboardScores.push(r.score)
+    }
+    const userScores = puzzleUserRecords.map((r) => r.score)
+    const lbCount = leaderboardScores.length
+    for (const m of manifolds) {
+      const merged = [...leaderboardScores, ...userScores]
+      const frontierDense = computeFrontierIndices(m, merged)
+      const greenIds = new Set<string>()
+      for (const d of frontierDense) {
+        if (d >= lbCount) {
+          const userIdx = d - lbCount
+          const userScore = userScores[userIdx]
+          const equalsLeaderboard = leaderboardScores.some(
+            (lb) => supportsScore(m, lb) && partialCompare(m.scoreParts, userScore, lb) === 'EQUAL',
+          )
+          if (!equalsLeaderboard) {
+            greenIds.add(puzzleUserRecords[userIdx].id)
+          }
+        }
+      }
+      map.set(m.id, greenIds)
+    }
+    return map
+  }, [puzzleType, puzzleUserRecords, records])
+
+  const anyManifoldGreen = useMemo<Set<string>>(() => {
+    const set = new Set<string>()
+    for (const ids of userFrontierByManifold.values()) {
+      for (const id of ids) set.add(id)
+    }
+    return set
+  }, [userFrontierByManifold])
 
   const manifold = useMemo<Manifold | undefined>(() => {
     if (!manifoldId || !puzzleType) return undefined
@@ -599,6 +686,44 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
     return points
   }, [records, xMetric, yMetric, boolFilters, manifold, frontierRecordIndices])
 
+  const userPoints = useMemo<ParetoPoint[]>(() => {
+    if (!xMetric || !yMetric || !puzzleType || puzzleUserRecords.length === 0) return []
+    const points: ParetoPoint[] = []
+    for (const r of puzzleUserRecords) {
+      if (manifold && !supportsScore(manifold, r.score)) continue
+      const x = getMetricValue(r.score, xMetric)
+      const y = getMetricValue(r.score, yMetric)
+      if (x === null || y === null) continue
+      let skip = false
+      for (const key of BOOL_SCORE_KEYS) {
+        const f = boolFilters[key]
+        if (f !== 'any' && r.score[key] !== (f === 'true')) {
+          skip = true
+          break
+        }
+      }
+      if (skip) continue
+      const green = manifold
+        ? (userFrontierByManifold.get(manifold.id)?.has(r.id) ?? false)
+        : anyManifoldGreen.has(r.id)
+      points.push({
+        x,
+        y,
+        id: `user-${r.id}`,
+        score: null,
+        categories: null,
+        recordIndex: -1,
+        overlap: !!r.score.overlap,
+        trackless: !!r.score.trackless,
+        isUser: true,
+        name: r.solutionName,
+        fullScore: r.fullScore,
+        green,
+      })
+    }
+    return points
+  }, [puzzleUserRecords, puzzleType, xMetric, yMetric, boolFilters, manifold, userFrontierByManifold, anyManifoldGreen])
+
   const boundaryPoints = useMemo(() => (manifold ? computeParetoFrontier(allPoints) : []), [allPoints, manifold])
   const boundaryIdSet = useMemo(() => new Set(boundaryPoints.map((p) => p.id)), [boundaryPoints])
   const paretoPoints = useMemo(() => allPoints.filter((p) => boundaryIdSet.has(p.id)), [allPoints, boundaryIdSet])
@@ -611,13 +736,24 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(p)
     }
+    for (const p of userPoints) {
+      const key = `${p.x}|${p.y}`
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(p)
+    }
     return map
-  }, [allPoints])
+  }, [allPoints, userPoints])
 
   const defaultDomain = useMemo(() => {
-    if (allPoints.length === 0) return null
+    if (allPoints.length === 0 && userPoints.length === 0) return null
     let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity
     for (const p of allPoints) {
+      if (p.x < xMin) xMin = p.x
+      if (p.x > xMax) xMax = p.x
+      if (p.y < yMin) yMin = p.y
+      if (p.y > yMax) yMax = p.y
+    }
+    for (const p of userPoints) {
       if (p.x < xMin) xMin = p.x
       if (p.x > xMax) xMax = p.x
       if (p.y < yMin) yMin = p.y
@@ -630,7 +766,7 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
     const xLo = xScale === 'log' ? Math.max(1, xMin) : 0
     const yLo = yScale === 'log' ? Math.max(1, yMin) : 0
     return { x: [xLo, xHi] as [number, number], y: [yLo, yHi] as [number, number] }
-  }, [allPoints, xScale, yScale, xMetric, yMetric])
+  }, [allPoints, userPoints, xScale, yScale, xMetric, yMetric])
 
   const xDomain = zoomDomain?.x ?? defaultDomain?.x
   const yDomain = zoomDomain?.y ?? defaultDomain?.y
@@ -649,6 +785,14 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
     () => (zoomDomain ? paretoPoints.filter((p) => p.x >= zoomDomain.x[0] && p.x <= zoomDomain.x[1] && p.y >= zoomDomain.y[0] && p.y <= zoomDomain.y[1]) : paretoPoints),
     [paretoPoints, zoomDomain],
   )
+
+  const visibleUserPoints = useMemo(
+    () => (zoomDomain ? userPoints.filter((p) => p.x >= zoomDomain.x[0] && p.x <= zoomDomain.x[1] && p.y >= zoomDomain.y[0] && p.y <= zoomDomain.y[1]) : userPoints),
+    [userPoints, zoomDomain],
+  )
+
+  const userGreenPoints = useMemo(() => visibleUserPoints.filter((p) => p.green), [visibleUserPoints])
+  const userRedPoints = useMemo(() => visibleUserPoints.filter((p) => !p.green), [visibleUserPoints])
 
   const frontierByClass = useMemo(() => {
     const map: Record<PointClass, ParetoPoint[]> = { overlap: [], trackless: [], normal: [] }
@@ -701,6 +845,11 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
     const val = e.target.value
     setManifoldId(val)
     saveSetting('om-chart:manifold', val)
+  }, [])
+
+  const handleManifoldSelect = useCallback((id: string) => {
+    setManifoldId(id)
+    saveSetting('om-chart:manifold', id)
   }, [])
 
   const metricLabels = useMemo(() => {
@@ -782,6 +931,31 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
           </span>
         )}
       </div>
+      {puzzleUserRecords.length > 0 && (
+        <div className="pareto-chart-user-summary">
+          {puzzleUserRecords.map((r) => {
+            const greenManifolds = availableManifolds.filter(
+              (m) => supportsScore(m, r.score) && (userFrontierByManifold.get(m.id)?.has(r.id) ?? false),
+            )
+            return (
+              <div key={r.id} className="pareto-chart-user-row">
+                <span className="pareto-chart-user-row-name">{r.solutionName ?? '(unnamed)'}</span>
+                <span className="pareto-chart-user-row-score">{r.fullScore}</span>
+                {greenManifolds.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={`pareto-chart-user-chip ${manifoldId === m.id ? 'active' : ''}`}
+                    onClick={() => handleManifoldSelect(m.id)}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      )}
       <div className="pareto-chart-plot">
         {ready && defaultDomain ? (
           <ResponsiveContainer width="100%" height="100%">
@@ -810,7 +984,7 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
                 tick={{ fill: 'var(--text)', fontSize: 11 }}
               />
               <ParetoOverlay paretoPoints={boundaryPoints} />
-              <ChartLegend />
+              <ChartLegend hasUserPoints={userPoints.length > 0} />
               <ZoomHandler onZoom={handleZoom} onResetZoom={resetZoom} />
               {isZoomed && <ResetZoomButton onReset={resetZoom} />}
               {CLASS_ORDER.flatMap((cls) => {
@@ -829,6 +1003,12 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
                 }
                 return els
               })}
+              {userGreenPoints.length > 0 && (
+                <Scatter key="user-green" name="user-green" data={userGreenPoints} shape={makeDiamondShape(USER_GREEN)} isAnimationActive={false} />
+              )}
+              {userRedPoints.length > 0 && (
+                <Scatter key="user-red" name="user-red" data={userRedPoints} shape={makeDiamondShape(USER_RED)} isAnimationActive={false} />
+              )}
               <Tooltip cursor={false} isAnimationActive={false} content={<CustomTooltip pointMap={pointMap} xLabel={getLabel(xMetric)} yLabel={getLabel(yMetric)} />} />
             </ScatterChart>
           </ResponsiveContainer>

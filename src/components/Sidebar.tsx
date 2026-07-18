@@ -1,6 +1,8 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import type { DragEvent } from 'react'
 import { getPuzzleTree } from '../api/om'
 import type { CollectionTreeNode } from '../api/om'
+import { useUserSolutions } from '../state/userSolutions'
 import './Sidebar.css'
 
 interface SidebarProps {
@@ -15,6 +17,28 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set())
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const { records, uploading, progress, skipped, lastUploadTotal, addFiles, clear } = useUserSolutions()
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const el = inputRef.current
+    if (el) {
+      el.setAttribute('webkitdirectory', '')
+      el.setAttribute('directory', '')
+    }
+  }, [])
+
+  const handleFiles = useCallback((files: FileList | File[]) => {
+    void addFiles(files)
+  }, [addFiles])
+
+  const onDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    if (uploading) return
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(e.dataTransfer.files)
+    }
+  }, [handleFiles, uploading])
 
   useEffect(() => {
     getPuzzleTree()
@@ -125,6 +149,38 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
           )
         })}
       </nav>
+      <div
+        className={`sidebar-footer ${uploading ? 'is-disabled' : ''}`}
+        onDragOver={(e) => { if (!uploading) e.preventDefault() }}
+        onDrop={onDrop}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          className="sidebar-file-input"
+          multiple
+          onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }}
+        />
+        <button
+          type="button"
+          className="sidebar-upload-btn"
+          onClick={() => { if (!uploading) inputRef.current?.click() }}
+          disabled={uploading}
+        >
+          {uploading ? `验证中 ${progress?.done ?? 0}/${progress?.total ?? 0}` : '上传 .solution 文件夹'}
+        </button>
+        {!uploading && records.length > 0 && (
+          <div className="sidebar-upload-info">
+            <span>已加载 {records.length}{skipped > 0 ? `（skipped ${skipped}）` : ''}</span>
+            <button type="button" className="sidebar-clear-btn" onClick={clear}>清空</button>
+          </div>
+        )}
+        {!uploading && records.length === 0 && lastUploadTotal > 0 && (
+          <div className="sidebar-upload-info">
+            <span>skipped {skipped}</span>
+          </div>
+        )}
+      </div>
     </aside>
   )
 }
