@@ -17,9 +17,9 @@ export interface OmScoreDTO {
   rate: number | null
   areaINFLevel: number | null
   areaINFValue: number | null
-  heightINF: number | null
-  widthINF: number | null
-  boundingHexINF: number | null
+  heightINF: number | 'Infinity' | null
+  widthINF: number | 'Infinity' | null
+  boundingHexINF: number | 'Infinity' | null
 }
 
 export interface OmPuzzleDetailDTO {

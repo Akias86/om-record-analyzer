@@ -16,6 +16,7 @@ import {
 import { fetchRecords, fetchMetrics } from '../api/om'
 import type { OmRecordDTO, OmMetricDTO, OmScoreDTO, NumericScoreKey, BoolFilter } from '../types'
 import { NUMERIC_SCORE_KEYS, BOOL_SCORE_KEYS, METRIC_LABELS } from '../types'
+import { getManifold, manifoldsForType, computeFrontierIndices, supportsScore, type Manifold, type OmType, type MetricId } from '../lib/manifold'
 import './ParetoChart.css'
 
 const MARGIN = { top: 16, right: 24, bottom: 40, left: 56 }
@@ -37,6 +38,7 @@ interface ParetoPoint {
   id: string
   score: string | null
   categories: string | null
+  recordIndex: number
 }
 
 interface ParetoChartProps {
@@ -117,6 +119,33 @@ function generateLogTicks(domain: [number, number]): number[] | undefined {
     }
   }
   return ticks.length > 0 ? ticks : undefined
+}
+
+function niceUpperBound(max: number, isInteger: boolean): number {
+  if (!Number.isFinite(max) || max <= 0) return 0
+  const range = max
+  const rawStep = range / 8
+  const mag = Math.pow(10, Math.floor(Math.log(rawStep) / Math.LN10))
+  const residual = rawStep / mag
+  let step = 1
+  if (residual <= 1.75) step = mag
+  else if (residual <= 3.5) step = 2 * mag
+  else if (residual <= 7.5) step = 5 * mag
+  else step = 10 * mag
+  const minStep = isInteger ? 1 : 0.5
+  step = Math.max(minStep, step)
+  return Math.ceil(max / step) * step
+}
+
+function niceLogUpperBound(max: number): number {
+  if (!Number.isFinite(max) || max <= 0) return 1
+  const p = Math.floor(Math.log10(max))
+  const base = Math.pow(10, p)
+  for (const m of [1, 2, 5, 10]) {
+    const v = base * m
+    if (v >= max) return v
+  }
+  return Math.pow(10, p + 1)
 }
 
 function computeParetoFrontier(points: ParetoPoint[]): ParetoPoint[] {
@@ -376,6 +405,7 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
   const [yScale, setYScale] = useState<'linear' | 'log'>(() =>
     loadSetting('om-chart:yScale', 'linear') as 'linear' | 'log')
   const [zoomDomain, setZoomDomain] = useState<ZoomDomain | null>(null)
+  const [manifoldId, setManifoldId] = useState<string>(() => loadSetting('om-chart:manifold', ''))
 
   useEffect(() => {
     let cancelled = false
@@ -396,25 +426,76 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
     return () => { cancelled = true }
   }, [puzzleId])
 
+  const puzzleType = useMemo<OmType | null>(() => {
+    const t = records[0]?.puzzle.type
+    return t === 'NORMAL' || t === 'POLYMER_HEIGHT' || t === 'POLYMER_WIDTH' || t === 'POLYMER_SKEW' || t === 'PRODUCTION' ? t : null
+  }, [records])
+
+  const availableManifolds = useMemo(() => (puzzleType ? manifoldsForType(puzzleType) : []), [puzzleType])
+
+  const manifold = useMemo<Manifold | undefined>(() => {
+    if (!manifoldId || !puzzleType) return undefined
+    const m = getManifold(manifoldId)
+    return m && m.supportedTypes.includes(puzzleType) ? m : undefined
+  }, [manifoldId, puzzleType])
+
+  useEffect(() => {
+    if (manifoldId && puzzleType && !availableManifolds.some((m) => m.id === manifoldId)) {
+      setManifoldId('')
+      saveSetting('om-chart:manifold', '')
+    }
+  }, [manifoldId, puzzleType, availableManifolds])
+
+  useEffect(() => {
+    if (!manifold) return
+    const allowed = new Set<MetricId>(manifold.scoreParts)
+    if (xMetric && !allowed.has(xMetric as MetricId)) {
+      setXMetric('')
+      saveSetting('om-chart:xMetric', '')
+    }
+    if (yMetric && !allowed.has(yMetric as MetricId)) {
+      setYMetric('')
+      saveSetting('om-chart:yMetric', '')
+    }
+  }, [manifold, xMetric, yMetric])
+
   const availableMetrics = useMemo(() => {
     if (records.length === 0) return []
+    const allowed = manifold ? new Set<MetricId>(manifold.scoreParts) : null
     const numericKeys: NumericScoreKey[] = []
     for (const key of NUMERIC_SCORE_KEYS) {
+      if (allowed != null && !allowed.has(key as MetricId)) continue
       if (records.some((r) => r.score !== null && getMetricValue(r.score, key) !== null)) {
         numericKeys.push(key)
       }
     }
     return numericKeys
-  }, [records])
+  }, [records, manifold])
+
+  const frontierRecordIndices = useMemo<Set<number> | null>(() => {
+    if (!manifold) return null
+    const idxMap: number[] = []
+    const dense: OmScoreDTO[] = []
+    records.forEach((r, i) => {
+      if (r.score !== null) {
+        dense.push(r.score)
+        idxMap.push(i)
+      }
+    })
+    const frontierDense = computeFrontierIndices(manifold, dense)
+    return new Set(frontierDense.map((d) => idxMap[d]))
+  }, [records, manifold])
 
   const allPoints = useMemo(() => {
     if (!xMetric || !yMetric) return []
     const points: ParetoPoint[] = []
-    for (const r of records) {
-      if (r.score === null) continue
+    records.forEach((r, i) => {
+      if (r.score === null) return
+      if (manifold && !supportsScore(manifold, r.score)) return
+      if (manifold && frontierRecordIndices && !frontierRecordIndices.has(i)) return
       const x = getMetricValue(r.score, xMetric)
       const y = getMetricValue(r.score, yMetric)
-      if (x === null || y === null) continue
+      if (x === null || y === null) return
       let skip = false
       for (const key of BOOL_SCORE_KEYS) {
         const f = boolFilters[key]
@@ -423,15 +504,16 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
           break
         }
       }
-      if (skip) continue
-      points.push({ x, y, id: r.id ?? `${x}-${y}`, score: r.smartFormattedScore, categories: r.smartFormattedCategories })
-    }
+      if (skip) return
+      points.push({ x, y, id: r.id ?? `${x}-${y}`, score: r.smartFormattedScore, categories: r.smartFormattedCategories, recordIndex: i })
+    })
     return points
-  }, [records, xMetric, yMetric, boolFilters])
+  }, [records, xMetric, yMetric, boolFilters, manifold, frontierRecordIndices])
 
-  const paretoPoints = useMemo(() => computeParetoFrontier(allPoints), [allPoints])
-  const paretoSet = useMemo(() => new Set(paretoPoints.map((p) => p.id)), [paretoPoints])
-  const nonParetoPoints = useMemo(() => allPoints.filter((p) => !paretoSet.has(p.id)), [allPoints, paretoSet])
+  const boundaryPoints = useMemo(() => (manifold ? computeParetoFrontier(allPoints) : []), [allPoints, manifold])
+  const boundaryIdSet = useMemo(() => new Set(boundaryPoints.map((p) => p.id)), [boundaryPoints])
+  const paretoPoints = useMemo(() => allPoints.filter((p) => boundaryIdSet.has(p.id)), [allPoints, boundaryIdSet])
+  const nonParetoPoints = useMemo(() => allPoints.filter((p) => !boundaryIdSet.has(p.id)), [allPoints, boundaryIdSet])
 
   const pointMap = useMemo(() => {
     const map = new Map<string, ParetoPoint[]>()
@@ -452,10 +534,14 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
       if (p.y < yMin) yMin = p.y
       if (p.y > yMax) yMax = p.y
     }
+    const xIsInt = xMetric !== 'width'
+    const yIsInt = yMetric !== 'width'
+    const xHi = xScale === 'log' ? niceLogUpperBound(xMax) : niceUpperBound(xMax, xIsInt)
+    const yHi = yScale === 'log' ? niceLogUpperBound(yMax) : niceUpperBound(yMax, yIsInt)
     const xLo = xScale === 'log' ? Math.max(1, xMin) : 0
     const yLo = yScale === 'log' ? Math.max(1, yMin) : 0
-    return { x: [xLo, xMax] as [number, number], y: [yLo, yMax] as [number, number] }
-  }, [allPoints, xScale, yScale])
+    return { x: [xLo, xHi] as [number, number], y: [yLo, yHi] as [number, number] }
+  }, [allPoints, xScale, yScale, xMetric, yMetric])
 
   const xDomain = zoomDomain?.x ?? defaultDomain?.x
   const yDomain = zoomDomain?.y ?? defaultDomain?.y
@@ -463,8 +549,8 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
 
   const xIsInteger = xMetric !== 'width'
   const yIsInteger = yMetric !== 'width'
-  const xTicks = xDomain ? (xScale === 'log' ? generateLogTicks(xDomain) : (isZoomed ? generateTicks(xDomain, xIsInteger) : undefined)) : undefined
-  const yTicks = yDomain ? (yScale === 'log' ? generateLogTicks(yDomain) : (isZoomed ? generateTicks(yDomain, yIsInteger) : undefined)) : undefined
+  const xTicks = xDomain ? (xScale === 'log' ? generateLogTicks(xDomain) : generateTicks(xDomain, xIsInteger)) : undefined
+  const yTicks = yDomain ? (yScale === 'log' ? generateLogTicks(yDomain) : generateTicks(yDomain, yIsInteger)) : undefined
 
   const visibleNonPareto = useMemo(
     () => (zoomDomain ? nonParetoPoints.filter((p) => p.x >= zoomDomain.x[0] && p.x <= zoomDomain.x[1] && p.y >= zoomDomain.y[0] && p.y <= zoomDomain.y[1]) : nonParetoPoints),
@@ -480,27 +566,19 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
 
   useEffect(() => {
     setZoomDomain(null)
-  }, [puzzleId, xMetric, yMetric, xScale, yScale, boolFilters])
+  }, [puzzleId, xMetric, yMetric, xScale, yScale, boolFilters, manifoldId])
 
   const handleXMetricChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value as NumericScoreKey | ''
     setXMetric(val)
     saveSetting('om-chart:xMetric', val)
-    if (val === yMetric) {
-      setYMetric('')
-      saveSetting('om-chart:yMetric', '')
-    }
-  }, [yMetric])
+  }, [])
 
   const handleYMetricChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value as NumericScoreKey | ''
     setYMetric(val)
     saveSetting('om-chart:yMetric', val)
-    if (val === xMetric) {
-      setXMetric('')
-      saveSetting('om-chart:xMetric', '')
-    }
-  }, [xMetric])
+  }, [])
 
   const handleBoolFilterChange = useCallback((key: string, value: string) => {
     const newFilters = { ...boolFilters, [key]: value as 'any' | 'true' | 'false' }
@@ -516,6 +594,12 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
   const handleYScale = useCallback((v: 'linear' | 'log') => {
     setYScale(v)
     saveSetting('om-chart:yScale', v)
+  }, [])
+
+  const handleManifoldChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value
+    setManifoldId(val)
+    saveSetting('om-chart:manifold', val)
   }, [])
 
   const metricLabels = useMemo(() => {
@@ -545,11 +629,20 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
     <div className="pareto-chart-container">
       <div className="pareto-chart-controls">
         <label className="pareto-chart-label">
+          Manifold:
+          <select value={manifoldId} onChange={handleManifoldChange} className="pareto-chart-select">
+            <option value="">All (no frontier)</option>
+            {availableManifolds.map((m) => (
+              <option key={m.id} value={m.id}>{m.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="pareto-chart-label">
           X Axis:
           <select value={xMetric} onChange={handleXMetricChange} className="pareto-chart-select">
             <option value="">-- Select metric --</option>
             {metricOptions.map(({ key, label }) => (
-              <option key={key} value={key} disabled={key === yMetric}>{label}</option>
+              <option key={key} value={key}>{label}</option>
             ))}
           </select>
           <span className="pareto-chart-scale">
@@ -562,7 +655,7 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
           <select value={yMetric} onChange={handleYMetricChange} className="pareto-chart-select">
             <option value="">-- Select metric --</option>
             {metricOptions.map(({ key, label }) => (
-              <option key={key} value={key} disabled={key === xMetric}>{label}</option>
+              <option key={key} value={key}>{label}</option>
             ))}
           </select>
           <span className="pareto-chart-scale">
@@ -582,7 +675,9 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
         ))}
         {ready && (
           <span className="pareto-chart-info">
-            {allPoints.length} records, {paretoPoints.length} on frontier
+            {manifold
+              ? `${allPoints.length} on ${manifold.label} frontier (${boundaryPoints.length} on 2D boundary)`
+              : `${allPoints.length} records (no frontier)`}
             {isZoomed && <button type="button" className="pareto-chart-reset-btn" onClick={resetZoom}>Reset zoom</button>}
           </span>
         )}
@@ -614,7 +709,7 @@ export default function ParetoChart({ puzzleId }: ParetoChartProps) {
                 label={{ value: `${getLabel(yMetric)} →`, angle: -90, position: 'left', offset: 4, style: { fill: 'var(--text-h)', fontSize: 12, fontWeight: 600 } }}
                 tick={{ fill: 'var(--text)', fontSize: 11 }}
               />
-              <ParetoOverlay paretoPoints={paretoPoints} />
+              <ParetoOverlay paretoPoints={boundaryPoints} />
               <ZoomHandler onZoom={handleZoom} onResetZoom={resetZoom} />
               {visibleNonPareto.length > 0 && (
                 <Scatter name="nonPareto" data={visibleNonPareto} fill="var(--text)" fillOpacity={0.25} isAnimationActive={false} />
