@@ -170,3 +170,103 @@
 .sidebar-clear-btn:hover {
   background: var(--sidebar-hover);
 }
+
+.sidebar-frontier {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.sidebar-frontier-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar-frontier-toggle:hover {
+  opacity: 0.85;
+}
+
+.sidebar-frontier-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.sidebar-frontier-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: var(--sidebar-hover);
+}
+
+.sidebar-frontier-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.sidebar-frontier-row:hover {
+  color: var(--accent);
+}
+
+.sidebar-frontier-row.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sidebar-frontier-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.sidebar-frontier-puzzle {
+  font-size: 10px;
+  opacity: 0.6;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.sidebar-frontier-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.sidebar-frontier-chip {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  white-space: nowrap;
+}

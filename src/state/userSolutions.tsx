@@ -4,6 +4,8 @@ import type { OmScoreDTO } from '../types'
 import { parseSolutionMeta, formatFullScore, verifyBatch } from '../lib/verify'
 import type { BatchInput, SolutionMeta } from '../lib/verify'
 import { verifiedToOmScore } from '../lib/verify/convert'
+import { summarizeUserFrontier } from '../lib/userFrontier'
+import type { UserFrontierSummary } from '../lib/userFrontier'
 
 export interface UserSolutionRecord {
   id: string
@@ -25,11 +27,14 @@ interface UserSolutionsContextValue {
   progress: UploadProgress | null
   skipped: number
   lastUploadTotal: number
+  frontierSummary: UserFrontierSummary | null
+  frontierLoading: boolean
   addFiles: (files: FileList | File[]) => Promise<void>
   clear: () => void
 }
 
 const STORAGE_KEY = 'om-user-solutions'
+const FRONTIER_STORAGE_KEY = 'om-user-solutions-frontier'
 
 const UserSolutionsContext = createContext<UserSolutionsContextValue | null>(null)
 
@@ -58,17 +63,43 @@ function saveRecords(records: UserSolutionRecord[]): void {
   } catch { /* storage full or unavailable, ignore */ }
 }
 
+function loadFrontierSummary(): UserFrontierSummary | null {
+  try {
+    const raw = localStorage.getItem(FRONTIER_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as UserFrontierSummary
+    if (typeof parsed.greenCount !== 'number' || !Array.isArray(parsed.records)) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function saveFrontierSummary(summary: UserFrontierSummary | null): void {
+  try {
+    if (summary) localStorage.setItem(FRONTIER_STORAGE_KEY, JSON.stringify(summary))
+    else localStorage.removeItem(FRONTIER_STORAGE_KEY)
+  } catch { /* ignore */ }
+}
+
 export function UserSolutionsProvider({ children }: { children: ReactNode }) {
   const [records, setRecords] = useState<UserSolutionRecord[]>(() => loadRecords())
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState<UploadProgress | null>(null)
   const [skipped, setSkipped] = useState(0)
   const [lastUploadTotal, setLastUploadTotal] = useState(0)
+  const [frontierSummary, setFrontierSummary] = useState<UserFrontierSummary | null>(() => loadFrontierSummary())
+  const [frontierLoading, setFrontierLoading] = useState(false)
   const runningRef = useRef(false)
+  const frontierGenRef = useRef(0)
 
   useEffect(() => {
     saveRecords(records)
   }, [records])
+
+  useEffect(() => {
+    saveFrontierSummary(frontierSummary)
+  }, [frontierSummary])
 
   const addFiles = useCallback(async (files: FileList | File[]) => {
     if (runningRef.current) return
@@ -124,19 +155,43 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
     setUploading(false)
     setProgress(null)
     runningRef.current = false
+
+    if (newRecords.length > 0) {
+      const gen = ++frontierGenRef.current
+      setFrontierLoading(true)
+      summarizeUserFrontier(
+        newRecords.map((r) => ({ id: r.id, puzzleId: r.puzzleId, score: r.score, solutionName: r.solutionName })),
+      )
+        .then((summary) => {
+          if (frontierGenRef.current === gen) {
+            setFrontierSummary(summary)
+            setFrontierLoading(false)
+          }
+        })
+        .catch(() => {
+          if (frontierGenRef.current === gen) setFrontierLoading(false)
+        })
+    } else {
+      frontierGenRef.current++
+      setFrontierSummary(null)
+      setFrontierLoading(false)
+    }
   }, [])
 
   const clear = useCallback(() => {
     if (runningRef.current) return
+    frontierGenRef.current++
     setRecords([])
     setSkipped(0)
     setLastUploadTotal(0)
     setProgress(null)
+    setFrontierSummary(null)
+    setFrontierLoading(false)
   }, [])
 
   const value = useMemo<UserSolutionsContextValue>(
-    () => ({ records, uploading, progress, skipped, lastUploadTotal, addFiles, clear }),
-    [records, uploading, progress, skipped, lastUploadTotal, addFiles, clear],
+    () => ({ records, uploading, progress, skipped, lastUploadTotal, frontierSummary, frontierLoading, addFiles, clear }),
+    [records, uploading, progress, skipped, lastUploadTotal, frontierSummary, frontierLoading, addFiles, clear],
   )
 
   return <UserSolutionsContext.Provider value={value}>{children}</UserSolutionsContext.Provider>

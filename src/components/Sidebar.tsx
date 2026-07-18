@@ -3,6 +3,7 @@ import type { DragEvent } from 'react'
 import { getPuzzleTree } from '../api/om'
 import type { CollectionTreeNode } from '../api/om'
 import { useUserSolutions } from '../state/userSolutions'
+import { getManifold } from '../lib/manifold'
 import './Sidebar.css'
 
 interface SidebarProps {
@@ -17,7 +18,8 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set())
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
-  const { records, uploading, progress, skipped, lastUploadTotal, addFiles, clear } = useUserSolutions()
+  const [frontierExpanded, setFrontierExpanded] = useState(false)
+  const { records, uploading, progress, skipped, lastUploadTotal, frontierSummary, frontierLoading, addFiles, clear } = useUserSolutions()
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -67,6 +69,10 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
     if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [selectedPuzzleId, expandedGroups])
 
+  useEffect(() => {
+    if (frontierSummary && frontierSummary.greenCount > 0) setFrontierExpanded(true)
+  }, [frontierSummary])
+
   const toggleCollection = useCallback((collectionId: string) => {
     setExpandedCollections((prev) => {
       const next = new Set(prev)
@@ -98,7 +104,7 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-header">Puzzles</div>
+      <div className="sidebar-header">OM Record Analyzer</div>
       <nav className="sidebar-nav">
         {tree.map((col) => {
           const isColExpanded = expandedCollections.has(col.id)
@@ -172,8 +178,44 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
         </button>
         {!uploading && records.length > 0 && (
           <div className="sidebar-upload-info">
-            <span>Loaded {records.length}{skipped > 0 ? ` (skipped ${skipped})` : ''}</span>
+            <span>
+              Loaded {records.length}{skipped > 0 ? ` (skipped ${skipped})` : ''}
+              {frontierLoading ? ' · computing frontier…' : ''}
+            </span>
             <button type="button" className="sidebar-clear-btn" onClick={clear}>Clear</button>
+          </div>
+        )}
+        {!uploading && !frontierLoading && frontierSummary && frontierSummary.greenCount > 0 && (
+          <div className="sidebar-frontier">
+            <button
+              type="button"
+              className="sidebar-frontier-toggle"
+              onClick={() => setFrontierExpanded((v) => !v)}
+            >
+              <span className="sidebar-chevron">{frontierExpanded ? '\u25BC' : '\u25B6'}</span>
+              <span>{frontierSummary.greenCount} on Pareto frontier</span>
+            </button>
+            {frontierExpanded && (
+              <ul className="sidebar-frontier-list">
+                {frontierSummary.records.map((r) => (
+                  <li key={r.id} className="sidebar-frontier-item">
+                    <button
+                      type="button"
+                      className={`sidebar-frontier-row ${selectedPuzzleId === r.puzzleId ? 'active' : ''}`}
+                      onClick={() => onSelectPuzzle(r.puzzleId)}
+                    >
+                      <span className="sidebar-frontier-name">{r.solutionName ?? '(unnamed)'}</span>
+                      <span className="sidebar-frontier-puzzle">{r.puzzleId}</span>
+                    </button>
+                    <span className="sidebar-frontier-chips">
+                      {r.manifoldIds.map((mid) => (
+                        <span key={mid} className="sidebar-frontier-chip">{getManifold(mid)?.label ?? mid}</span>
+                      ))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
         {!uploading && records.length === 0 && lastUploadTotal > 0 && (

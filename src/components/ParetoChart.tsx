@@ -16,7 +16,8 @@ import {
 import { fetchRecords, fetchMetrics } from '../api/om'
 import type { OmRecordDTO, OmMetricDTO, OmScoreDTO, NumericScoreKey, BoolFilter } from '../types'
 import { NUMERIC_SCORE_KEYS, BOOL_SCORE_KEYS, METRIC_LABELS } from '../types'
-import { getManifold, manifoldsForType, computeFrontierIndices, supportsScore, partialCompare, type Manifold, type OmType, type MetricId } from '../lib/manifold'
+import { getManifold, manifoldsForType, computeFrontierIndices, supportsScore, type Manifold, type OmType, type MetricId } from '../lib/manifold'
+import { computeUserFrontierByManifold } from '../lib/userFrontier'
 import type { UserSolutionRecord } from '../state/userSolutions'
 import './ParetoChart.css'
 
@@ -436,8 +437,8 @@ function ChartLegend({ hasUserPoints }: { hasUserPoints: boolean }) {
       label: cls,
     }))
   if (hasUserPoints) {
-    items.push({ key: 'user-green', color: USER_GREEN, opacity: 1, shape: 'diamond', label: 'user (frontier)' })
-    items.push({ key: 'user-red', color: USER_RED, opacity: 1, shape: 'diamond', label: 'user (off frontier)' })
+    items.push({ key: 'user-green', color: USER_GREEN, opacity: 1, shape: 'diamond', label: 'Yours (frontier)' })
+    items.push({ key: 'user-red', color: USER_RED, opacity: 1, shape: 'diamond', label: 'Yours (off frontier)' })
   }
   const padX = 8
   const padY = 6
@@ -570,35 +571,13 @@ export default function ParetoChart({ puzzleId, userRecords }: ParetoChartProps)
   )
 
   const userFrontierByManifold = useMemo<Map<string, Set<string>>>(() => {
-    const map = new Map<string, Set<string>>()
-    if (!puzzleType || puzzleUserRecords.length === 0) return map
-    const manifolds = manifoldsForType(puzzleType)
-    if (manifolds.length === 0) return map
+    if (!puzzleType || puzzleUserRecords.length === 0) return new Map()
     const leaderboardScores: OmScoreDTO[] = []
     for (const r of records) {
       if (r.score !== null) leaderboardScores.push(r.score)
     }
-    const userScores = puzzleUserRecords.map((r) => r.score)
-    const lbCount = leaderboardScores.length
-    for (const m of manifolds) {
-      const merged = [...leaderboardScores, ...userScores]
-      const frontierDense = computeFrontierIndices(m, merged)
-      const greenIds = new Set<string>()
-      for (const d of frontierDense) {
-        if (d >= lbCount) {
-          const userIdx = d - lbCount
-          const userScore = userScores[userIdx]
-          const equalsLeaderboard = leaderboardScores.some(
-            (lb) => supportsScore(m, lb) && partialCompare(m.scoreParts, userScore, lb) === 'EQUAL',
-          )
-          if (!equalsLeaderboard) {
-            greenIds.add(puzzleUserRecords[userIdx].id)
-          }
-        }
-      }
-      map.set(m.id, greenIds)
-    }
-    return map
+    const userItems = puzzleUserRecords.map((r) => ({ id: r.id, puzzleId: r.puzzleId, score: r.score }))
+    return computeUserFrontierByManifold(puzzleType, leaderboardScores, userItems)
   }, [puzzleType, puzzleUserRecords, records])
 
   const anyManifoldGreen = useMemo<Set<string>>(() => {
@@ -988,27 +967,23 @@ export default function ParetoChart({ puzzleId, userRecords }: ParetoChartProps)
               <ZoomHandler onZoom={handleZoom} onResetZoom={resetZoom} />
               {isZoomed && <ResetZoomButton onReset={resetZoom} />}
               {CLASS_ORDER.flatMap((cls) => {
-                const nf = nonFrontierByClass[cls]
                 const fr = frontierByClass[cls]
-                const els: React.ReactElement[] = []
-                if (nf.length > 0) {
-                  els.push(
-                    <Scatter key={`nf-${cls}`} name={`non-frontier-${cls}`} data={nf} shape={makePointShape(NORMAL_RADIUS, NORMAL_OPACITY, CLASS_COLOR[cls])} isAnimationActive={false} />,
-                  )
-                }
-                if (fr.length > 0) {
-                  els.push(
-                    <Scatter key={`f-${cls}`} name={`frontier-${cls}`} data={fr} shape={makePointShape(FRONTIER_RADIUS, FRONTIER_OPACITY, CLASS_FRONTIER_COLOR[cls])} isAnimationActive={false} />,
-                  )
-                }
-                return els
+                return fr.length > 0
+                  ? [<Scatter key={`f-${cls}`} name={`frontier-${cls}`} data={fr} shape={makePointShape(FRONTIER_RADIUS, FRONTIER_OPACITY, CLASS_FRONTIER_COLOR[cls])} isAnimationActive={false} />]
+                  : []
               })}
-              {userGreenPoints.length > 0 && (
-                <Scatter key="user-green" name="user-green" data={userGreenPoints} shape={makeDiamondShape(USER_GREEN)} isAnimationActive={false} />
-              )}
               {userRedPoints.length > 0 && (
                 <Scatter key="user-red" name="user-red" data={userRedPoints} shape={makeDiamondShape(USER_RED)} isAnimationActive={false} />
               )}
+              {userGreenPoints.length > 0 && (
+                <Scatter key="user-green" name="user-green" data={userGreenPoints} shape={makeDiamondShape(USER_GREEN)} isAnimationActive={false} />
+              )}
+              {CLASS_ORDER.flatMap((cls) => {
+                const nf = nonFrontierByClass[cls]
+                return nf.length > 0
+                  ? [<Scatter key={`nf-${cls}`} name={`non-frontier-${cls}`} data={nf} shape={makePointShape(NORMAL_RADIUS, NORMAL_OPACITY, CLASS_COLOR[cls])} isAnimationActive={false} />]
+                  : []
+              })}
               <Tooltip cursor={false} isAnimationActive={false} content={<CustomTooltip pointMap={pointMap} xLabel={getLabel(xMetric)} yLabel={getLabel(yMetric)} />} />
             </ScatterChart>
           </ResponsiveContainer>
