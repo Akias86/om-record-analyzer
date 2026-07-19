@@ -132,7 +132,10 @@ export function fetchPuzzleList(options?: RequestOptions): Promise<OmPuzzleListD
 
 let puzzleMapPromise: Promise<Map<string, OmPuzzleListDTO>> | null = null
 
-function getPuzzleMap(): Promise<Map<string, OmPuzzleListDTO>> {
+// Cached map of puzzleId → puzzle meta. Shared by getPuzzleMeta and by
+// the verifier's prefetchPuzzles (which filters out ids not in the
+// official list to avoid guaranteed-404 .puzzle requests).
+export function getPuzzleMap(): Promise<Map<string, OmPuzzleListDTO>> {
   if (!puzzleMapPromise) {
     puzzleMapPromise = fetchPuzzleList().then((list) => {
       const map = new Map<string, OmPuzzleListDTO>()
