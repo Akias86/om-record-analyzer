@@ -1,11 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { OmScoreDTO } from '../types'
+import type { OmRecordDTO, OmScoreDTO } from '../types'
 import { parseSolutionMeta, formatFullScore, verifyBatch } from '../lib/verify'
 import type { BatchInput, SolutionMeta } from '../lib/verify'
 import { verifiedToOmScore } from '../lib/verify/convert'
-import { summarizeUserFrontier } from '../lib/userFrontier'
-import type { UserFrontierSummary } from '../lib/userFrontier'
+import { summarizeUserFrontier, computeFrontierDetailsForPuzzle, mergeFrontierForPuzzle } from '../lib/userFrontier'
+import type { UserFrontierSummary, FrontierProgressInfo } from '../lib/userFrontier'
 
 export interface UserSolutionRecord {
   id: string
@@ -29,8 +29,13 @@ interface UserSolutionsContextValue {
   lastUploadTotal: number
   frontierSummary: UserFrontierSummary | null
   frontierLoading: boolean
+  frontierProgress: FrontierProgressInfo | null
   addFiles: (files: FileList | File[]) => Promise<void>
   clear: () => void
+  // Recompute the frontier for a single puzzle using leaderboard records
+  // fetched by the chart view (bypass / fresh), and merge the result into
+  // the existing summary so the sidebar list reflects the latest data.
+  refreshFrontierForPuzzle: (puzzleId: string, leaderboard: OmRecordDTO[]) => void
 }
 
 const STORAGE_KEY = 'om-user-solutions'
@@ -90,6 +95,7 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
   const [lastUploadTotal, setLastUploadTotal] = useState(0)
   const [frontierSummary, setFrontierSummary] = useState<UserFrontierSummary | null>(() => loadFrontierSummary())
   const [frontierLoading, setFrontierLoading] = useState(false)
+  const [frontierProgress, setFrontierProgress] = useState<FrontierProgressInfo | null>(null)
   const runningRef = useRef(false)
   const frontierGenRef = useRef(0)
 
@@ -158,23 +164,33 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
 
     if (newRecords.length > 0) {
       const gen = ++frontierGenRef.current
+      const uniquePuzzles = new Set(newRecords.map((r) => r.puzzleId)).size
       setFrontierLoading(true)
+      setFrontierProgress({ done: 0, total: uniquePuzzles, cacheHits: 0 })
       summarizeUserFrontier(
         newRecords.map((r) => ({ id: r.id, puzzleId: r.puzzleId, score: r.score, solutionName: r.solutionName })),
+        (info) => {
+          if (frontierGenRef.current === gen) setFrontierProgress(info)
+        },
       )
         .then((summary) => {
           if (frontierGenRef.current === gen) {
             setFrontierSummary(summary)
             setFrontierLoading(false)
+            setFrontierProgress(null)
           }
         })
         .catch(() => {
-          if (frontierGenRef.current === gen) setFrontierLoading(false)
+          if (frontierGenRef.current === gen) {
+            setFrontierLoading(false)
+            setFrontierProgress(null)
+          }
         })
     } else {
       frontierGenRef.current++
       setFrontierSummary(null)
       setFrontierLoading(false)
+      setFrontierProgress(null)
     }
   }, [])
 
@@ -187,11 +203,41 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
     setProgress(null)
     setFrontierSummary(null)
     setFrontierLoading(false)
+    setFrontierProgress(null)
   }, [])
 
+  const refreshFrontierForPuzzle = useCallback((puzzleId: string, leaderboard: OmRecordDTO[]) => {
+    // Only user solutions belonging to THIS puzzle are scored against this
+    // puzzle's leaderboard. Filtering by puzzleId (not puzzleType) keeps
+    // cross-puzzle solutions out of this slice.
+    const items = records
+      .filter((r) => r.puzzleId === puzzleId)
+      .map((r) => ({ id: r.id, puzzleId: r.puzzleId, score: r.score, solutionName: r.solutionName }))
+    const details = computeFrontierDetailsForPuzzle(puzzleId, leaderboard, items)
+    setFrontierSummary((prev) => {
+      if (!prev) {
+        if (details.length === 0) return null
+        return mergeFrontierForPuzzle({ greenCount: 0, records: [] }, puzzleId, details)
+      }
+      // Skip the state update if this puzzle's slice is unchanged (same ids
+      // with the same manifold sets) — avoids spurious re-renders and
+      // localStorage writes when the chart re-fetches identical data.
+      const prevSlice = prev.records.filter((r) => r.puzzleId === puzzleId)
+      const sameSlice =
+        prevSlice.length === details.length &&
+        prevSlice.every((p) => {
+          const d = details.find((x) => x.id === p.id)
+          return d !== undefined && d.manifoldIds.length === p.manifoldIds.length &&
+            d.manifoldIds.every((m) => p.manifoldIds.includes(m))
+        })
+      if (sameSlice) return prev
+      return mergeFrontierForPuzzle(prev, puzzleId, details)
+    })
+  }, [records])
+
   const value = useMemo<UserSolutionsContextValue>(
-    () => ({ records, uploading, progress, skipped, lastUploadTotal, frontierSummary, frontierLoading, addFiles, clear }),
-    [records, uploading, progress, skipped, lastUploadTotal, frontierSummary, frontierLoading, addFiles, clear],
+    () => ({ records, uploading, progress, skipped, lastUploadTotal, frontierSummary, frontierLoading, frontierProgress, addFiles, clear, refreshFrontierForPuzzle }),
+    [records, uploading, progress, skipped, lastUploadTotal, frontierSummary, frontierLoading, frontierProgress, addFiles, clear, refreshFrontierForPuzzle],
   )
 
   return <UserSolutionsContext.Provider value={value}>{children}</UserSolutionsContext.Provider>

@@ -19,7 +19,7 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [frontierExpanded, setFrontierExpanded] = useState(false)
-  const { records, uploading, progress, skipped, lastUploadTotal, frontierSummary, frontierLoading, addFiles, clear } = useUserSolutions()
+  const { records, uploading, progress, skipped, lastUploadTotal, frontierSummary, frontierLoading, frontierProgress, addFiles, clear } = useUserSolutions()
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -180,7 +180,9 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
           <div className="sidebar-upload-info">
             <span>
               Loaded {records.length}{skipped > 0 ? ` (skipped ${skipped})` : ''}
-              {frontierLoading ? ' · computing frontier…' : ''}
+              {frontierLoading
+                ? ` · computing frontier ${frontierProgress?.done ?? 0}/${frontierProgress?.total ?? 0}${frontierProgress && frontierProgress.cacheHits > 0 ? ` · ${frontierProgress.cacheHits} cached` : ''}`
+                : ''}
             </span>
             <button type="button" className="sidebar-clear-btn" onClick={clear}>Clear</button>
           </div>

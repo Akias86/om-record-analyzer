@@ -50,7 +50,7 @@ function MainApp({ puzzleId, onSelectPuzzle }: { puzzleId: string | null; onSele
   const [detail, setDetail] = useState<OmPuzzleDetail | null>(null)
   const [expandCollectionId, setExpandCollectionId] = useState<string | null>(null)
   const [expandGroupId, setExpandGroupId] = useState<string | null>(null)
-  const { records: userRecords } = useUserSolutions()
+  const { records: userRecords, refreshFrontierForPuzzle } = useUserSolutions()
 
   useEffect(() => {
     if (!puzzleId) {
@@ -91,7 +91,7 @@ function MainApp({ puzzleId, onSelectPuzzle }: { puzzleId: string | null; onSele
         {puzzleId ? (
           <div className="app-content">
             <h1>{title}</h1>
-            <ParetoChart puzzleId={puzzleId} userRecords={puzzleUserRecords} />
+            <ParetoChart puzzleId={puzzleId} userRecords={puzzleUserRecords} refreshFrontierForPuzzle={refreshFrontierForPuzzle} />
           </div>
         ) : (
           <div className="app-placeholder">

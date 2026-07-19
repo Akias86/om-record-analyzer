@@ -1,5 +1,5 @@
-import type { OmScoreDTO } from '../types'
-import { fetchRecords } from '../api/om'
+import type { OmRecordDTO, OmScoreDTO } from '../types'
+import { fetchRecordsWithStatus } from '../api/om'
 import { manifoldsForType, computeFrontierIndices, supportsScore, partialCompare, type OmType } from './manifold'
 
 export interface ScoredUserItem {
@@ -19,6 +19,12 @@ export interface FrontierRecordDetail {
 export interface UserFrontierSummary {
   greenCount: number
   records: FrontierRecordDetail[]
+}
+
+export interface FrontierProgressInfo {
+  done: number
+  total: number
+  cacheHits: number
 }
 
 function asOmType(type: string | undefined): OmType | null {
@@ -59,8 +65,66 @@ export function computeUserFrontierByManifold(
   return map
 }
 
+// Build the frontier detail entries for a single puzzle from its
+// leaderboard records (already fetched). Used both by the batch summary
+// and by the chart view to refresh one puzzle's slice of the summary with
+// freshly fetched (bypass) leaderboard data.
+export function computeFrontierDetailsForPuzzle(
+  puzzleId: string,
+  leaderboard: OmRecordDTO[],
+  userItems: ScoredUserItem[],
+): FrontierRecordDetail[] {
+  if (userItems.length === 0) return []
+  const type = asOmType(leaderboard[0]?.puzzle.type)
+  if (!type) return []
+  const leaderboardScores = leaderboard
+    .map((r) => r.score)
+    .filter((s): s is OmScoreDTO => s !== null)
+  const byManifold = computeUserFrontierByManifold(type, leaderboardScores, userItems)
+  const details: FrontierRecordDetail[] = []
+  for (const item of userItems) {
+    const manifoldIds: string[] = []
+    for (const [manifoldId, ids] of byManifold) {
+      if (ids.has(item.id)) manifoldIds.push(manifoldId)
+    }
+    if (manifoldIds.length > 0) {
+      details.push({
+        id: item.id,
+        solutionName: item.solutionName ?? null,
+        puzzleId,
+        manifoldIds,
+      })
+    }
+  }
+  return details
+}
+
+function sortDetails(records: FrontierRecordDetail[]): FrontierRecordDetail[] {
+  return records.sort((a, b) =>
+    a.puzzleId === b.puzzleId
+      ? (a.solutionName ?? '').localeCompare(b.solutionName ?? '')
+      : a.puzzleId.localeCompare(b.puzzleId),
+  )
+}
+
+// Replace one puzzle's entries in an existing summary with freshly
+// computed details (e.g. from a bypass fetch in the chart view), keeping
+// all other puzzles untouched and recomputing the green count.
+export function mergeFrontierForPuzzle(
+  prev: UserFrontierSummary,
+  puzzleId: string,
+  details: FrontierRecordDetail[],
+): UserFrontierSummary {
+  const others = prev.records.filter((r) => r.puzzleId !== puzzleId)
+  const merged = sortDetails([...others, ...details])
+  const greenIds = new Set<string>()
+  for (const r of merged) greenIds.add(r.id)
+  return { greenCount: greenIds.size, records: merged }
+}
+
 export async function summarizeUserFrontier(
   userItems: ScoredUserItem[],
+  onProgress?: (info: FrontierProgressInfo) => void,
 ): Promise<UserFrontierSummary> {
   const byPuzzle = new Map<string, ScoredUserItem[]>()
   for (const u of userItems) {
@@ -74,43 +138,33 @@ export async function summarizeUserFrontier(
 
   const greenIds = new Set<string>()
   const records: FrontierRecordDetail[] = []
+  const puzzles = [...byPuzzle.entries()]
+  const total = puzzles.length
+  let done = 0
+  let cacheHits = 0
+
+  const report = () => onProgress?.({ done, total, cacheHits })
 
   await Promise.all(
-    [...byPuzzle.entries()].map(async ([puzzleId, items]) => {
+    puzzles.map(async ([puzzleId, items]) => {
       try {
-        const lbRecords = await fetchRecords(puzzleId, { useCache: false })
-        const type = asOmType(lbRecords[0]?.puzzle.type)
-        if (!type) return
-        const leaderboardScores = lbRecords
-          .map((r) => r.score)
-          .filter((s): s is OmScoreDTO => s !== null)
-        const byManifold = computeUserFrontierByManifold(type, leaderboardScores, items)
-        for (const item of items) {
-          const manifoldIds: string[] = []
-          for (const [manifoldId, ids] of byManifold) {
-            if (ids.has(item.id)) manifoldIds.push(manifoldId)
-          }
-          if (manifoldIds.length > 0) {
-            greenIds.add(item.id)
-            records.push({
-              id: item.id,
-              solutionName: item.solutionName ?? null,
-              puzzleId,
-              manifoldIds,
-            })
-          }
+        // Batch-upload path: use the Worker edge cache (30 min TTL) so a
+        // burst of N puzzles reuses entries fetched by this or other users.
+        const { data: lbRecords, cache } = await fetchRecordsWithStatus(puzzleId, { useCache: true })
+        if (cache === 'hit') cacheHits++
+        done++
+        report()
+        const details = computeFrontierDetailsForPuzzle(puzzleId, lbRecords, items)
+        for (const d of details) {
+          greenIds.add(d.id)
+          records.push(d)
         }
       } catch {
-        /* leaderboard unavailable for this puzzle, skip */
+        done++
+        report()
       }
     }),
   )
 
-  records.sort((a, b) =>
-    a.puzzleId === b.puzzleId
-      ? (a.solutionName ?? '').localeCompare(b.solutionName ?? '')
-      : a.puzzleId.localeCompare(b.puzzleId),
-  )
-
-  return { greenCount: greenIds.size, records }
+  return { greenCount: greenIds.size, records: sortDetails(records) }
 }

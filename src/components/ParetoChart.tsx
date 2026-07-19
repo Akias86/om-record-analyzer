@@ -101,6 +101,7 @@ function makeDiamondShape(color: string) {
 interface ParetoChartProps {
   puzzleId: string
   userRecords: UserSolutionRecord[]
+  refreshFrontierForPuzzle: (puzzleId: string, leaderboard: OmRecordDTO[]) => void
 }
 
 type ZoomDomain = { x: [number, number]; y: [number, number] }
@@ -516,8 +517,16 @@ function CustomTooltip({ active, payload, pointMap, xLabel, yLabel }: {
   )
 }
 
-export default function ParetoChart({ puzzleId, userRecords }: ParetoChartProps) {
+export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForPuzzle }: ParetoChartProps) {
   const [records, setRecords] = useState<OmRecordDTO[]>([])
+  // Which puzzle the `records` state belongs to. Stays `null` until the
+  // first successful fetch lands, and is updated together with `records`.
+  // Used to guard the frontier-refresh effect so navigating from puzzle A
+  // to B doesn't momentarily recompute B's slice against A's stale records
+  // (which are still in state until B's fetch resolves) — that race caused
+  // the sidebar list to flicker (records wrongly appearing/disappearing)
+  // before the correct data arrived.
+  const [recordsPuzzleId, setRecordsPuzzleId] = useState<string | null>(null)
   const [metrics, setMetrics] = useState<OmMetricDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -547,6 +556,7 @@ export default function ParetoChart({ puzzleId, userRecords }: ParetoChartProps)
       .then(([recs, mets]) => {
         if (cancelled) return
         setRecords(recs)
+        setRecordsPuzzleId(puzzleId)
         setMetrics(mets)
         setLoading(false)
       })
@@ -557,6 +567,19 @@ export default function ParetoChart({ puzzleId, userRecords }: ParetoChartProps)
       })
     return () => { cancelled = true }
   }, [puzzleId])
+
+  // The chart fetches the leaderboard with `useCache: false` (bypass), so
+  // it has the freshest data. Feed it back to the context so the sidebar
+  // frontier list reflects this puzzle's frontier computed against the
+  // latest leaderboard rather than the cached snapshot from upload time.
+  // The `recordsPuzzleId === puzzleId` guard is essential: without it,
+  // navigating from A to B recomputes B's slice against A's records (still
+  // in state until B's fetch resolves), corrupting the sidebar list.
+  useEffect(() => {
+    if (records.length === 0) return
+    if (recordsPuzzleId !== puzzleId) return
+    refreshFrontierForPuzzle(puzzleId, records)
+  }, [puzzleId, records, recordsPuzzleId, refreshFrontierForPuzzle])
 
   const puzzleType = useMemo<OmType | null>(() => {
     const t = records[0]?.puzzle.type
