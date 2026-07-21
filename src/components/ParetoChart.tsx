@@ -180,10 +180,9 @@ function generateLogTicks(domain: [number, number]): number[] | undefined {
   return ticks.length > 0 ? ticks : undefined
 }
 
-function niceUpperBound(max: number, isInteger: boolean): number {
-  if (!Number.isFinite(max) || max <= 0) return 0
-  const range = max
-  const rawStep = range / 8
+function niceLinearDomain(max: number, isInteger: boolean): { hi: number; ticks: number[] } {
+  if (!Number.isFinite(max) || max <= 0) return { hi: 0, ticks: [0] }
+  const rawStep = max / 8
   const mag = Math.pow(10, Math.floor(Math.log(rawStep) / Math.LN10))
   const residual = rawStep / mag
   let step = 1
@@ -193,18 +192,43 @@ function niceUpperBound(max: number, isInteger: boolean): number {
   else step = 10 * mag
   const minStep = isInteger ? 1 : 0.5
   step = Math.max(minStep, step)
-  return Math.ceil(max / step) * step
+  let hi = Math.ceil(max / step) * step
+  if (hi - max <= step * 1e-6) hi += step
+  const ticks: number[] = []
+  for (let t = 0; t <= hi + 1e-9; t += step) {
+    ticks.push(Math.round(t * 1e10) / 1e10)
+  }
+  return { hi, ticks }
 }
 
-function niceLogUpperBound(max: number): number {
-  if (!Number.isFinite(max) || max <= 0) return 1
+function niceLogDomain(max: number, lo: number): { hi: number; ticks: number[] } {
+  if (!Number.isFinite(max) || max <= 0) return { hi: 1, ticks: [] }
   const p = Math.floor(Math.log10(max))
   const base = Math.pow(10, p)
+  let hi = base * 10
   for (const m of [1, 2, 5, 10]) {
     const v = base * m
-    if (v >= max) return v
+    if (v >= max) { hi = v; break }
   }
-  return Math.pow(10, p + 1)
+  if (hi - max <= max * 1e-6) {
+    const mp = Math.floor(Math.log10(hi))
+    const bp = Math.pow(10, mp)
+    const ratio = hi / bp
+    if (ratio <= 1.0000001) hi = bp * 2
+    else if (ratio <= 2.0000001) hi = bp * 5
+    else hi = bp * 10
+  }
+  const ticks: number[] = []
+  const startPow = Math.floor(Math.log10(lo))
+  const endPow = Math.ceil(Math.log10(hi))
+  for (let pp = startPow; pp <= endPow; pp++) {
+    const b = Math.pow(10, pp)
+    for (const m of [1, 2, 5]) {
+      const v = b * m
+      if (v >= lo && v <= hi) ticks.push(v)
+    }
+  }
+  return { hi, ticks }
 }
 
 function computeParetoFrontier(points: ParetoPoint[]): ParetoPoint[] {
@@ -763,11 +787,13 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
     }
     const xIsInt = xMetric !== 'width'
     const yIsInt = yMetric !== 'width'
-    const xHi = xScale === 'log' ? niceLogUpperBound(xMax) : niceUpperBound(xMax, xIsInt)
-    const yHi = yScale === 'log' ? niceLogUpperBound(yMax) : niceUpperBound(yMax, yIsInt)
     const xLo = xScale === 'log' ? Math.max(1, xMin) : 0
     const yLo = yScale === 'log' ? Math.max(1, yMin) : 0
-    return { x: [xLo, xHi] as [number, number], y: [yLo, yHi] as [number, number] }
+    const xRes = xScale === 'log' ? niceLogDomain(xMax, xLo) : niceLinearDomain(xMax, xIsInt)
+    const yRes = yScale === 'log' ? niceLogDomain(yMax, yLo) : niceLinearDomain(yMax, yIsInt)
+    const xTicks = xScale === 'log' ? (xRes.ticks.length > 0 ? xRes.ticks : undefined) : (xRes.ticks.length > 1 ? xRes.ticks : undefined)
+    const yTicks = yScale === 'log' ? (yRes.ticks.length > 0 ? yRes.ticks : undefined) : (yRes.ticks.length > 1 ? yRes.ticks : undefined)
+    return { x: [xLo, xRes.hi] as [number, number], y: [yLo, yRes.hi] as [number, number], xTicks, yTicks }
   }, [allPoints, userPoints, xScale, yScale, xMetric, yMetric])
 
   const xDomain = zoomDomain?.x ?? defaultDomain?.x
@@ -776,8 +802,12 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
 
   const xIsInteger = xMetric !== 'width'
   const yIsInteger = yMetric !== 'width'
-  const xTicks = xDomain ? (xScale === 'log' ? generateLogTicks(xDomain) : generateTicks(xDomain, xIsInteger)) : undefined
-  const yTicks = yDomain ? (yScale === 'log' ? generateLogTicks(yDomain) : generateTicks(yDomain, yIsInteger)) : undefined
+  const xTicks = zoomDomain
+    ? (xScale === 'log' ? generateLogTicks(zoomDomain.x) : generateTicks(zoomDomain.x, xIsInteger))
+    : defaultDomain?.xTicks
+  const yTicks = zoomDomain
+    ? (yScale === 'log' ? generateLogTicks(zoomDomain.y) : generateTicks(zoomDomain.y, yIsInteger))
+    : defaultDomain?.yTicks
 
   const visibleNonPareto = useMemo(
     () => (zoomDomain ? nonParetoPoints.filter((p) => p.x >= zoomDomain.x[0] && p.x <= zoomDomain.x[1] && p.y >= zoomDomain.y[0] && p.y <= zoomDomain.y[1]) : nonParetoPoints),
