@@ -1,6 +1,6 @@
 import type { OmRecordDTO, OmScoreDTO } from '../types'
 import { fetchRecordsWithStatus } from '../api/om'
-import { manifoldsForType, computeFrontierIndices, supportsScore, partialCompare, type OmType } from './manifold'
+import { manifoldsForType, computeFrontierIndices, supportsScore, partialCompare, type OmType, type MetricId } from './manifold'
 
 export interface ScoredUserItem {
   id: string
@@ -42,16 +42,38 @@ export function computeUserFrontierByManifold(
   const manifolds = manifoldsForType(puzzleType)
   const map = new Map<string, Set<string>>()
   if (manifolds.length === 0 || userItems.length === 0) return map
-  const userScores = userItems.map((u) => u.score)
+
+  // Union of all manifolds' score parts for this type. Used to determine
+  // global domination between user records: when two records tie in a
+  // single manifold's dimensions but one is better in dimensions outside
+  // that manifold, the better one should win the tie.
+  const allParts: MetricId[] = []
+  const seenParts = new Set<string>()
+  for (const m of manifolds) {
+    for (const s of m.scoreParts) {
+      if (!seenParts.has(s)) { seenParts.add(s); allParts.push(s) }
+    }
+  }
+
+  // Sort user items so globally-dominating records come first. This
+  // ensures the EQUAL dedup below keeps the "best" record when multiple
+  // user records tie in a manifold's dimensions but one is objectively
+  // better across all dimensions (e.g. same height/cost/cycles but lower
+  // area and boundingHex). Without this, the tiebreak was arbitrary
+  // (dependent on file-name sort order), so a worse record could appear
+  // green while the better one was red.
+  const sortedItems = [...userItems].sort((a, b) => {
+    const order = partialCompare(allParts, a.score, b.score)
+    if (order === 'SMALLER') return -1
+    if (order === 'BIGGER') return 1
+    return 0
+  })
+  const userScores = sortedItems.map((u) => u.score)
   const lbCount = leaderboardScores.length
   for (const m of manifolds) {
     const merged = [...leaderboardScores, ...userScores]
     const frontierDense = computeFrontierIndices(m, merged)
     const greenIds = new Set<string>()
-    // Scores of user records already marked green in this manifold. Used
-    // to deduplicate user-side ties: if two of the user's own records have
-    // identical scores, only the first one encountered is green — the rest
-    // are redundant (no better than an existing green record) and red.
     const greenUserScores: OmScoreDTO[] = []
     for (const d of frontierDense) {
       if (d < lbCount) continue
@@ -61,11 +83,19 @@ export function computeUserFrontierByManifold(
         (lb) => supportsScore(m, lb) && partialCompare(m.scoreParts, userScore, lb) === 'EQUAL',
       )
       if (equalsLeaderboard) continue
-      const equalsOtherUser = greenUserScores.some(
-        (gs) => partialCompare(m.scoreParts, userScore, gs) === 'EQUAL',
-      )
+      // Deduplicate user-side ties. Only skip the current record when an
+      // already-green record is globally better (BIGGER) or identical
+      // (EQUAL) across ALL dimensions. If they are globally incomparable
+      // (each better in different dimensions), both stay green — they
+      // represent genuinely different trade-offs that happen to tie in
+      // this manifold's subset of dimensions.
+      const equalsOtherUser = greenUserScores.some((gs) => {
+        if (partialCompare(m.scoreParts, userScore, gs) !== 'EQUAL') return false
+        const globalOrder = partialCompare(allParts, userScore, gs)
+        return globalOrder === 'BIGGER' || globalOrder === 'EQUAL'
+      })
       if (equalsOtherUser) continue
-      greenIds.add(userItems[userIdx].id)
+      greenIds.add(sortedItems[userIdx].id)
       greenUserScores.push(userScore)
     }
     map.set(m.id, greenIds)
