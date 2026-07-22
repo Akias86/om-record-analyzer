@@ -529,8 +529,11 @@ function CustomTooltip({ active, payload, pointMap, xLabel, yLabel }: {
               </div>
             ))}
             {userPts.map((p, pi) => (
-              <div key={`u-${pi}`} className="pareto-chart-tooltip-user">
-                <div className="pareto-chart-tooltip-user-name">{p.name ?? '(unnamed)'}</div>
+              <div key={`u-${pi}`} className={`pareto-chart-tooltip-user ${p.green ? 'pareto-chart-tooltip-user--green' : 'pareto-chart-tooltip-user--red'}`}>
+                <div className="pareto-chart-tooltip-user-header">
+                  <span className="pareto-chart-tooltip-user-marker" />
+                  <div className="pareto-chart-tooltip-user-name">{p.name ?? '(unnamed)'}</div>
+                </div>
                 <div className="pareto-chart-tooltip-user-score">{p.fullScore ?? ''}</div>
               </div>
             ))}

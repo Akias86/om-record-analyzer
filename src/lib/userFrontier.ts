@@ -48,17 +48,25 @@ export function computeUserFrontierByManifold(
     const merged = [...leaderboardScores, ...userScores]
     const frontierDense = computeFrontierIndices(m, merged)
     const greenIds = new Set<string>()
+    // Scores of user records already marked green in this manifold. Used
+    // to deduplicate user-side ties: if two of the user's own records have
+    // identical scores, only the first one encountered is green — the rest
+    // are redundant (no better than an existing green record) and red.
+    const greenUserScores: OmScoreDTO[] = []
     for (const d of frontierDense) {
-      if (d >= lbCount) {
-        const userIdx = d - lbCount
-        const userScore = userScores[userIdx]
-        const equalsLeaderboard = leaderboardScores.some(
-          (lb) => supportsScore(m, lb) && partialCompare(m.scoreParts, userScore, lb) === 'EQUAL',
-        )
-        if (!equalsLeaderboard) {
-          greenIds.add(userItems[userIdx].id)
-        }
-      }
+      if (d < lbCount) continue
+      const userIdx = d - lbCount
+      const userScore = userScores[userIdx]
+      const equalsLeaderboard = leaderboardScores.some(
+        (lb) => supportsScore(m, lb) && partialCompare(m.scoreParts, userScore, lb) === 'EQUAL',
+      )
+      if (equalsLeaderboard) continue
+      const equalsOtherUser = greenUserScores.some(
+        (gs) => partialCompare(m.scoreParts, userScore, gs) === 'EQUAL',
+      )
+      if (equalsOtherUser) continue
+      greenIds.add(userItems[userIdx].id)
+      greenUserScores.push(userScore)
     }
     map.set(m.id, greenIds)
   }

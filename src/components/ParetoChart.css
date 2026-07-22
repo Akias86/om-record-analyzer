@@ -167,6 +167,38 @@
   border-top: 1px dashed var(--border);
   margin-top: 4px;
   padding-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pareto-chart-tooltip-user-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pareto-chart-tooltip-user-marker {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  transform: rotate(45deg);
+}
+
+.pareto-chart-tooltip-user--green .pareto-chart-tooltip-user-marker {
+  background: #22c55e;
+}
+
+.pareto-chart-tooltip-user--green .pareto-chart-tooltip-user-name {
+  color: #22c55e;
+}
+
+.pareto-chart-tooltip-user--red .pareto-chart-tooltip-user-marker {
+  background: #ef4444;
+}
+
+.pareto-chart-tooltip-user--red .pareto-chart-tooltip-user-name {
+  color: #ef4444;
 }
 
 .pareto-chart-tooltip-user-name {
