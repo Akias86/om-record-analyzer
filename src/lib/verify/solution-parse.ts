@@ -1,5 +1,4 @@
-const PUZZLE_ID_RE = /^(P\d{3}|w\d{7,})$/
-const FALLBACK_RE = /\b(P\d{3}|w\d{7,})\b/
+const FALLBACK_RE = /\b(P\d{3}[a-z]?|w\d{7,}|c\d{15})\b/
 
 export interface SolutionMeta {
   puzzleId: string | null
@@ -21,7 +20,7 @@ export function parseSolutionMeta(solutionBytes: Uint8Array): SolutionMeta {
     const len = solutionBytes[4]
     if (len > 0 && len <= 64 && solutionBytes.length >= 5 + len) {
       const id = new TextDecoder('latin1').decode(solutionBytes.subarray(5, 5 + len))
-      if (PUZZLE_ID_RE.test(id)) {
+      if (id.length > 0) {
         return { puzzleId: id, solutionName: readName(solutionBytes, len) }
       }
     }
@@ -29,8 +28,4 @@ export function parseSolutionMeta(solutionBytes: Uint8Array): SolutionMeta {
   const text = new TextDecoder('latin1').decode(solutionBytes)
   const match = text.match(FALLBACK_RE)
   return { puzzleId: match ? match[1] : null, solutionName: null }
-}
-
-export function identifyPuzzle(solutionBytes: Uint8Array): string | null {
-  return parseSolutionMeta(solutionBytes).puzzleId
 }

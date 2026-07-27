@@ -54,8 +54,8 @@ export async function verifyBatch(
       const puzzleBytes = puzzleBytesMap.get(pid)
       if (!puzzleBytes) {
         report(i, {
-          puzzleId: pid,
-          puzzleType: puzzleTypeMap.get(pid) || null,
+          puzzleId: null,
+          puzzleType: null,
           passed: false,
           score: null,
           error: `puzzle file not found: ${pid}`,
