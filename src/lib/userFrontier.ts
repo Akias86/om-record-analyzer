@@ -1,15 +1,15 @@
 import type { OmRecordDTO, OmScoreDTO } from '../types'
 import { fetchRecordsWithStatus } from '../api/om'
-import { manifoldsForType, computeFrontierIndices, supportsScore, partialCompare, partialCompareApplicable, applicableDimensionCount, type OmType, type MetricId } from './manifold'
+import { manifoldsForType, computeFrontierIndices, supportsScore, partialCompare, type OmType, type MetricId } from './manifold'
 
-export interface ScoredUserItem {
+interface ScoredUserItem {
   id: string
   puzzleId: string
   score: OmScoreDTO
   solutionName?: string | null
 }
 
-export interface FrontierRecordDetail {
+interface FrontierRecordDetail {
   id: string
   solutionName: string | null
   puzzleId: string
@@ -63,17 +63,15 @@ export function computeUserFrontierByManifold(
   // (dependent on file-name sort order), so a worse record could appear
   // green while the better one was red.
   //
-  // Uses partialCompareApplicable: dimensions where either record lacks a
-  // value (e.g. rate/INF for non-looping solutions) are skipped rather
-  // than treated as ∞, so a non-looping solution is not falsely ranked
-  // below a looping one that it dominates in every applicable dimension.
+  // partialCompare treats null metrics as ∞ (worse). For cross-manifold
+  // user-vs-user comparison this is correct: a non-looping solution's
+  // null rate/INF makes it globally "worse" than a looping one with
+  // equal shared dims, so the looping solution sorts first and wins the
+  // dedup tie — matching the expectation that it covers more manifolds.
   const sortedItems = [...userItems].sort((a, b) => {
-    const order = partialCompareApplicable(allParts, a.score, b.score)
+    const order = partialCompare(allParts, a.score, b.score)
     if (order === 'SMALLER') return -1
     if (order === 'BIGGER') return 1
-    if (order === 'EQUAL') {
-      return applicableDimensionCount(allParts, b.score) - applicableDimensionCount(allParts, a.score)
-    }
     return 0
   })
   const userScores = sortedItems.map((u) => u.score)
@@ -96,11 +94,10 @@ export function computeUserFrontierByManifold(
       // (EQUAL) across ALL dimensions. If they are globally incomparable
       // (each better in different dimensions), both stay green — they
       // represent genuinely different trade-offs that happen to tie in
-      // this manifold's subset of dimensions. Uses partialCompareApplicable
-      // so non-looping solutions' null rate/INF don't count against them.
+      // this manifold's subset of dimensions.
       const equalsOtherUser = greenUserScores.some((gs) => {
         if (partialCompare(m.scoreParts, userScore, gs) !== 'EQUAL') return false
-        const globalOrder = partialCompareApplicable(allParts, userScore, gs)
+        const globalOrder = partialCompare(allParts, userScore, gs)
         return globalOrder === 'BIGGER' || globalOrder === 'EQUAL'
       })
       if (equalsOtherUser) continue

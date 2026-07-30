@@ -28,7 +28,7 @@ export interface Manifold {
 
 const FREESPACE: OmType[] = ['NORMAL', 'POLYMER_HEIGHT', 'POLYMER_WIDTH', 'POLYMER_SKEW']
 
-export const MANIFOLDS: Manifold[] = [
+const MANIFOLDS: Manifold[] = [
   { id: 'VICTORY_AREA', label: '@aV', supportedTypes: FREESPACE, scoreParts: ['overlap', 'cost', 'cycles', 'area', 'looping', 'instructions', 'trackless'] },
   { id: 'VICTORY_PROD', label: '@iV', supportedTypes: ['PRODUCTION'], scoreParts: ['overlap', 'cost', 'instructions', 'looping', 'area', 'trackless'] },
   { id: 'VICTORY_HEIGHT', label: '@hV', supportedTypes: ['NORMAL', 'POLYMER_HEIGHT'], scoreParts: ['overlap', 'cost', 'cycles', 'height', 'looping', 'instructions', 'trackless'] },
@@ -145,7 +145,7 @@ function compareMetric(m: MetricId, x: OmScoreDTO, y: OmScoreDTO): number {
   return sign(a - b)
 }
 
-export type PartialOrder = 'SMALLER' | 'BIGGER' | 'UNCOMPARABLE' | 'EQUAL'
+type PartialOrder = 'SMALLER' | 'BIGGER' | 'UNCOMPARABLE' | 'EQUAL'
 
 export function partialCompare(scoreParts: MetricId[], x: OmScoreDTO, y: OmScoreDTO): PartialOrder {
   let smaller = false
@@ -161,46 +161,8 @@ export function partialCompare(scoreParts: MetricId[], x: OmScoreDTO, y: OmScore
   return 'EQUAL'
 }
 
-// Like partialCompare but dimensions where either score lacks a value
-// (hasValue === false, e.g. rate/INF metrics for non-looping solutions)
-// are skipped instead of treated as ∞. Used for user-vs-user redundancy
-// checks across all manifolds: a non-looping solution's null rate means
-// "not applicable", not "infinitely worse", so it must not cause the
-// solution to be falsely treated as dominated by a looping one.
-export function partialCompareApplicable(scoreParts: MetricId[], x: OmScoreDTO, y: OmScoreDTO): PartialOrder {
-  let smaller = false
-  let bigger = false
-  for (const m of scoreParts) {
-    if (!hasValue(x, m) || !hasValue(y, m)) continue
-    const r = compareMetric(m, x, y)
-    if (r < 0) smaller = true
-    else if (r > 0) bigger = true
-  }
-  if (smaller && bigger) return 'UNCOMPARABLE'
-  if (smaller) return 'SMALLER'
-  if (bigger) return 'BIGGER'
-  return 'EQUAL'
-}
-
-// Count dimensions where the score has a value. Used as a tiebreaker when
-// two user solutions are globally EQUAL under partialCompareApplicable: a
-// looping solution (which has rate/INF values) covers more manifolds than
-// a non-looping one and should win the tie, so it gets marked green first
-// and the non-looping duplicate is marked red.
-export function applicableDimensionCount(scoreParts: MetricId[], score: OmScoreDTO): number {
-  let n = 0
-  for (const m of scoreParts) {
-    if (hasValue(score, m)) n++
-  }
-  return n
-}
-
 export function supportsScore(manifold: Manifold, score: OmScoreDTO): boolean {
   return manifold.scoreParts.every((m) => hasValue(score, m))
-}
-
-export function frontierCompare(manifold: Manifold, x: OmScoreDTO, y: OmScoreDTO): PartialOrder {
-  return partialCompare(manifold.scoreParts, x, y)
 }
 
 export function computeFrontierIndices(manifold: Manifold, scores: OmScoreDTO[]): number[] {

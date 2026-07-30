@@ -24,7 +24,7 @@ import {
 import { classifyPoint, computeParetoFrontier, getMetricValue } from './points'
 import { generateLogTicks, generateTicks, niceLinearDomain, niceLogDomain } from './ticks'
 
-export interface ParetoChartState {
+interface ParetoChartState {
   loading: boolean
   error: string | null
   metricLabels: Map<string, string>

@@ -14,7 +14,7 @@ const DEFAULT_TTL = 86400 // seconds, 1 day (local cache for stable endpoints)
 // `hit` = served from the Worker edge cache, `miss` = fetched upstream and
 // stored, `bypass` = client asked for fresh data (chart view), fetched
 // upstream and the cache was refreshed.
-export type CacheStatus = 'hit' | 'miss' | 'bypass'
+type CacheStatus = 'hit' | 'miss' | 'bypass'
 
 interface RequestOptions {
   useCache?: boolean
@@ -30,7 +30,7 @@ interface RequestOptions {
 // we never issue two network calls for the same URL at the same time.
 const inflight = new Map<string, Promise<FetchResult<unknown>>>()
 
-export interface FetchResult<T> {
+interface FetchResult<T> {
   data: T
   cache: CacheStatus
 }
@@ -111,7 +111,7 @@ export function fetchMetrics(options?: RequestOptions): Promise<OmMetricDTO[]> {
   return get<OmMetricDTO[]>(`${BASE}/metrics`, options)
 }
 
-export interface OmPuzzleListDTO {
+interface OmPuzzleListDTO {
   id: string
   displayName: string
   type: string
@@ -126,7 +126,7 @@ export interface OmPuzzleListDTO {
   altIds?: string[]
 }
 
-export function fetchPuzzleList(options?: RequestOptions): Promise<OmPuzzleListDTO[]> {
+function fetchPuzzleList(options?: RequestOptions): Promise<OmPuzzleListDTO[]> {
   return get<OmPuzzleListDTO[]>(`${BASE}/puzzles`, options)
 }
 
@@ -153,13 +153,13 @@ export function getPuzzleMeta(id: string): Promise<OmPuzzleListDTO | undefined> 
   return getPuzzleMap().then((map) => map.get(id))
 }
 
-export interface PuzzleTreeNode {
+interface PuzzleTreeNode {
   id: string
   displayName: string
   type: string
 }
 
-export interface GroupTreeNode {
+interface GroupTreeNode {
   id: string
   displayName: string
   collectionId: string

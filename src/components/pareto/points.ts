@@ -1,7 +1,7 @@
 import type { OmScoreDTO } from '../../types'
 import type { ParetoPoint, PointClass } from './constants'
 
-export function isNumeric(val: unknown): val is number {
+function isNumeric(val: unknown): val is number {
   return typeof val === 'number' && Number.isFinite(val)
 }
 

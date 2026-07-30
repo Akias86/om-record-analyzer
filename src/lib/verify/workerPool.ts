@@ -2,7 +2,7 @@ import type { VerifySolutionResult } from './types'
 import { runVerification } from './run'
 import { compileVerifierModule } from './verifier'
 
-export interface PoolTask {
+interface PoolTask {
   puzzleId: string
   puzzleType: string
   solutionBytes: Uint8Array
@@ -159,17 +159,3 @@ export function verifyInPool(task: PoolTask): Promise<VerifySolutionResult> {
   return new Promise((resolve) => queue.push({ task, resolve }))
 }
 
-export function terminatePool(): void {
-  for (const w of workers) {
-    try {
-      w.terminate()
-    } catch {
-      /* ignore */
-    }
-  }
-  workers = []
-  idle = []
-  callbacks.clear()
-  workerCurrent.clear()
-  queue.length = 0
-}

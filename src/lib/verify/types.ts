@@ -16,12 +16,6 @@ export interface VerifiedScore {
   boundingHexINF: number | null
 }
 
-export type PuzzleType = string
-
-export interface VerifySolutionOptions {
-  puzzleType?: string
-}
-
 export interface VerifySolutionResult {
   puzzleId: string | null
   puzzleType: string | null

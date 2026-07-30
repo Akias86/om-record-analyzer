@@ -2,7 +2,7 @@ import { getPuzzleMap, getPuzzleMeta } from '../../api/om'
 
 const puzzleBytesCache = new Map<string, Promise<Uint8Array>>()
 
-export async function fetchPuzzleBytes(puzzleId: string): Promise<Uint8Array> {
+async function fetchPuzzleBytes(puzzleId: string): Promise<Uint8Array> {
   let p = puzzleBytesCache.get(puzzleId)
   if (!p) {
     p = (async () => {
@@ -16,7 +16,7 @@ export async function fetchPuzzleBytes(puzzleId: string): Promise<Uint8Array> {
   return p
 }
 
-export async function fetchPuzzleType(puzzleId: string): Promise<string> {
+async function fetchPuzzleType(puzzleId: string): Promise<string> {
   try {
     const meta = await getPuzzleMeta(puzzleId)
     return meta?.type ?? ''

@@ -1,4 +1,4 @@
-export interface OmGroupDTO {
+interface OmGroupDTO {
   id: string
   displayName: string
   collectionId: string
@@ -22,7 +22,7 @@ export interface OmScoreDTO {
   boundingHexINF: number | 'Infinity' | null
 }
 
-export interface OmPuzzleDetailDTO {
+interface OmPuzzleDetailDTO {
   id: string
   displayName: string
   group: OmGroupDTO
@@ -72,7 +72,7 @@ export type NumericScoreKey = (typeof NUMERIC_SCORE_KEYS)[number]
 
 export const BOOL_SCORE_KEYS = ['overlap', 'trackless'] as const
 
-export type BoolScoreKey = (typeof BOOL_SCORE_KEYS)[number]
+type BoolScoreKey = (typeof BOOL_SCORE_KEYS)[number]
 
 export type BoolFilter = { [K in BoolScoreKey]: 'any' | 'true' | 'false' }
 
