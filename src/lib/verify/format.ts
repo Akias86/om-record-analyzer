@@ -27,7 +27,12 @@ function fmtAreaINF(score: VerifiedScore): string {
   return `${fmt(v)}a${suffix}`
 }
 
-export function formatFullScore(score: VerifiedScore, puzzleType?: string): string {
+export interface ScoreParts {
+  victory: string
+  infinity: string | null
+}
+
+export function formatScoreParts(score: VerifiedScore, puzzleType?: string): ScoreParts {
   const tracked = (puzzleType ? TRACKED_GEOMETRY[puzzleType] : undefined) ?? ALL_TRACKED
 
   const vParts: string[] = [
@@ -42,11 +47,10 @@ export function formatFullScore(score: VerifiedScore, puzzleType?: string): stri
   if (score.trackless) vParts.push('T')
 
   if (score.rate === null) {
-    return vParts.join('/')
+    return { victory: vParts.join('/'), infinity: null }
   }
 
   vParts.push('L')
-  const vStr = vParts.join('/') + '@V'
 
   const infParts: string[] = [
     `${score.cost}g`,
@@ -59,5 +63,10 @@ export function formatFullScore(score: VerifiedScore, puzzleType?: string): stri
   if (tracked.boundingHex && score.boundingHexINF !== null) infParts.push(`${fmt(score.boundingHexINF)}b`)
   if (score.trackless) infParts.push('T')
 
-  return `${vStr} ${infParts.join('/')}@\u221E`
+  return { victory: vParts.join('/') + '@V', infinity: infParts.join('/') + '@\u221E' }
+}
+
+export function formatFullScore(score: VerifiedScore, puzzleType?: string): string {
+  const { victory, infinity } = formatScoreParts(score, puzzleType)
+  return infinity === null ? victory : `${victory} ${infinity}`
 }

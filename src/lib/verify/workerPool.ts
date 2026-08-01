@@ -2,7 +2,7 @@ import type { VerifySolutionResult } from './types'
 import { runVerification } from './run'
 import { compileVerifierModule } from './verifier'
 
-interface PoolTask {
+export interface PoolTask {
   puzzleId: string
   puzzleType: string
   solutionBytes: Uint8Array

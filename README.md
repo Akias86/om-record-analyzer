@@ -9,7 +9,7 @@ A web tool for analyzing **Opus Magnum** (a Zachtronics puzzle game) records. It
 - **Pareto Frontier Visualization** — interactive 2D scatter plots comparing any two metrics (cost, cycles, area, instructions, height, width, bounding hex, rate, and their `@∞` variants) for a selected puzzle. Supports log/linear scales, drag-to-zoom, overlap/trackless filters, and multi-manifold frontier computation.
 - **Local Solution Verification** — upload `.solution` files (exported Opus Magnum saves) and verify them entirely in the browser via a compiled WebAssembly engine. Scores are computed locally — no server-side simulation.
 - **Frontier Detection** — your verified solutions are overlaid on the leaderboard chart and classified as "on frontier" (green) or "off frontier" (red). After upload, the sidebar lists exactly which of your solutions reached the Pareto frontier, across which manifolds.
-- **Batch Verification Page** — a dedicated `#/solver` route for dropping a folder of `.solution` files and verifying them all at once with a pass/fail/skip table.
+- **Batch Verification Page** — a dedicated `#/validator` route for dropping a folder of `.solution` files and verifying them all at once with a pass/fail/skip table.
 - **API Proxy** — a Cloudflare Worker proxies requests to the leaderboard API (`zlbb.faendir.com`), avoiding CORS and keeping the API base configurable.
 
 ## Tech Stack
@@ -32,7 +32,7 @@ Browser SPA ── /api/om/* ──▶ Cloudflare Worker ──▶ zlbb.faendir.
    └─ libverify.wasm     (loaded into Web Workers, simulates & scores solutions)
 ```
 
-- **Routing** — lightweight hash-based: `#/puzzle/:id` opens the Pareto chart for a puzzle; `#/solver` opens the batch verifier.
+- **Routing** — lightweight hash-based: `#/puzzle/:id` opens the Pareto chart for a puzzle; `#/validator` opens the batch verifier.
 - **Verification pipeline** — `verifyBatch` orchestrates: prefetch all unique puzzle bytes (in-memory cached) → dispatch solution bytes to a Web Worker pool (2–4 workers, sharing one compiled WASM module) → collect results with progress callbacks. Workers receive solution buffers as transferables (zero-copy). Main-thread fallback if workers are unavailable.
 - **Frontier computation** — `computeUserFrontierByManifold` merges leaderboard scores with user scores, computes the non-dominated set per manifold, and marks user solutions that reach the frontier **without being equal to any leaderboard record** (i.e. truly new frontier points, not ties).
 - **Caching** — API responses are cached in `localStorage` (1-day TTL). User solutions and frontier summaries are also persisted, so the frontier list survives page reloads.
@@ -99,7 +99,7 @@ om-record-analyzer/
 │   │       ├── convert.ts    VerifiedScore → OmScoreDTO
 │   │       ├── compare.ts    Diff verified score vs leaderboard record
 │   │       └── libverify.wasm  Pre-compiled Emscripten verifier binary
-│   └── test/TestPage.tsx    Batch verifier page (#/solver)
+│   └── test/TestPage.tsx    Batch verifier page (#/validator)
 ├── wrangler.jsonc           Cloudflare Worker config
 └── vite.config.ts
 ```

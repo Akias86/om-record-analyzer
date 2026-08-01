@@ -9,7 +9,7 @@
 - **帕累托前沿可视化** — 为选定关卡绘制任意两个指标(成本、周期、面积、指令、高度、宽度、包围六边形、速率及其 `@∞` 变体)的交互式二维散点图。支持对数/线性坐标、拖拽缩放、overlap/trackless 过滤、多 manifold 前沿计算。
 - **本地解答验证** — 上传 `.solution` 文件(Opus Magnum 导出的存档),由编译为 WebAssembly 的引擎在浏览器内完成验证与评分,全程本地计算,无需服务端模拟。
 - **前沿检测** — 验证后的解答会叠加在排行榜图上,自动判定「在前沿上」(绿钻)或「不在前沿」(红钻)。上传后,侧边栏会列出具体哪些解答登上了帕累托前沿,以及属于哪些 manifold。
-- **批量验证页** — 独立的 `#/solver` 路由,可拖入一整个 `.solution` 文件夹,一次性验证全部,并以表格展示通过/失败/跳过结果。
+- **批量验证页** — 独立的 `#/validator` 路由,可拖入一整个 `.solution` 文件夹,一次性验证全部,并以表格展示通过/失败/跳过结果。
 - **API 代理** — Cloudflare Worker 将请求代理到排行榜 API(`zlbb.faendir.com`),规避 CORS 并使 API 基址可配置。
 
 ## 技术栈
@@ -32,7 +32,7 @@
    └─ libverify.wasm     (加载到 Web Worker 中,模拟并评分解答)
 ```
 
-- **路由** — 轻量哈希路由:`#/puzzle/:id` 打开关卡的帕累托图;`#/solver` 打开批量验证器。
+- **路由** — 轻量哈希路由:`#/puzzle/:id` 打开关卡的帕累托图;`#/validator` 打开批量验证器。
 - **验证流水线** — `verifyBatch` 编排:并行预取全部唯一关卡字节(内存缓存)→ 将解答字节派发到 Web Worker 池(2–4 个 worker,共享同一份编译后的 WASM 模块)→ 通过进度回调收集结果。解答缓冲区以 transferable 形式发送(零拷贝)。worker 不可用时自动回退主线程。
 - **前沿计算** — `computeUserFrontierByManifold` 将排行榜分数与用户分数合并,按 manifold 计算非支配集,并标记「登上前沿 **且不等于任何排行榜记录**」的用户解答(即真正推进前沿的新点,而非平局)。
 - **缓存** — API 响应缓存于 localStorage(1 天 TTL)。用户解答与前沿摘要同样持久化,刷新页面后前沿列表仍然保留。
@@ -99,7 +99,7 @@ om-record-analyzer/
 │   │       ├── convert.ts    VerifiedScore → OmScoreDTO
 │   │       ├── compare.ts    对比验证分数与排行榜记录
 │   │       └── libverify.wasm  预编译 Emscripten 验证器二进制
-│   └── test/TestPage.tsx    批量验证页(#/solver)
+│   └── test/TestPage.tsx    批量验证页(#/validator)
 ├── wrangler.jsonc           Cloudflare Worker 配置
 └── vite.config.ts
 ```

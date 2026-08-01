@@ -192,7 +192,8 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  text-align: left;
+  text-align: center;
+  vertical-align: middle;
   padding: 8px 10px;
   border-bottom: 2px solid var(--border);
   background: var(--bg);
@@ -204,7 +205,8 @@
 .tp-batch tbody td {
   padding: 6px 10px;
   border-bottom: 1px solid var(--border);
-  vertical-align: top;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .tp-batch tbody tr:hover {
@@ -226,6 +228,9 @@
 }
 
 .tp-cell-score {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
   font-variant-numeric: tabular-nums;
   word-break: break-all;
   color: var(--text-h);
@@ -292,4 +297,73 @@
   border-top-color: transparent;
   border-radius: 50%;
   animation: tp-spin 0.7s linear infinite;
+}
+
+.tp-section {
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+
+.tp-section-head {
+  margin-bottom: 16px;
+}
+
+.tp-section-title {
+  margin: 0 0 4px;
+  font-size: 18px;
+  color: var(--text-h);
+}
+
+.tp-section-head .tp-sub code {
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--sidebar-hover);
+  font-size: 12px;
+}
+
+.tp-drop--small {
+  min-height: 110px;
+  padding: 20px 16px;
+}
+
+.tp-drop--spaced {
+  margin-top: 18px;
+}
+
+.tp-drop--small .tp-drop-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.tp-puzzles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-puzzle {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--sidebar-bg);
+  font-size: 12px;
+}
+
+.tp-puzzle-id {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.tp-puzzle-name {
+  color: var(--text-h);
+  white-space: nowrap;
 }

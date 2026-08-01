@@ -8,16 +8,16 @@ import { UserSolutionsProvider, useUserSolutions } from './state/userSolutions'
 import './App.css'
 
 interface Route {
-  solver: boolean
+  validator: boolean
   puzzleId: string | null
 }
 
 function parseHash(hash: string): Route {
   const raw = hash.replace(/^#/, '')
-  if (raw === '/solver') return { solver: true, puzzleId: null }
+  if (raw === '/validator') return { validator: true, puzzleId: null }
   const m = raw.match(/^\/puzzle\/(.+)$/)
-  if (m) return { solver: false, puzzleId: decodeURIComponent(m[1]) }
-  return { solver: false, puzzleId: null }
+  if (m) return { validator: false, puzzleId: decodeURIComponent(m[1]) }
+  return { validator: false, puzzleId: null }
 }
 
 function App() {
@@ -34,11 +34,11 @@ function App() {
       window.location.hash = `/puzzle/${id}`
     } else if (window.location.hash) {
       history.replaceState(null, '', window.location.pathname + window.location.search)
-      setRoute({ solver: false, puzzleId: null })
+      setRoute({ validator: false, puzzleId: null })
     }
   }, [])
 
-  if (route.solver) return <TestPage />
+  if (route.validator) return <TestPage />
   return (
     <UserSolutionsProvider>
       <MainApp puzzleId={route.puzzleId} onSelectPuzzle={navigatePuzzle} />
