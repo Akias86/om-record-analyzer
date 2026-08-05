@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import type { DragEvent } from 'react'
 import { getPuzzleTree } from '../api/om'
 import type { CollectionTreeNode } from '../api/om'
@@ -19,7 +19,8 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [frontierExpanded, setFrontierExpanded] = useState(false)
-  const { records, uploading, progress, skipped, lastUploadTotal, frontierSummary, frontierLoading, frontierProgress, addFiles, clear } = useUserSolutions()
+  const [search, setSearch] = useState('')
+  const { records, uploading, progress, skipped, duplicated, lastUploadTotal, frontierSummary, frontierLoading, frontierProgress, addFiles, clear } = useUserSolutions()
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -98,6 +99,22 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
     [onSelectPuzzle, selectedPuzzleId],
   )
 
+  const query = search.trim().toLowerCase()
+  const searchResults = useMemo(() => {
+    if (!query) return null
+    const results: Array<{ id: string; displayName: string; type: string; path: string }> = []
+    for (const col of tree) {
+      for (const grp of col.groups) {
+        for (const puz of grp.puzzles) {
+          if (puz.displayName.toLowerCase().includes(query)) {
+            results.push({ id: puz.id, displayName: puz.displayName, type: puz.type, path: `${col.displayName} / ${grp.displayName}` })
+          }
+        }
+      }
+    }
+    return results
+  }, [tree, query])
+
   if (loading) {
     return <aside className="sidebar"><div className="sidebar-loading">Loading...</div></aside>
   }
@@ -105,8 +122,40 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
   return (
     <aside className="sidebar">
       <div className="sidebar-header">OM Record Analyzer</div>
+      <div className="sidebar-search">
+        <input
+          type="text"
+          className="sidebar-search-input"
+          placeholder="Search puzzles..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        {search && (
+          <button type="button" className="sidebar-search-clear" onClick={() => setSearch('')} aria-label="Clear search">
+            {'\u00D7'}
+          </button>
+        )}
+      </div>
       <nav className="sidebar-nav">
-        {tree.map((col) => {
+        {searchResults ? (
+          searchResults.length === 0 ? (
+            <div className="sidebar-no-results">No matching puzzles</div>
+          ) : (
+            searchResults.map((p) => (
+              <div
+                key={p.id}
+                id={`puzzle-${p.id}`}
+                className={`sidebar-item sidebar-item-puzzle ${selectedPuzzleId === p.id ? 'selected' : ''}`}
+                onClick={() => handlePuzzleClick(p.id)}
+                title={p.path}
+              >
+                <span className="sidebar-label">{p.displayName}</span>
+                <span className="sidebar-type">{p.type}</span>
+              </div>
+            ))
+          )
+        ) : (
+          tree.map((col) => {
           const isColExpanded = expandedCollections.has(col.id)
           return (
             <div key={col.id} className="sidebar-node">
@@ -153,7 +202,8 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
               )}
             </div>
           )
-        })}
+        })
+        )}
       </nav>
       <div
         className={`sidebar-footer ${uploading ? 'is-disabled' : ''}`}
@@ -179,7 +229,7 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
         {!uploading && records.length > 0 && (
           <div className="sidebar-upload-info">
             <span>
-              Loaded {records.length}{skipped > 0 ? ` (skipped ${skipped})` : ''}
+              Loaded {records.length}{duplicated > 0 ? ` (dup ${duplicated})` : ''}{skipped > 0 ? ` (skipped ${skipped})` : ''}
               {frontierLoading
                 ? ` · computing frontier ${frontierProgress?.done ?? 0}/${frontierProgress?.total ?? 0}${frontierProgress && frontierProgress.cacheHits > 0 ? ` · ${frontierProgress.cacheHits} cached` : ''}`
                 : ''}

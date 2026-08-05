@@ -12,6 +12,8 @@ export interface UserSolutionRecord {
   puzzleId: string
   puzzleType: string
   solutionName: string | null
+  fileName?: string
+  hash?: string
   score: OmScoreDTO
   fullScore: string
 }
@@ -26,6 +28,7 @@ interface UserSolutionsContextValue {
   uploading: boolean
   progress: UploadProgress | null
   skipped: number
+  duplicated: number
   lastUploadTotal: number
   frontierSummary: UserFrontierSummary | null
   frontierLoading: boolean
@@ -48,6 +51,50 @@ function genId(): string {
     return crypto.randomUUID()
   }
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
+async function sha256(bytes: Uint8Array): Promise<string | null> {
+  const subtle = typeof crypto !== 'undefined' ? crypto.subtle : undefined
+  if (!subtle) return null
+  try {
+    const digest = await subtle.digest('SHA-256', bytes.buffer as ArrayBuffer)
+    return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
+  } catch {
+    return null
+  }
+}
+
+interface ParsedSolutionFile {
+  file: File
+  bytes: Uint8Array
+  meta: SolutionMeta
+  hash: string | null
+}
+
+interface PendingSolution {
+  index: number | null
+  meta: SolutionMeta
+  fileName: string
+  hash: string | null
+}
+
+// Index of the record representing the same solution as the parsed file, or
+// null for a brand-new solution. Matching uses puzzleId + file name; legacy
+// records persisted before the fileName field existed fall back to the
+// embedded solution name.
+function findRecordMatch(records: UserSolutionRecord[], parsed: ParsedSolutionFile): number | null {
+  const { meta } = parsed
+  if (!meta.puzzleId) return null
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i]
+    if (r.puzzleId !== meta.puzzleId) continue
+    if (r.fileName !== undefined) {
+      if (r.fileName.toLowerCase() === parsed.file.name.toLowerCase()) return i
+    } else if (r.solutionName && meta.solutionName) {
+      if (r.solutionName.toLowerCase() === meta.solutionName.toLowerCase()) return i
+    }
+  }
+  return null
 }
 
 function loadRecords(): UserSolutionRecord[] {
@@ -92,6 +139,7 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState<UploadProgress | null>(null)
   const [skipped, setSkipped] = useState(0)
+  const [duplicated, setDuplicated] = useState(0)
   const [lastUploadTotal, setLastUploadTotal] = useState(0)
   const [frontierSummary, setFrontierSummary] = useState<UserFrontierSummary | null>(() => loadFrontierSummary())
   const [frontierLoading, setFrontierLoading] = useState(false)
@@ -115,90 +163,116 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
 
     runningRef.current = true
     setUploading(true)
-    setProgress({ done: 0, total: all.length })
     setSkipped(0)
+    setDuplicated(0)
     setLastUploadTotal(all.length)
 
-    const newRecords: UserSolutionRecord[] = []
+    let merged = records
     let skippedCount = 0
+    let duplicatedCount = 0
 
     try {
-      const inputs: BatchInput[] = []
-      const metas: SolutionMeta[] = []
-      for (const file of all) {
-        const bytes = new Uint8Array(await file.arrayBuffer())
-        const meta = parseSolutionMeta(bytes)
-        metas.push(meta)
-        inputs.push({ bytes, puzzleId: meta.puzzleId })
-      }
-
-      const results = await verifyBatch(inputs, undefined, (done, total) =>
-        setProgress({ done, total }),
+      const parsed = await Promise.all(
+        all.map(async (file) => {
+          const bytes = new Uint8Array(await file.arrayBuffer())
+          return { file, bytes, meta: parseSolutionMeta(bytes), hash: await sha256(bytes) }
+        }),
       )
 
-      for (let i = 0; i < inputs.length; i++) {
-        const res = results[i]
-        const meta = metas[i]
-        if (!res || !res.passed || !res.score || !res.puzzleId) {
-          skippedCount++
+      const pendingInputs: BatchInput[] = []
+      const pendingPlans: PendingSolution[] = []
+      for (const p of parsed) {
+        const match = findRecordMatch(records, p)
+        const recordHash = match !== null ? records[match].hash : undefined
+        if (recordHash && p.hash && recordHash === p.hash) {
+          duplicatedCount++
           continue
         }
-        newRecords.push({
-          id: genId(),
-          puzzleId: res.puzzleId,
-          puzzleType: res.puzzleType ?? '',
-          solutionName: meta.solutionName,
-          score: verifiedToOmScore(res.score),
-          fullScore: formatFullScore(res.score, res.puzzleType ?? undefined),
-        })
+        pendingPlans.push({ index: match, meta: p.meta, fileName: p.file.name, hash: p.hash })
+        pendingInputs.push({ bytes: p.bytes, puzzleId: p.meta.puzzleId })
+      }
+
+      if (pendingInputs.length > 0) {
+        setProgress({ done: 0, total: pendingInputs.length })
+        const results = await verifyBatch(pendingInputs, undefined, (done, total) =>
+          setProgress({ done, total }),
+        )
+        const next = [...records]
+        for (let i = 0; i < pendingInputs.length; i++) {
+          const res = results[i]
+          const plan = pendingPlans[i]
+          if (!res || !res.passed || !res.score || !res.puzzleId) {
+            skippedCount++
+            continue
+          }
+          const record: UserSolutionRecord = {
+            id: plan.index !== null ? records[plan.index].id : genId(),
+            puzzleId: res.puzzleId,
+            puzzleType: res.puzzleType ?? '',
+            solutionName: plan.meta.solutionName,
+            fileName: plan.fileName,
+            hash: plan.hash ?? undefined,
+            score: verifiedToOmScore(res.score),
+            fullScore: formatFullScore(res.score, res.puzzleType ?? undefined),
+          }
+          if (plan.index !== null) next[plan.index] = record
+          else next.push(record)
+        }
+        merged = next
       }
     } catch {
       skippedCount = all.length
     }
 
     setSkipped(skippedCount)
-    setRecords(newRecords)
+    setDuplicated(duplicatedCount)
     setUploading(false)
     setProgress(null)
     runningRef.current = false
 
-    if (newRecords.length > 0) {
-      const gen = ++frontierGenRef.current
-      const uniquePuzzles = new Set(newRecords.map((r) => r.puzzleId)).size
-      setFrontierLoading(true)
-      setFrontierProgress({ done: 0, total: uniquePuzzles, cacheHits: 0 })
-      summarizeUserFrontier(
-        newRecords.map((r) => ({ id: r.id, puzzleId: r.puzzleId, score: r.score, solutionName: r.solutionName })),
-        (info) => {
-          if (frontierGenRef.current === gen) setFrontierProgress(info)
-        },
-      )
-        .then((summary) => {
-          if (frontierGenRef.current === gen) {
-            setFrontierSummary(summary)
-            setFrontierLoading(false)
-            setFrontierProgress(null)
-          }
-        })
-        .catch(() => {
-          if (frontierGenRef.current === gen) {
-            setFrontierLoading(false)
-            setFrontierProgress(null)
-          }
-        })
-    } else {
+    if (merged.length === 0) {
       frontierGenRef.current++
       setFrontierSummary(null)
       setFrontierLoading(false)
       setFrontierProgress(null)
+      return
     }
-  }, [])
+
+    const changed = merged.length !== records.length || merged.some((r, i) => r !== records[i])
+    if (!changed) return
+    setRecords(merged)
+
+    const gen = ++frontierGenRef.current
+    const uniquePuzzles = new Set(merged.map((r) => r.puzzleId)).size
+    setFrontierLoading(true)
+    setFrontierProgress({ done: 0, total: uniquePuzzles, cacheHits: 0 })
+    summarizeUserFrontier(
+      merged.map((r) => ({ id: r.id, puzzleId: r.puzzleId, score: r.score, solutionName: r.solutionName })),
+      (info) => {
+        if (frontierGenRef.current === gen) setFrontierProgress(info)
+      },
+    )
+      .then((summary) => {
+        if (frontierGenRef.current === gen) {
+          setFrontierSummary(summary)
+          setFrontierLoading(false)
+          setFrontierProgress(null)
+        }
+      })
+      .catch(() => {
+        if (frontierGenRef.current === gen) {
+          setFrontierLoading(false)
+          setFrontierProgress(null)
+        }
+      })
+  }, [records])
 
   const clear = useCallback(() => {
     if (runningRef.current) return
     frontierGenRef.current++
     setRecords([])
     setSkipped(0)
+    setDuplicated(0)
     setLastUploadTotal(0)
     setProgress(null)
     setFrontierSummary(null)
@@ -236,8 +310,8 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
   }, [records])
 
   const value = useMemo<UserSolutionsContextValue>(
-    () => ({ records, uploading, progress, skipped, lastUploadTotal, frontierSummary, frontierLoading, frontierProgress, addFiles, clear, refreshFrontierForPuzzle }),
-    [records, uploading, progress, skipped, lastUploadTotal, frontierSummary, frontierLoading, frontierProgress, addFiles, clear, refreshFrontierForPuzzle],
+    () => ({ records, uploading, progress, skipped, duplicated, lastUploadTotal, frontierSummary, frontierLoading, frontierProgress, addFiles, clear, refreshFrontierForPuzzle }),
+    [records, uploading, progress, skipped, duplicated, lastUploadTotal, frontierSummary, frontierLoading, frontierProgress, addFiles, clear, refreshFrontierForPuzzle],
   )
 
   return <UserSolutionsContext.Provider value={value}>{children}</UserSolutionsContext.Provider>
