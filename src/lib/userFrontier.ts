@@ -166,12 +166,20 @@ export function mergeFrontierForPuzzle(
   return { greenCount: greenIds.size, records: merged }
 }
 
-export async function summarizeUserFrontier(
+// Fetch leaderboards and compute frontier details for the given subset of
+// puzzles only. Used incrementally when a single upload touches a few
+// puzzles, so unchanged puzzles are neither re-fetched nor recomputed.
+// Puzzles whose leaderboard fetch fails are absent from the returned map;
+// callers may then keep their previously computed entries intact (unlike a
+// full rebuild, where a failure simply yields no entries).
+export async function summarizeUserFrontierPuzzles(
   userItems: ScoredUserItem[],
+  puzzleIds: Set<string>,
   onProgress?: (info: FrontierProgressInfo) => void,
-): Promise<UserFrontierSummary> {
+): Promise<Map<string, FrontierRecordDetail[]>> {
   const byPuzzle = new Map<string, ScoredUserItem[]>()
   for (const u of userItems) {
+    if (!puzzleIds.has(u.puzzleId)) continue
     let arr = byPuzzle.get(u.puzzleId)
     if (!arr) {
       arr = []
@@ -180,8 +188,7 @@ export async function summarizeUserFrontier(
     arr.push(u)
   }
 
-  const greenIds = new Set<string>()
-  const records: FrontierRecordDetail[] = []
+  const result = new Map<string, FrontierRecordDetail[]>()
   const puzzles = [...byPuzzle.entries()]
   const total = puzzles.length
   let done = 0
@@ -198,17 +205,32 @@ export async function summarizeUserFrontier(
         if (cache === 'hit') cacheHits++
         done++
         report()
-        const details = computeFrontierDetailsForPuzzle(puzzleId, lbRecords, items)
-        for (const d of details) {
-          greenIds.add(d.id)
-          records.push(d)
-        }
+        result.set(puzzleId, computeFrontierDetailsForPuzzle(puzzleId, lbRecords, items))
       } catch {
         done++
         report()
       }
     }),
   )
+
+  return result
+}
+
+export async function summarizeUserFrontier(
+  userItems: ScoredUserItem[],
+  onProgress?: (info: FrontierProgressInfo) => void,
+): Promise<UserFrontierSummary> {
+  const allPuzzleIds = new Set(userItems.map((u) => u.puzzleId))
+  const byPuzzle = await summarizeUserFrontierPuzzles(userItems, allPuzzleIds, onProgress)
+
+  const greenIds = new Set<string>()
+  const records: FrontierRecordDetail[] = []
+  for (const details of byPuzzle.values()) {
+    for (const d of details) {
+      greenIds.add(d.id)
+      records.push(d)
+    }
+  }
 
   return { greenCount: greenIds.size, records: sortDetails(records) }
 }

@@ -4,7 +4,7 @@ import type { OmRecordDTO, OmScoreDTO } from '../types'
 import { parseSolutionMeta, formatFullScore, verifyBatch } from '../lib/verify'
 import type { BatchInput, SolutionMeta } from '../lib/verify'
 import { verifiedToOmScore } from '../lib/verify/convert'
-import { summarizeUserFrontier, computeFrontierDetailsForPuzzle, mergeFrontierForPuzzle } from '../lib/userFrontier'
+import { summarizeUserFrontier, summarizeUserFrontierPuzzles, computeFrontierDetailsForPuzzle, mergeFrontierForPuzzle } from '../lib/userFrontier'
 import type { UserFrontierSummary, FrontierProgressInfo } from '../lib/userFrontier'
 
 export interface UserSolutionRecord {
@@ -146,6 +146,8 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
   const [frontierProgress, setFrontierProgress] = useState<FrontierProgressInfo | null>(null)
   const runningRef = useRef(false)
   const frontierGenRef = useRef(0)
+  const frontierSummaryRef = useRef<UserFrontierSummary | null>(null)
+  frontierSummaryRef.current = frontierSummary
 
   useEffect(() => {
     saveRecords(records)
@@ -170,6 +172,7 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
     let merged = records
     let skippedCount = 0
     let duplicatedCount = 0
+    const affectedPuzzleIds = new Set<string>()
 
     try {
       const parsed = await Promise.all(
@@ -217,6 +220,7 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
           }
           if (plan.index !== null) next[plan.index] = record
           else next.push(record)
+          affectedPuzzleIds.add(record.puzzleId)
         }
         merged = next
       }
@@ -243,28 +247,40 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
     setRecords(merged)
 
     const gen = ++frontierGenRef.current
-    const uniquePuzzles = new Set(merged.map((r) => r.puzzleId)).size
+    const items = merged.map((r) => ({ id: r.id, puzzleId: r.puzzleId, score: r.score, solutionName: r.solutionName }))
+    // Incremental path: with an existing summary only the puzzles touched by
+    // this upload need re-fetching/recomputing; untouched puzzles keep their
+    // previous entries. A full rebuild is required when no summary exists to
+    // reuse (first upload / after clear).
+    const affected = frontierSummaryRef.current && affectedPuzzleIds.size > 0 ? affectedPuzzleIds : null
+    const total = affected ? affected.size : new Set(items.map((r) => r.puzzleId)).size
+    const onProgress = (info: FrontierProgressInfo) => {
+      if (frontierGenRef.current === gen) setFrontierProgress(info)
+    }
     setFrontierLoading(true)
-    setFrontierProgress({ done: 0, total: uniquePuzzles, cacheHits: 0 })
-    summarizeUserFrontier(
-      merged.map((r) => ({ id: r.id, puzzleId: r.puzzleId, score: r.score, solutionName: r.solutionName })),
-      (info) => {
-        if (frontierGenRef.current === gen) setFrontierProgress(info)
-      },
-    )
-      .then((summary) => {
-        if (frontierGenRef.current === gen) {
-          setFrontierSummary(summary)
-          setFrontierLoading(false)
-          setFrontierProgress(null)
-        }
-      })
-      .catch(() => {
-        if (frontierGenRef.current === gen) {
-          setFrontierLoading(false)
-          setFrontierProgress(null)
-        }
-      })
+    setFrontierProgress({ done: 0, total, cacheHits: 0 })
+
+    const run = affected
+      ? summarizeUserFrontierPuzzles(items, affected, onProgress).then((byPuzzle) => {
+          if (frontierGenRef.current !== gen) return
+          setFrontierSummary((prev) => {
+            let next = prev ?? { greenCount: 0, records: [] }
+            for (const [pid, details] of byPuzzle) {
+              next = mergeFrontierForPuzzle(next, pid, details)
+            }
+            return next
+          })
+        })
+      : summarizeUserFrontier(items, onProgress).then((summary) => {
+          if (frontierGenRef.current === gen) setFrontierSummary(summary)
+        })
+
+    run.catch(() => undefined).then(() => {
+      if (frontierGenRef.current === gen) {
+        setFrontierLoading(false)
+        setFrontierProgress(null)
+      }
+    })
   }, [records])
 
   const clear = useCallback(() => {
