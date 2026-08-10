@@ -161,7 +161,14 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
               />
               <ParetoOverlay paretoPoints={s.boundaryPoints} />
               <ChartLegend hasUserPoints={s.userPoints.length > 0} />
-              <ZoomHandler onZoom={s.handleZoom} onResetZoom={s.resetZoom} />
+              <ZoomHandler
+                onZoom={s.handleZoom}
+                onResetZoom={s.resetZoom}
+                xDomain={s.xDomain}
+                yDomain={s.yDomain}
+                defaultDomain={s.defaultDomain}
+                isZoomed={s.isZoomed}
+              />
               {s.isZoomed && <ResetZoomButton onReset={s.resetZoom} />}
               {CLASS_ORDER.flatMap((cls) => {
                 const fr = s.frontierByClass[cls]

@@ -270,3 +270,7 @@
   border-color: var(--accent);
   color: #fff;
 }
+
+.recharts-wrapper *:focus {
+  outline: none;
+}
