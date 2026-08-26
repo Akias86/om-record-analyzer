@@ -1,3 +1,4 @@
+import { useCallback, useMemo, useState } from 'react'
 import {
   ResponsiveContainer,
   ScatterChart,
@@ -11,6 +12,7 @@ import { BOOL_SCORE_KEYS } from '../types'
 import { supportsScore } from '../lib/manifold'
 import type { UserSolutionRecord } from '../state/userSolutions'
 import type { OmRecordDTO } from '../types'
+import type { ParetoPoint } from './pareto/constants'
 import './ParetoChart.css'
 import { MARGIN } from './pareto/constants'
 import {
@@ -27,6 +29,8 @@ import { formatTick } from './pareto/ticks'
 import { makeDiamondShape, makePointShape } from './pareto/shapes'
 import { ChartLegend } from './pareto/ChartLegend'
 import { CustomTooltip } from './pareto/CustomTooltip'
+import { GifViewer } from './pareto/GifViewer'
+import { PointRecordsModal } from './pareto/PointRecordsModal'
 import { ParetoOverlay } from './pareto/ParetoOverlay'
 import { ResetZoomButton } from './pareto/ResetZoomButton'
 import { ZoomHandler } from './pareto/ZoomHandler'
@@ -40,6 +44,21 @@ interface ParetoChartProps {
 
 export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForPuzzle }: ParetoChartProps) {
   const s = useParetoChartState({ puzzleId, userRecords, refreshFrontierForPuzzle })
+  const [gifViewer, setGifViewer] = useState<{ url: string; title: string } | null>(null)
+  const [selectedPoint, setSelectedPoint] = useState<{ x: number; y: number } | null>(null)
+  const showGif = useCallback((url: string, title: string) => setGifViewer({ url, title }), [])
+  const closeGif = useCallback(() => setGifViewer(null), [])
+  const selectedRecords = useMemo(
+    () => (selectedPoint ? s.pointMap.get(`${selectedPoint.x}|${selectedPoint.y}`) ?? [] : []),
+    [selectedPoint, s.pointMap],
+  )
+  const handleSelectPoint = useCallback(
+    (p: ParetoPoint) => {
+      setGifViewer(null)
+      setSelectedPoint({ x: p.x, y: p.y })
+    },
+    [],
+  )
 
   if (s.loading) {
     return <div className="pareto-chart-container"><div className="pareto-chart-loading">Loading records...</div></div>
@@ -173,19 +192,19 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
               {CLASS_ORDER.flatMap((cls) => {
                 const fr = s.frontierByClass[cls]
                 return fr.length > 0
-                  ? [<Scatter key={`f-${cls}`} name={`frontier-${cls}`} data={fr} shape={makePointShape(FRONTIER_RADIUS, FRONTIER_OPACITY, CLASS_FRONTIER_COLOR[cls])} isAnimationActive={false} />]
+                  ? [<Scatter key={`f-${cls}`} name={`frontier-${cls}`} data={fr} shape={makePointShape(FRONTIER_RADIUS, FRONTIER_OPACITY, CLASS_FRONTIER_COLOR[cls], handleSelectPoint)} isAnimationActive={false} />]
                   : []
               })}
               {s.userRedPoints.length > 0 && (
-                <Scatter key="user-red" name="user-red" data={s.userRedPoints} shape={makeDiamondShape(USER_RED)} isAnimationActive={false} />
+                <Scatter key="user-red" name="user-red" data={s.userRedPoints} shape={makeDiamondShape(USER_RED, handleSelectPoint)} isAnimationActive={false} />
               )}
               {s.userGreenPoints.length > 0 && (
-                <Scatter key="user-green" name="user-green" data={s.userGreenPoints} shape={makeDiamondShape(USER_GREEN)} isAnimationActive={false} />
+                <Scatter key="user-green" name="user-green" data={s.userGreenPoints} shape={makeDiamondShape(USER_GREEN, handleSelectPoint)} isAnimationActive={false} />
               )}
               {CLASS_ORDER.flatMap((cls) => {
                 const nf = s.nonFrontierByClass[cls]
                 return nf.length > 0
-                  ? [<Scatter key={`nf-${cls}`} name={`non-frontier-${cls}`} data={nf} shape={makePointShape(NORMAL_RADIUS, NORMAL_OPACITY, CLASS_COLOR[cls])} isAnimationActive={false} />]
+                  ? [<Scatter key={`nf-${cls}`} name={`non-frontier-${cls}`} data={nf} shape={makePointShape(NORMAL_RADIUS, NORMAL_OPACITY, CLASS_COLOR[cls], handleSelectPoint)} isAnimationActive={false} />]
                   : []
               })}
               <Tooltip cursor={false} isAnimationActive={false} content={<CustomTooltip pointMap={s.pointMap} xLabel={s.getLabel(s.xMetric)} yLabel={s.getLabel(s.yMetric)} />} />
@@ -197,6 +216,10 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
           </div>
         )}
       </div>
+      {selectedPoint && selectedRecords.length > 0 && (
+        <PointRecordsModal x={selectedPoint.x} y={selectedPoint.y} records={selectedRecords} onClose={() => setSelectedPoint(null)} onSelectGif={showGif} />
+      )}
+      {gifViewer && <GifViewer url={gifViewer.url} title={gifViewer.title} onClose={closeGif} />}
     </div>
   )
 }

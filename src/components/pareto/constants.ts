@@ -9,6 +9,7 @@ export interface ParetoPoint {
   recordIndex: number
   overlap: boolean
   trackless: boolean
+  gif?: string | null
   isUser?: boolean
   name?: string | null
   fullScore?: string

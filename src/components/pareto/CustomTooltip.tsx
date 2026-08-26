@@ -34,7 +34,7 @@ export function CustomTooltip({ active, payload, pointMap, xLabel, yLabel }: Cus
             </div>
             {leaderboardPts.map((p, pi) => (
               <div key={pi} className="pareto-chart-tooltip-row">
-                {p.score || `${p.x} / ${p.y}`}
+                <span>{p.score || `${p.x} / ${p.y}`}</span>
                 {p.categories && <span className="pareto-chart-tooltip-cat">{p.categories}</span>}
               </div>
             ))}

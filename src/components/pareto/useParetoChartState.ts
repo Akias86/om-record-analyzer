@@ -253,7 +253,7 @@ export function useParetoChartState({
         }
       }
       if (skip) return
-      points.push({ x, y, id: r.id ?? `${x}-${y}`, score: r.smartFormattedScore, categories: r.smartFormattedCategories, recordIndex: i, overlap: !!r.score.overlap, trackless: !!r.score.trackless })
+      points.push({ x, y, id: r.id ?? `${x}-${y}`, score: r.smartFormattedScore, categories: r.smartFormattedCategories, recordIndex: i, overlap: !!r.score.overlap, trackless: !!r.score.trackless, gif: r.gif })
     })
     return points
   }, [records, xMetric, yMetric, boolFilters, manifold, frontierRecordIndices])
