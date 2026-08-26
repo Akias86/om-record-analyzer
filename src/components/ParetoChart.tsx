@@ -46,8 +46,13 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
   const s = useParetoChartState({ puzzleId, userRecords, refreshFrontierForPuzzle })
   const [gifViewer, setGifViewer] = useState<{ url: string; title: string } | null>(null)
   const [selectedPoint, setSelectedPoint] = useState<{ x: number; y: number } | null>(null)
+  const [chartKey, setChartKey] = useState(0)
   const showGif = useCallback((url: string, title: string) => setGifViewer({ url, title }), [])
-  const closeGif = useCallback(() => setGifViewer(null), [])
+  const closeOverlays = useCallback(() => {
+    setGifViewer(null)
+    setSelectedPoint(null)
+    setChartKey((k) => k + 1)
+  }, [])
   const selectedRecords = useMemo(
     () => (selectedPoint ? s.pointMap.get(`${selectedPoint.x}|${selectedPoint.y}`) ?? [] : []),
     [selectedPoint, s.pointMap],
@@ -55,9 +60,15 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
   const handleSelectPoint = useCallback(
     (p: ParetoPoint) => {
       setGifViewer(null)
+      const records = s.pointMap.get(`${p.x}|${p.y}`) ?? []
+      const single = records.length === 1 ? records[0] : null
+      if (single && !single.isUser && single.gif) {
+        setGifViewer({ url: single.gif, title: single.score || `${p.x} / ${p.y}` })
+        return
+      }
       setSelectedPoint({ x: p.x, y: p.y })
     },
-    [],
+    [s.pointMap],
   )
 
   if (s.loading) {
@@ -154,7 +165,7 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
       <div className="pareto-chart-plot">
         {ready && s.defaultDomain ? (
           <ResponsiveContainer width="100%" height="100%">
-            <ScatterChart margin={MARGIN}>
+            <ScatterChart key={chartKey} margin={MARGIN}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis
                 type="number"
@@ -207,7 +218,7 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
                   ? [<Scatter key={`nf-${cls}`} name={`non-frontier-${cls}`} data={nf} shape={makePointShape(NORMAL_RADIUS, NORMAL_OPACITY, CLASS_COLOR[cls], handleSelectPoint)} isAnimationActive={false} />]
                   : []
               })}
-              <Tooltip cursor={false} isAnimationActive={false} content={<CustomTooltip pointMap={s.pointMap} xLabel={s.getLabel(s.xMetric)} yLabel={s.getLabel(s.yMetric)} />} />
+              <Tooltip cursor={false} isAnimationActive={false} active={gifViewer !== null || selectedPoint !== null ? false : undefined} content={<CustomTooltip pointMap={s.pointMap} xLabel={s.getLabel(s.xMetric)} yLabel={s.getLabel(s.yMetric)} />} />
             </ScatterChart>
           </ResponsiveContainer>
         ) : (
@@ -217,9 +228,15 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
         )}
       </div>
       {selectedPoint && selectedRecords.length > 0 && (
-        <PointRecordsModal x={selectedPoint.x} y={selectedPoint.y} records={selectedRecords} onClose={() => setSelectedPoint(null)} onSelectGif={showGif} />
+        <PointRecordsModal
+          x={selectedPoint.x}
+          y={selectedPoint.y}
+          records={selectedRecords}
+          onClose={closeOverlays}
+          onSelectGif={showGif}
+        />
       )}
-      {gifViewer && <GifViewer url={gifViewer.url} title={gifViewer.title} onClose={closeGif} />}
+      {gifViewer && <GifViewer url={gifViewer.url} title={gifViewer.title} onClose={closeOverlays} />}
     </div>
   )
 }
