@@ -47,6 +47,11 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
   const [gifViewer, setGifViewer] = useState<{ url: string; title: string } | null>(null)
   const [selectedPoint, setSelectedPoint] = useState<{ x: number; y: number } | null>(null)
   const [chartKey, setChartKey] = useState(0)
+  const [hoveredUserRecordId, setHoveredUserRecordId] = useState<string | null>(null)
+  const hoveredUserIds = useMemo(
+    () => (hoveredUserRecordId ? new Set([`user-${hoveredUserRecordId}`]) : null),
+    [hoveredUserRecordId],
+  )
   const showGif = useCallback((url: string, title: string) => setGifViewer({ url, title }), [])
   const closeOverlays = useCallback(() => {
     setGifViewer(null)
@@ -143,93 +148,106 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
           </span>
         )}
       </div>
-      {s.puzzleUserRecords.length > 0 && (
-        <div className="pareto-chart-user-summary">
-          {s.puzzleUserRecords.map((r) => {
-            const greenManifolds = s.availableManifolds.filter(
-              (m) => supportsScore(m, r.score) && (s.userFrontierByManifold.get(m.id)?.has(r.id) ?? false),
-            )
-            return (
-              <div key={r.id} className="pareto-chart-user-row">
-                <span className="pareto-chart-user-row-name">{r.solutionName ?? '(unnamed)'}</span>
-                <span className="pareto-chart-user-row-score">{r.fullScore}</span>
-                {greenManifolds.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    className={`pareto-chart-user-chip ${s.manifoldId === m.id ? 'active' : ''}`}
-                    onClick={() => s.selectManifold(m.id)}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            )
-          })}
-        </div>
-      )}
-      <div className="pareto-chart-plot">
-        {ready && s.defaultDomain ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <ScatterChart key={chartKey} margin={MARGIN}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis
-                type="number"
-                dataKey="x"
-                domain={s.xDomain}
-                allowDataOverflow
-                scale={s.xScale}
-                ticks={s.xTicks}
-                tickFormatter={formatTick}
-                label={{ value: `${s.getLabel(s.xMetric)} →`, position: 'bottom', offset: 8, style: { fill: 'var(--text-h)', fontSize: 12, fontWeight: 600 } }}
-                tick={{ fill: 'var(--text)', fontSize: 11 }}
-              />
-              <YAxis
-                type="number"
-                dataKey="y"
-                domain={s.yDomain}
-                allowDataOverflow
-                scale={s.yScale}
-                ticks={s.yTicks}
-                tickFormatter={formatTick}
-                label={{ value: `${s.getLabel(s.yMetric)} →`, angle: -90, position: 'left', offset: 4, style: { fill: 'var(--text-h)', fontSize: 12, fontWeight: 600 } }}
-                tick={{ fill: 'var(--text)', fontSize: 11 }}
-              />
-              <ParetoOverlay paretoPoints={s.boundaryPoints} />
-              <ChartLegend hasUserPoints={s.userPoints.length > 0} />
-              <ZoomHandler
-                onZoom={s.handleZoom}
-                onResetZoom={s.resetZoom}
-                xDomain={s.xDomain}
-                yDomain={s.yDomain}
-                defaultDomain={s.defaultDomain}
-                isZoomed={s.isZoomed}
-              />
-              {s.isZoomed && <ResetZoomButton onReset={s.resetZoom} />}
-              {CLASS_ORDER.flatMap((cls) => {
-                const fr = s.frontierByClass[cls]
-                return fr.length > 0
-                  ? [<Scatter key={`f-${cls}`} name={`frontier-${cls}`} data={fr} shape={makePointShape(FRONTIER_RADIUS, FRONTIER_OPACITY, CLASS_FRONTIER_COLOR[cls], handleSelectPoint)} isAnimationActive={false} />]
-                  : []
-              })}
-              {s.userRedPoints.length > 0 && (
-                <Scatter key="user-red" name="user-red" data={s.userRedPoints} shape={makeDiamondShape(USER_RED, handleSelectPoint)} isAnimationActive={false} />
+      <div className="pareto-chart-body">
+        <div className="pareto-chart-plot">
+          {ready && s.defaultDomain ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart key={chartKey} margin={MARGIN}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis
+                  type="number"
+                  dataKey="x"
+                  domain={s.xDomain}
+                  allowDataOverflow
+                  scale={s.xScale}
+                  ticks={s.xTicks}
+                  tickFormatter={formatTick}
+                  label={{ value: `${s.getLabel(s.xMetric)} →`, position: 'bottom', offset: 8, style: { fill: 'var(--text-h)', fontSize: 12, fontWeight: 600 } }}
+                  tick={{ fill: 'var(--text)', fontSize: 11 }}
+                />
+                <YAxis
+                  type="number"
+                  dataKey="y"
+                  domain={s.yDomain}
+                  allowDataOverflow
+                  scale={s.yScale}
+                  ticks={s.yTicks}
+                  tickFormatter={formatTick}
+                  label={{ value: `${s.getLabel(s.yMetric)} →`, angle: -90, position: 'left', offset: 4, style: { fill: 'var(--text)', fontSize: 12, fontWeight: 600 } }}
+                  tick={{ fill: 'var(--text)', fontSize: 11 }}
+                />
+                <ParetoOverlay paretoPoints={s.boundaryPoints} />
+                <ChartLegend hasUserPoints={s.userPoints.length > 0} />
+                <ZoomHandler
+                  onZoom={s.handleZoom}
+                  onResetZoom={s.resetZoom}
+                  xDomain={s.xDomain}
+                  yDomain={s.yDomain}
+                  defaultDomain={s.defaultDomain}
+                  isZoomed={s.isZoomed}
+                />
+                {s.isZoomed && <ResetZoomButton onReset={s.resetZoom} />}
+                {CLASS_ORDER.flatMap((cls) => {
+                  const fr = s.frontierByClass[cls]
+                  return fr.length > 0
+                    ? [<Scatter key={`f-${cls}`} name={`frontier-${cls}`} data={fr} shape={makePointShape(FRONTIER_RADIUS, FRONTIER_OPACITY, CLASS_FRONTIER_COLOR[cls], handleSelectPoint)} isAnimationActive={false} />]
+                    : []
+                })}
+{s.userRedPoints.length > 0 && (
+                <Scatter key="user-red" name="user-red" data={s.userRedPoints} shape={makeDiamondShape(USER_RED, handleSelectPoint, hoveredUserIds ?? undefined)} isAnimationActive={false} />
               )}
               {s.userGreenPoints.length > 0 && (
-                <Scatter key="user-green" name="user-green" data={s.userGreenPoints} shape={makeDiamondShape(USER_GREEN, handleSelectPoint)} isAnimationActive={false} />
+                <Scatter key="user-green" name="user-green" data={s.userGreenPoints} shape={makeDiamondShape(USER_GREEN, handleSelectPoint, hoveredUserIds ?? undefined)} isAnimationActive={false} />
               )}
-              {CLASS_ORDER.flatMap((cls) => {
-                const nf = s.nonFrontierByClass[cls]
-                return nf.length > 0
-                  ? [<Scatter key={`nf-${cls}`} name={`non-frontier-${cls}`} data={nf} shape={makePointShape(NORMAL_RADIUS, NORMAL_OPACITY, CLASS_COLOR[cls], handleSelectPoint)} isAnimationActive={false} />]
-                  : []
-              })}
-              <Tooltip cursor={false} isAnimationActive={false} active={gifViewer !== null || selectedPoint !== null ? false : undefined} content={<CustomTooltip pointMap={s.pointMap} xLabel={s.getLabel(s.xMetric)} yLabel={s.getLabel(s.yMetric)} />} />
-            </ScatterChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="pareto-chart-placeholder">
-            {ready ? 'No data' : 'Select X and Y metrics to display the chart'}
+                {CLASS_ORDER.flatMap((cls) => {
+                  const nf = s.nonFrontierByClass[cls]
+                  return nf.length > 0
+                    ? [<Scatter key={`nf-${cls}`} name={`non-frontier-${cls}`} data={nf} shape={makePointShape(NORMAL_RADIUS, NORMAL_OPACITY, CLASS_COLOR[cls], handleSelectPoint)} isAnimationActive={false} />]
+                    : []
+                })}
+                <Tooltip cursor={false} isAnimationActive={false} active={gifViewer !== null || selectedPoint !== null ? false : undefined} content={<CustomTooltip pointMap={s.pointMap} xLabel={s.getLabel(s.xMetric)} yLabel={s.getLabel(s.yMetric)} />} />
+              </ScatterChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="pareto-chart-placeholder">
+              {ready ? 'No data' : 'Select X and Y metrics to display the chart'}
+            </div>
+          )}
+        </div>
+        {s.puzzleUserRecords.length > 0 && (
+          <div className="pareto-chart-user-summary">
+            {s.puzzleUserRecords.map((r) => {
+              const greenManifolds = s.availableManifolds.filter(
+                (m) => supportsScore(m, r.score) && (s.userFrontierByManifold.get(m.id)?.has(r.id) ?? false),
+              )
+              const parts = r.fullScore.split(' ')
+              return (
+                <div
+                  key={r.id}
+                  className="pareto-chart-user-card"
+                  onMouseEnter={() => setHoveredUserRecordId(r.id)}
+                  onMouseLeave={() => setHoveredUserRecordId(null)}
+                >
+                  <span className="pareto-chart-user-name">{r.solutionName ?? '(unnamed)'}</span>
+                  <span className="pareto-chart-user-score">{parts[0]}</span>
+                  {parts[1] && <span className="pareto-chart-user-score">{parts[1]}</span>}
+                  {greenManifolds.length > 0 && (
+                    <span className="pareto-chart-user-chips">
+                      {greenManifolds.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          className={`pareto-chart-user-chip ${s.manifoldId === m.id ? 'active' : ''}`}
+                          onClick={() => s.selectManifold(m.id)}
+                        >
+                          {m.label}
+                        </button>
+                      ))}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
