@@ -205,42 +205,6 @@
   color: var(--text-h);
 }
 
-.point-records-user {
-  align-items: center;
-}
-
-.point-records-marker {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 auto;
-  transform: rotate(45deg);
-}
-
-.point-records-user.is-green .point-records-marker {
-  background: #22c55e;
-}
-
-.point-records-user.is-green .point-records-user-name {
-  color: #22c55e;
-}
-
-.point-records-user.is-red .point-records-marker {
-  background: #ef4444;
-}
-
-.point-records-user.is-red .point-records-user-name {
-  color: #ef4444;
-}
-
-.point-records-user-name {
-  font-weight: 600;
-}
-
-.point-records-user-score {
-  opacity: 0.85;
-  word-break: break-all;
-}
-
 .gif-viewer-backdrop {
   position: fixed;
   inset: 0;

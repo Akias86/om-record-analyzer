@@ -53,16 +53,22 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
     setSelectedPoint(null)
     setChartKey((k) => k + 1)
   }, [])
+  const closeGif = useCallback(() => {
+    setGifViewer(null)
+    setChartKey((k) => k + 1)
+  }, [])
   const selectedRecords = useMemo(
-    () => (selectedPoint ? s.pointMap.get(`${selectedPoint.x}|${selectedPoint.y}`) ?? [] : []),
+    () => (selectedPoint ? (s.pointMap.get(`${selectedPoint.x}|${selectedPoint.y}`) ?? []).filter((r) => !r.isUser) : []),
     [selectedPoint, s.pointMap],
   )
   const handleSelectPoint = useCallback(
     (p: ParetoPoint) => {
       setGifViewer(null)
       const records = s.pointMap.get(`${p.x}|${p.y}`) ?? []
-      const single = records.length === 1 ? records[0] : null
-      if (single && !single.isUser && single.gif) {
+      const leaderboard = records.filter((r) => !r.isUser)
+      if (leaderboard.length === 0) return
+      const single = leaderboard.length === 1 ? leaderboard[0] : null
+      if (single && single.gif) {
         setGifViewer({ url: single.gif, title: single.score || `${p.x} / ${p.y}` })
         return
       }
@@ -236,7 +242,7 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
           onSelectGif={showGif}
         />
       )}
-      {gifViewer && <GifViewer url={gifViewer.url} title={gifViewer.title} onClose={closeOverlays} />}
+      {gifViewer && <GifViewer url={gifViewer.url} title={gifViewer.title} onClose={closeGif} />}
     </div>
   )
 }

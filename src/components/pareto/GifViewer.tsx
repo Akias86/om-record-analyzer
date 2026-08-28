@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useEscapeKey } from './useEscapeKey'
 
 interface GifViewerProps {
@@ -7,11 +8,12 @@ interface GifViewerProps {
 }
 
 export function GifViewer({ url, title, onClose }: GifViewerProps) {
-  useEscapeKey(onClose)
+  const backdropRef = useRef<HTMLDivElement>(null)
+  useEscapeKey(backdropRef, onClose)
   const isVideo = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url)
 
   return (
-    <div className="gif-viewer-backdrop" onClick={onClose}>
+    <div ref={backdropRef} className="gif-viewer-backdrop" onClick={onClose}>
       <div className="gif-viewer-panel" onClick={(e) => e.stopPropagation()}>
         <div className="gif-viewer-header">
           <div className="gif-viewer-title">{title}</div>
