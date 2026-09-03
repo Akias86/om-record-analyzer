@@ -13,6 +13,7 @@ interface VerifierExports {
   verifier_number_of_output_intervals: (v: number) => number
   verifier_output_interval: (v: number, which: number) => number
   verifier_output_intervals_repeat_after: (v: number) => number
+  verifier_set_cycle_limit: (v: number, limit: number) => void
   verifier_destroy: (v: number) => void
   verifier_evaluate_approximate_metric: (v: number, mp: number) => number
   verifier_wrong_output_index: (v: number) => number
@@ -37,6 +38,7 @@ export interface VerifierModule {
   clearError(v: number): void
   evaluate(v: number, metric: string): number
   outputIntervals(v: number): OutputIntervals
+  setCycleLimit(v: number, limit: number): void
   wrongOutputIndex(v: number): number
   destroy(v: number): void
 }
@@ -122,6 +124,9 @@ async function init(module?: WebAssembly.Module): Promise<VerifierModule> {
       const intervals: number[] = []
       for (let i = 0; i < count; i++) intervals.push(e.verifier_output_interval(v, i))
       return { count, intervals, repeatAfter: e.verifier_output_intervals_repeat_after(v) }
+    },
+    setCycleLimit(v, limit) {
+      e.verifier_set_cycle_limit(v, limit)
     },
     wrongOutputIndex(v) {
       return e.verifier_wrong_output_index(v)

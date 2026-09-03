@@ -3,6 +3,8 @@ import type { VerifierErrorInfo, VerifierModule } from './verifier'
 import { computeScore } from './metrics'
 import type { SolutionAnalysis, VerifySolutionResult } from './types'
 
+const CYCLE_LIMIT = 1_000_000_0
+
 function describeError(message: string, info: VerifierErrorInfo | null): string {
   if (!info || info.source !== 'simulation' || info.cycle <= 0) return message
   const { u, v } = info.location
@@ -71,6 +73,8 @@ export async function runVerification(
     if (ptr !== 0) verifier.destroy(ptr)
     return { puzzleId, puzzleType: puzzleType || null, passed: false, score: null, error: createError, analysis: null }
   }
+
+  verifier.setCycleLimit(ptr, CYCLE_LIMIT)
 
   verifier.evaluate(ptr, 'cycles')
   const simError = verifier.error(ptr)
