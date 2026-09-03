@@ -9,14 +9,14 @@ const TRACKED_GEOMETRY: Readonly<Record<string, Readonly<{ height?: boolean; wid
   PRODUCTION: {},
 }
 
-const ALL_TRACKED: Readonly<{ height: boolean; width: boolean; boundingHex: boolean }> = {
-  height: true,
-  width: true,
-  boundingHex: true,
+export function trackedGeometry(puzzleType?: string): { height: boolean; width: boolean; boundingHex: boolean } {
+  const t = puzzleType ? TRACKED_GEOMETRY[puzzleType] : undefined
+  if (!t) return { height: true, width: true, boundingHex: true }
+  return { height: t.height === true, width: t.width === true, boundingHex: t.boundingHex === true }
 }
 
 export function computeScore(v: VerifierModule, ptr: number, puzzleType?: string): VerifiedScore {
-  const tracked = (puzzleType ? TRACKED_GEOMETRY[puzzleType] : undefined) ?? ALL_TRACKED
+  const tracked = trackedGeometry(puzzleType)
   const m = (name: string): number => {
     const val = v.evaluate(ptr, name)
     if (v.error(ptr)) {

@@ -83,6 +83,7 @@ function handleWorkerError(w: Worker): void {
         passed: false,
         score: null,
         error: 'worker crashed during verification',
+        analysis: null,
       })
     }
   }
@@ -116,7 +117,7 @@ function runOnMainThread(task: PoolTask): Promise<VerifySolutionResult> {
 }
 
 function makeErrorResult(task: PoolTask, error: string): VerifySolutionResult {
-  return { puzzleId: task.puzzleId, puzzleType: task.puzzleType || null, passed: false, score: null, error }
+  return { puzzleId: task.puzzleId, puzzleType: task.puzzleType || null, passed: false, score: null, error, analysis: null }
 }
 
 function drain(): void {

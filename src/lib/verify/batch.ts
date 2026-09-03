@@ -13,6 +13,7 @@ const SKIP_NO_PUZZLE: VerifySolutionResult = {
   passed: false,
   score: null,
   error: 'Could not identify puzzle from solution file',
+  analysis: null,
 }
 
 export async function verifyBatch(
@@ -59,6 +60,7 @@ export async function verifyBatch(
           passed: false,
           score: null,
           error: `puzzle file not found: ${pid}`,
+          analysis: null,
         })
         return
       }

@@ -16,10 +16,20 @@ export interface VerifiedScore {
   boundingHexINF: number | null
 }
 
+export interface SolutionAnalysis {
+  collisionCycle: number | null
+  collisionReason: string | null
+  steadyState: boolean
+  infiniteOutputs: boolean | null
+  lastProductCycle: number | null
+  rate: number | null
+}
+
 export interface VerifySolutionResult {
   puzzleId: string | null
   puzzleType: string | null
   passed: boolean
   score: VerifiedScore | null
   error: string | null
+  analysis: SolutionAnalysis | null
 }

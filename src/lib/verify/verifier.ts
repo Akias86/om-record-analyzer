@@ -6,16 +6,37 @@ interface VerifierExports {
   verifier_create_from_bytes: (pp: number, pl: number, sp: number, sl: number) => number
   verifier_error: (v: number) => number
   verifier_error_clear: (v: number) => void
+  verifier_error_cycle: (v: number) => number
+  verifier_error_source: (v: number) => number
+  verifier_error_location_u: (v: number) => number
+  verifier_error_location_v: (v: number) => number
+  verifier_number_of_output_intervals: (v: number) => number
+  verifier_output_interval: (v: number, which: number) => number
+  verifier_output_intervals_repeat_after: (v: number) => number
   verifier_destroy: (v: number) => void
   verifier_evaluate_approximate_metric: (v: number, mp: number) => number
   verifier_wrong_output_index: (v: number) => number
 }
 
+export interface VerifierErrorInfo {
+  source: string | null
+  cycle: number
+  location: { u: number; v: number }
+}
+
+export interface OutputIntervals {
+  count: number
+  intervals: number[]
+  repeatAfter: number
+}
+
 export interface VerifierModule {
   create(puzzle: Uint8Array, solution: Uint8Array): number
   error(v: number): string | null
+  errorInfo(v: number): VerifierErrorInfo | null
   clearError(v: number): void
   evaluate(v: number, metric: string): number
+  outputIntervals(v: number): OutputIntervals
   wrongOutputIndex(v: number): number
   destroy(v: number): void
 }
@@ -79,6 +100,14 @@ async function init(module?: WebAssembly.Module): Promise<VerifierModule> {
     error(v) {
       return readCStr(e.verifier_error(v))
     },
+    errorInfo(v) {
+      if (readCStr(e.verifier_error(v)) === null) return null
+      return {
+        source: readCStr(e.verifier_error_source(v)),
+        cycle: e.verifier_error_cycle(v),
+        location: { u: e.verifier_error_location_u(v), v: e.verifier_error_location_v(v) },
+      }
+    },
     clearError(v) {
       e.verifier_error_clear(v)
     },
@@ -87,6 +116,12 @@ async function init(module?: WebAssembly.Module): Promise<VerifierModule> {
       const value = e.verifier_evaluate_approximate_metric(v, mp)
       e.free(mp)
       return value
+    },
+    outputIntervals(v) {
+      const count = e.verifier_number_of_output_intervals(v)
+      const intervals: number[] = []
+      for (let i = 0; i < count; i++) intervals.push(e.verifier_output_interval(v, i))
+      return { count, intervals, repeatAfter: e.verifier_output_intervals_repeat_after(v) }
     },
     wrongOutputIndex(v) {
       return e.verifier_wrong_output_index(v)

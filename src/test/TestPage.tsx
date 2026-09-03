@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
 import { parseSolutionMeta, parsePuzzleMeta, formatScoreParts, verifyBatch, verifyInPool } from '../lib/verify'
-import type { BatchInput, ScoreParts } from '../lib/verify'
+import type { BatchInput, ScoreParts, VerifySolutionResult } from '../lib/verify'
 import { getPuzzleMap } from '../api/om'
+import { SolutionDetailModal } from './SolutionDetailModal'
 import './test.css'
 
 type RowStatus = 'pending' | 'verifying' | 'done' | 'error' | 'skipped'
@@ -13,6 +14,7 @@ interface Row {
   puzzleName: string | null
   parts: ScoreParts | null
   status: RowStatus
+  result: VerifySolutionResult | null
 }
 
 interface CustomRow {
@@ -22,11 +24,13 @@ interface CustomRow {
   parts: ScoreParts | null
   status: RowStatus
   error: string | null
+  result: VerifySolutionResult | null
 }
 
 interface LoadedPuzzle {
   id: string
   name: string | null
+  isProduction: boolean
   bytes: Uint8Array
 }
 
@@ -76,6 +80,7 @@ export default function TestPage() {
   const [customRunning, setCustomRunning] = useState(false)
   const [isPuzzleOver, setIsPuzzleOver] = useState(false)
   const [isSolOver, setIsSolOver] = useState(false)
+  const [detail, setDetail] = useState<{ result: VerifySolutionResult; puzzleName: string | null; solutionName: string | null } | null>(null)
   const puzzleInputRef = useRef<HTMLInputElement>(null)
   const solInputRef = useRef<HTMLInputElement>(null)
 
@@ -119,6 +124,7 @@ export default function TestPage() {
         puzzleName: meta.puzzleId ? puzzleMap.get(meta.puzzleId)?.displayName ?? null : null,
         parts: null,
         status: meta.puzzleId ? 'pending' : 'skipped',
+        result: null,
       })
     }
     setRows(initial)
@@ -133,7 +139,7 @@ export default function TestPage() {
           ? formatScoreParts(result.score, result.puzzleType ?? undefined)
           : null
         const status: RowStatus = result.puzzleId === null ? 'skipped' : 'done'
-        setRows((prev) => prev.map((r, i) => (i === index ? { ...r, parts, status } : r)))
+        setRows((prev) => prev.map((r, i) => (i === index ? { ...r, parts, status, result } : r)))
       },
       (done, total) => setProgress({ done, total }),
     )
@@ -156,7 +162,8 @@ export default function TestPage() {
       files.map(async (file) => {
         const bytes = new Uint8Array(await file.arrayBuffer())
         const id = file.name.replace(/\.puzzle$/i, '')
-        return { id, name: parsePuzzleMeta(bytes).name, bytes }
+        const meta = parsePuzzleMeta(bytes)
+        return { id, name: meta.name, isProduction: meta.isProduction, bytes }
       }),
     )
     setPuzzles((prev) => {
@@ -198,6 +205,7 @@ export default function TestPage() {
             : meta.puzzleId
               ? `No uploaded puzzle for ID ${meta.puzzleId}`
               : 'Could not identify puzzle from solution file',
+          result: null,
         }
       }),
     )
@@ -217,15 +225,15 @@ export default function TestPage() {
         }
         const result = await verifyInPool({
           puzzleId: meta.puzzleId as string,
-          puzzleType: '',
+          puzzleType: puzzle.isProduction ? 'PRODUCTION' : '',
           solutionBytes: bytes,
           puzzleBytes: puzzle.bytes,
         })
-        const parts = result.passed && result.score ? formatScoreParts(result.score, undefined) : null
+        const parts = result.passed && result.score ? formatScoreParts(result.score, result.puzzleType ?? undefined) : null
         setCustomRows((prev) =>
           prev.map((r, idx) =>
             idx === i
-              ? { ...r, parts, status: 'done', error: result.passed ? null : result.error }
+              ? { ...r, parts, status: 'done', error: result.passed ? null : result.error, result }
               : r,
           ),
         )
@@ -344,8 +352,16 @@ export default function TestPage() {
           <tbody>
             {visibleRows.map((r, i) => {
               const eff = effStatus(r)
+              const open = (): void => {
+                if (r.result) setDetail({ result: r.result, puzzleName: r.puzzleName, solutionName: r.solutionName })
+              }
               return (
-                <tr key={i} className={`tp-row tp-row--${r.status}`}>
+                <tr
+                  key={i}
+                  className={`tp-row tp-row--${r.status} ${r.result ? 'is-clickable' : ''}`}
+                  title={r.result ? 'View details' : undefined}
+                  onClick={open}
+                >
                   <td className="tp-cell-id">{r.puzzleId ?? ''}</td>
                   <td className="tp-cell-name">{r.puzzleName ?? ''}</td>
                   <td className="tp-cell-name">{r.solutionName ?? ''}</td>
@@ -483,8 +499,16 @@ export default function TestPage() {
             <tbody>
               {visibleCustomRows.map((r, i) => {
                 const eff = effStatus(r)
+                const open = (): void => {
+                  if (r.result) setDetail({ result: r.result, puzzleName: r.puzzleName, solutionName: r.solutionName })
+                }
                 return (
-                  <tr key={i} className={`tp-row tp-row--${r.status}`}>
+                  <tr
+                    key={i}
+                    className={`tp-row tp-row--${r.status} ${r.result ? 'is-clickable' : ''}`}
+                    title={r.result ? 'View details' : undefined}
+                    onClick={open}
+                  >
                     <td className="tp-cell-id">{r.puzzleId ?? ''}</td>
                     <td className="tp-cell-name">{r.puzzleName ?? ''}</td>
                     <td className="tp-cell-name">{r.solutionName ?? ''}</td>
@@ -510,6 +534,15 @@ export default function TestPage() {
           </table>
         )}
       </section>
+
+      {detail && (
+        <SolutionDetailModal
+          result={detail.result}
+          puzzleName={detail.puzzleName}
+          solutionName={detail.solutionName}
+          onClose={() => setDetail(null)}
+        />
+      )}
     </div>
   )
 }

@@ -41,6 +41,7 @@ ctx.onmessage = async (ev: MessageEvent<InMessage>) => {
         passed: false,
         score: null,
         error: err instanceof Error ? err.message : String(err),
+        analysis: null,
       },
     })
   }
