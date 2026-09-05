@@ -23,8 +23,6 @@ export interface SolutionAnalysis {
   infiniteOutputs: boolean | null
   lastProductCycle: number | null
   rate: number | null
-  /** cycle count simulated before the run ended (collision / convergence / limit). */
-  simulatedCycles: number | null
 }
 
 /** structural metrics, available without running the simulation. */
@@ -64,8 +62,11 @@ export interface InfinityPartial {
 export interface VerifyPartial {
   /** 'passed' once board.complete is observed (row becomes Passed / clickable). */
   phase: 'verifying' | 'passed' | 'failed'
+  /** current simulated cycle (advance cursor) at this partial. */
   cycle: number
   converged: boolean
+  /** true once the advance sim hit the cycle limit without converging or colliding. */
+  limitReached: boolean
   /** cycle of the most recently delivered product (lower bound while streaming). */
   lastProductCycle: number | null
   collisionCycle: number | null

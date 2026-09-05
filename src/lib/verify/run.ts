@@ -37,7 +37,6 @@ function emptyAnalysis(): SolutionAnalysis {
     infiniteOutputs: null,
     lastProductCycle: null,
     rate: null,
-    simulatedCycles: null,
   }
 }
 
@@ -61,7 +60,6 @@ function analyzeSolution(verifier: VerifierModule, ptr: number): SolutionAnalysi
       infiniteOutputs: true,
       lastProductCycle: null,
       rate,
-      simulatedCycles: null,
     }
   }
   const lastProductCycle = count > 0 ? intervals.reduce((a, b) => a + b, 0) : null
@@ -72,7 +70,6 @@ function analyzeSolution(verifier: VerifierModule, ptr: number): SolutionAnalysi
     infiniteOutputs: false,
     lastProductCycle,
     rate: null,
-    simulatedCycles: null,
   }
 }
 
@@ -84,7 +81,6 @@ function buildAnalysis(
     infiniteOutputs?: boolean | null
     lastProductCycle?: number | null
     rate?: number | null
-    simulatedCycles?: number | null
   },
 ): SolutionAnalysis {
   return {
@@ -94,7 +90,6 @@ function buildAnalysis(
     infiniteOutputs: opts.infiniteOutputs ?? null,
     lastProductCycle: opts.lastProductCycle ?? null,
     rate: opts.rate ?? null,
-    simulatedCycles: opts.simulatedCycles ?? null,
   }
 }
 
@@ -253,6 +248,7 @@ export async function runVerification(
       phase,
       cycle: verifier.currentCycle(ptr),
       converged: verifier.converged(ptr),
+      limitReached: verifier.currentCycle(ptr) >= CYCLE_LIMIT,
       lastProductCycle,
       collisionCycle: collision ? collision.cycle : lateCollision ? lateCollision.cycle : null,
       collisionReason: collision ? collision.reason : lateCollision ? lateCollision.reason : null,
@@ -305,7 +301,6 @@ export async function runVerification(
   const isCollision = !!finalError && !!finalInfo && finalInfo.source === 'simulation' && finalInfo.cycle > 0
   const completed = verifier.completed(ptr)
   const converged = verifier.converged(ptr)
-  const cycleEnd = verifier.currentCycle(ptr)
 
   const destroy = (): void => verifier.destroy(ptr)
 
@@ -335,7 +330,6 @@ export async function runVerification(
       steadyState: false,
       infiniteOutputs: null,
       lastProductCycle,
-      simulatedCycles: cycleEnd,
     })
     destroy()
     return { puzzleId, puzzleType: puzzleType || null, passed: true, score, error: null, analysis }
@@ -348,7 +342,6 @@ export async function runVerification(
       steadyState: false,
       infiniteOutputs: false,
       lastProductCycle,
-      simulatedCycles: finalInfo!.cycle,
     })
     const result: VerifySolutionResult = {
       puzzleId,
@@ -370,7 +363,6 @@ export async function runVerification(
       const analysis = buildAnalysis({
         steadyState: true,
         infiniteOutputs: false,
-        simulatedCycles: cycleEnd,
       })
       const result: VerifySolutionResult = {
         puzzleId,
@@ -393,7 +385,6 @@ export async function runVerification(
         steadyState: true,
         infiniteOutputs: true,
         lastProductCycle,
-        simulatedCycles: cycleEnd,
       })
       const result: VerifySolutionResult = {
         puzzleId,
@@ -418,7 +409,6 @@ export async function runVerification(
     const analysis = buildAnalysis({
       steadyState: false,
       lastProductCycle,
-      simulatedCycles: cycleEnd,
     })
     const result: VerifySolutionResult = {
       puzzleId,
@@ -443,7 +433,6 @@ export async function runVerification(
   const analysis = buildAnalysis({
     steadyState: false,
     lastProductCycle,
-    simulatedCycles: cycleEnd,
     collisionCycle: late?.cycle ?? null,
     collisionReason: late?.reason ?? null,
   })

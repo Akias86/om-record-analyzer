@@ -133,11 +133,20 @@ function buildFinalSections(result: VerifySolutionResult, partial: VerifyPartial
   }
 
   const analysis = result.analysis
+  // without convergence the observed last-product cycle is only a lower bound:
+  // more deliveries may be coming, so keep the '≥' the live view already used.
   const lastProduct = analysis
     ? analysis.infiniteOutputs
       ? { value: '\u221E', sub: undefined }
       : analysis.lastProductCycle != null
-        ? { value: fmtNum(analysis.lastProductCycle), sub: analysis.collisionCycle != null && !result.passed ? 'stopped by collision' : undefined }
+        ? {
+            value: analysis.steadyState ? fmtNum(analysis.lastProductCycle) : geq(analysis.lastProductCycle),
+            sub: analysis.collisionCycle != null && !result.passed
+              ? 'stopped by collision'
+              : analysis.steadyState
+                ? undefined
+                : 'not converged',
+          }
         : { value: '-', sub: analysis.steadyState ? undefined : 'not converged' }
     : { value: '-', sub: undefined }
   const sim: DetailCell[] = [
@@ -154,10 +163,6 @@ function buildFinalSections(result: VerifySolutionResult, partial: VerifyPartial
       label: 'Last Product Cycle',
       value: lastProduct.value,
       sub: lastProduct.sub,
-    },
-    {
-      label: 'Simulated Cycles',
-      value: analysis?.simulatedCycles != null ? fmtNum(analysis.simulatedCycles) : '-',
     },
   ]
 
@@ -228,7 +233,11 @@ function buildLiveSections(partial: VerifyPartial, type: string | null): DetailS
   const simCells: DetailCell[] = [
     {
       label: 'Collision Cycle',
-      value: partial.collisionCycle != null ? fmtNum(partial.collisionCycle) : '-',
+      value: partial.collisionCycle != null
+        ? fmtNum(partial.collisionCycle)
+        : partial.limitReached || partial.converged
+          ? '-'
+          : `> ${fmtNum(partial.cycle)}`,
       sub: partial.collisionIgnorable
         ? 'after winning delivery — ignored'
         : !streaming && partial.phase === 'failed'
@@ -239,10 +248,6 @@ function buildLiveSections(partial: VerifyPartial, type: string | null): DetailS
       label: 'Last Product Cycle',
       value: streaming ? geq(partial.lastProductCycle) : fmtNum(partial.lastProductCycle),
       sub: streaming ? undefined : partial.phase === 'failed' ? 'stopped by collision' : undefined,
-    },
-    {
-      label: 'Simulated Cycles',
-      value: fmtNum(partial.cycle),
     },
   ]
 
