@@ -14,9 +14,15 @@ interface VerifierExports {
   verifier_output_interval: (v: number, which: number) => number
   verifier_output_intervals_repeat_after: (v: number) => number
   verifier_set_cycle_limit: (v: number, limit: number) => void
+  verifier_set_collision_check_limit: (v: number, limit: bigint) => void
+  verifier_advance: (v: number, cycles: number) => void
+  verifier_current_cycle: (v: number) => number
+  verifier_completed: (v: number) => number
+  verifier_converged: (v: number) => number
+  verifier_measure_current: (v: number, mp: number) => number
+  verifier_evaluate_metric: (v: number, mp: number) => number
   verifier_destroy: (v: number) => void
   verifier_evaluate_approximate_metric: (v: number, mp: number) => number
-  verifier_wrong_output_index: (v: number) => number
 }
 
 export interface VerifierErrorInfo {
@@ -39,7 +45,13 @@ export interface VerifierModule {
   evaluate(v: number, metric: string): number
   outputIntervals(v: number): OutputIntervals
   setCycleLimit(v: number, limit: number): void
-  wrongOutputIndex(v: number): number
+  setCollisionCheckLimit(v: number, limit: bigint): void
+  advance(v: number, cycles: number): void
+  currentCycle(v: number): number
+  completed(v: number): boolean
+  converged(v: number): boolean
+  measureCurrent(v: number, metric: string): number
+  evaluateInt(v: number, metric: string): number
   destroy(v: number): void
 }
 
@@ -128,8 +140,32 @@ async function init(module?: WebAssembly.Module): Promise<VerifierModule> {
     setCycleLimit(v, limit) {
       e.verifier_set_cycle_limit(v, limit)
     },
-    wrongOutputIndex(v) {
-      return e.verifier_wrong_output_index(v)
+    setCollisionCheckLimit(v, limit) {
+      e.verifier_set_collision_check_limit(v, limit)
+    },
+    advance(v, cycles) {
+      e.verifier_advance(v, cycles)
+    },
+    currentCycle(v) {
+      return e.verifier_current_cycle(v)
+    },
+    completed(v) {
+      return e.verifier_completed(v) !== 0
+    },
+    converged(v) {
+      return e.verifier_converged(v) !== 0
+    },
+    measureCurrent(v, metric) {
+      const mp = writeCStr(metric)
+      const value = e.verifier_measure_current(v, mp)
+      e.free(mp)
+      return value
+    },
+    evaluateInt(v, metric) {
+      const mp = writeCStr(metric)
+      const value = e.verifier_evaluate_metric(v, mp)
+      e.free(mp)
+      return value
     },
     destroy(v) {
       e.verifier_destroy(v)

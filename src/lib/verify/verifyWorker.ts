@@ -1,6 +1,6 @@
 import { loadVerifier } from './verifier'
 import { runVerification } from './run'
-import type { VerifySolutionResult } from './types'
+import type { VerifyPartial, VerifySolutionResult } from './types'
 
 type InMessage =
   | { type: 'init'; module?: WebAssembly.Module }
@@ -11,9 +11,14 @@ interface WorkerResponse {
   result: VerifySolutionResult
 }
 
+interface WorkerPartial {
+  id: number
+  partial: VerifyPartial
+}
+
 const ctx = self as unknown as {
   onmessage: ((ev: MessageEvent<InMessage>) => void) | null
-  postMessage(message: WorkerResponse | { type: 'ready' }): void
+  postMessage(message: WorkerResponse | WorkerPartial | { type: 'ready' }): void
 }
 
 ctx.onmessage = async (ev: MessageEvent<InMessage>) => {
@@ -29,8 +34,11 @@ ctx.onmessage = async (ev: MessageEvent<InMessage>) => {
   }
   const t = msg as { id: number; puzzleId: string; puzzleType: string; solutionBytes: Uint8Array; puzzleBytes: Uint8Array }
   const { id, puzzleId, puzzleType, solutionBytes, puzzleBytes } = t
+  const postPartial = (partial: VerifyPartial): void => {
+    ctx.postMessage({ id, partial })
+  }
   try {
-    const result = await runVerification(solutionBytes, puzzleBytes, puzzleType, puzzleId)
+    const result = await runVerification(solutionBytes, puzzleBytes, puzzleType, puzzleId, postPartial)
     ctx.postMessage({ id, result })
   } catch (err) {
     ctx.postMessage({

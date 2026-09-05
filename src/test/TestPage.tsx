@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
 import { parseSolutionMeta, parsePuzzleMeta, formatScoreParts, verifyBatch, verifyInPool } from '../lib/verify'
-import type { BatchInput, ScoreParts, VerifySolutionResult } from '../lib/verify'
+import type { BatchInput, ScoreParts, VerifyPartial, VerifySolutionResult } from '../lib/verify'
 import { getPuzzleMap } from '../api/om'
 import { SolutionDetailModal } from './SolutionDetailModal'
 import './test.css'
@@ -15,6 +15,7 @@ interface Row {
   parts: ScoreParts | null
   status: RowStatus
   result: VerifySolutionResult | null
+  partial: VerifyPartial | null
 }
 
 interface CustomRow {
@@ -25,6 +26,16 @@ interface CustomRow {
   status: RowStatus
   error: string | null
   result: VerifySolutionResult | null
+  partial: VerifyPartial | null
+}
+
+interface DetailState {
+  rowIndex: number | null
+  result: VerifySolutionResult | null
+  partial: VerifyPartial | null
+  puzzleId: string | null
+  puzzleName: string | null
+  solutionName: string | null
 }
 
 interface LoadedPuzzle {
@@ -36,9 +47,19 @@ interface LoadedPuzzle {
 
 type EffStatus = 'pending' | 'verifying' | 'pass' | 'fail' | 'error' | 'skipped'
 
-function effStatus(r: { status: RowStatus; parts: ScoreParts | null }): EffStatus {
+function effStatus(r: { status: RowStatus; parts: ScoreParts | null; partial: VerifyPartial | null }): EffStatus {
   if (r.status === 'done') return r.parts !== null ? 'pass' : 'fail'
+  if (r.status === 'verifying' && r.partial) {
+    if (r.partial.phase === 'passed') return 'pass'
+    if (r.partial.phase === 'failed') return 'fail'
+  }
   return r.status
+}
+
+function isRowClickable(r: { result: VerifySolutionResult | null; partial: VerifyPartial | null; status: RowStatus }): boolean {
+  if (r.result) return true
+  if (r.status === 'verifying' && r.partial && r.partial.phase !== 'verifying') return true
+  return false
 }
 
 const STATUS_LABEL: Record<EffStatus, string> = {
@@ -80,7 +101,10 @@ export default function TestPage() {
   const [customRunning, setCustomRunning] = useState(false)
   const [isPuzzleOver, setIsPuzzleOver] = useState(false)
   const [isSolOver, setIsSolOver] = useState(false)
-  const [detail, setDetail] = useState<{ result: VerifySolutionResult; puzzleName: string | null; solutionName: string | null } | null>(null)
+  const [detail, setDetail] = useState<DetailState | null>(null)
+  const [detailSource, setDetailSource] = useState<'batch' | 'custom' | null>(null)
+  const detailSourceRef = useRef(detailSource)
+  detailSourceRef.current = detailSource
   const puzzleInputRef = useRef<HTMLInputElement>(null)
   const solInputRef = useRef<HTMLInputElement>(null)
 
@@ -125,6 +149,7 @@ export default function TestPage() {
         parts: null,
         status: meta.puzzleId ? 'pending' : 'skipped',
         result: null,
+        partial: null,
       })
     }
     setRows(initial)
@@ -140,8 +165,19 @@ export default function TestPage() {
           : null
         const status: RowStatus = result.puzzleId === null ? 'skipped' : 'done'
         setRows((prev) => prev.map((r, i) => (i === index ? { ...r, parts, status, result } : r)))
+        setDetail((prev) => {
+          if (prev?.rowIndex !== index || detailSourceRef.current !== 'batch') return prev
+          return { ...prev, result, partial: prev.partial }
+        })
       },
       (done, total) => setProgress({ done, total }),
+      (index, partial) => {
+        setRows((prev) => prev.map((r, i) => (i === index ? { ...r, partial } : r)))
+        setDetail((prev) => {
+          if (prev?.rowIndex !== index || detailSourceRef.current !== 'batch') return prev
+          return { ...prev, partial }
+        })
+      },
     )
 
     setRunning(false)
@@ -206,6 +242,7 @@ export default function TestPage() {
               ? `No uploaded puzzle for ID ${meta.puzzleId}`
               : 'Could not identify puzzle from solution file',
           result: null,
+          partial: null,
         }
       }),
     )
@@ -223,20 +260,33 @@ export default function TestPage() {
           finish()
           return
         }
-        const result = await verifyInPool({
-          puzzleId: meta.puzzleId as string,
-          puzzleType: puzzle.isProduction ? 'PRODUCTION' : '',
-          solutionBytes: bytes,
-          puzzleBytes: puzzle.bytes,
-        })
+        const result = await verifyInPool(
+          {
+            puzzleId: meta.puzzleId as string,
+            puzzleType: puzzle.isProduction ? 'PRODUCTION' : '',
+            solutionBytes: bytes,
+            puzzleBytes: puzzle.bytes,
+          },
+          (partial) => {
+            setCustomRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, partial } : r)))
+            setDetail((prev) => {
+              if (prev?.rowIndex !== i || detailSourceRef.current !== 'custom') return prev
+              return { ...prev, partial }
+            })
+          },
+        )
         const parts = result.passed && result.score ? formatScoreParts(result.score, result.puzzleType ?? undefined) : null
         setCustomRows((prev) =>
           prev.map((r, idx) =>
             idx === i
-              ? { ...r, parts, status: 'done', error: result.passed ? null : result.error, result }
+              ? { ...r, parts, status: 'done', error: result.passed ? null : result.error, result, partial: r.partial ?? null }
               : r,
           ),
         )
+        setDetail((prev) => {
+          if (prev?.rowIndex !== i || detailSourceRef.current !== 'custom') return prev
+          return { ...prev, result, partial: prev.partial }
+        })
         finish()
       }),
     )
@@ -272,9 +322,6 @@ export default function TestPage() {
   const cFailedCount = customRows.filter((r) => r.status === 'error' || (r.status === 'done' && r.parts === null)).length
   const cPct = cTotal > 0 ? Math.round((cDoneCount / cTotal) * 100) : 0
   const solDisabled = puzzles.length === 0 || customRunning
-
-  const visibleRows = rows.filter((r) => r.status !== 'skipped')
-  const visibleCustomRows = customRows.filter((r) => r.status !== 'skipped')
 
   return (
     <div className="tp">
@@ -338,7 +385,7 @@ export default function TestPage() {
         </div>
       )}
 
-      {visibleRows.length > 0 && (
+      {rows.some((r) => r.status !== 'skipped') && (
         <table className="tp-batch">
           <thead>
             <tr>
@@ -350,16 +397,27 @@ export default function TestPage() {
             </tr>
           </thead>
           <tbody>
-            {visibleRows.map((r, i) => {
+            {rows.map((r, i) => {
+              if (r.status === 'skipped') return null
               const eff = effStatus(r)
+              const clickable = isRowClickable(r)
               const open = (): void => {
-                if (r.result) setDetail({ result: r.result, puzzleName: r.puzzleName, solutionName: r.solutionName })
+                if (!clickable) return
+                setDetailSource('batch')
+                setDetail({
+                  rowIndex: i,
+                  result: r.result,
+                  partial: r.partial,
+                  puzzleId: r.puzzleId,
+                  puzzleName: r.puzzleName,
+                  solutionName: r.solutionName,
+                })
               }
               return (
                 <tr
                   key={i}
-                  className={`tp-row tp-row--${r.status} ${r.result ? 'is-clickable' : ''}`}
-                  title={r.result ? 'View details' : undefined}
+                  className={`tp-row tp-row--${r.status} ${clickable ? 'is-clickable' : ''}`}
+                  title={clickable ? 'View details' : undefined}
                   onClick={open}
                 >
                   <td className="tp-cell-id">{r.puzzleId ?? ''}</td>
@@ -485,7 +543,7 @@ export default function TestPage() {
           </div>
         )}
 
-        {visibleCustomRows.length > 0 && (
+        {customRows.some((r) => r.status !== 'skipped') && (
           <table className="tp-batch">
             <thead>
               <tr>
@@ -497,16 +555,27 @@ export default function TestPage() {
               </tr>
             </thead>
             <tbody>
-              {visibleCustomRows.map((r, i) => {
+              {customRows.map((r, i) => {
+                if (r.status === 'skipped') return null
                 const eff = effStatus(r)
+                const clickable = isRowClickable(r)
                 const open = (): void => {
-                  if (r.result) setDetail({ result: r.result, puzzleName: r.puzzleName, solutionName: r.solutionName })
+                  if (!clickable) return
+                  setDetailSource('custom')
+                  setDetail({
+                    rowIndex: i,
+                    result: r.result,
+                    partial: r.partial,
+                    puzzleId: r.puzzleId,
+                    puzzleName: r.puzzleName,
+                    solutionName: r.solutionName,
+                  })
                 }
                 return (
                   <tr
                     key={i}
-                    className={`tp-row tp-row--${r.status} ${r.result ? 'is-clickable' : ''}`}
-                    title={r.result ? 'View details' : undefined}
+                    className={`tp-row tp-row--${r.status} ${clickable ? 'is-clickable' : ''}`}
+                    title={clickable ? 'View details' : undefined}
                     onClick={open}
                   >
                     <td className="tp-cell-id">{r.puzzleId ?? ''}</td>
@@ -538,6 +607,8 @@ export default function TestPage() {
       {detail && (
         <SolutionDetailModal
           result={detail.result}
+          partial={detail.partial}
+          puzzleId={detail.puzzleId}
           puzzleName={detail.puzzleName}
           solutionName={detail.solutionName}
           onClose={() => setDetail(null)}

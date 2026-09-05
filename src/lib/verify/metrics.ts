@@ -15,7 +15,12 @@ export function trackedGeometry(puzzleType?: string): { height: boolean; width: 
   return { height: t.height === true, width: t.width === true, boundingHex: t.boundingHex === true }
 }
 
-export function computeScore(v: VerifierModule, ptr: number, puzzleType?: string): VerifiedScore {
+export function computeScore(
+  v: VerifierModule,
+  ptr: number,
+  puzzleType?: string,
+  skipThroughput = false,
+): VerifiedScore {
   const tracked = trackedGeometry(puzzleType)
   const m = (name: string): number => {
     const val = v.evaluate(ptr, name)
@@ -42,8 +47,8 @@ export function computeScore(v: VerifierModule, ptr: number, puzzleType?: string
     return { level: 0, value: m('steady state area') }
   }
 
-  const rate = measureRate()
-  const aINF = measureAreaAtInfinity()
+  const rate = skipThroughput ? null : measureRate()
+  const aINF = skipThroughput ? null : measureAreaAtInfinity()
 
   const directOr = (trackedDim: boolean | undefined, name: string): number | null => {
     if (!trackedDim) return null
@@ -59,9 +64,9 @@ export function computeScore(v: VerifierModule, ptr: number, puzzleType?: string
   const height = directOr(tracked.height, 'height')
   const widthRaw = directOr(tracked.width, 'width*2')
   const boundingHex = directOr(tracked.boundingHex, 'minimum hexagon')
-  const heightINF = infOr(tracked.height, m('steady state height'))
-  const widthINF = infOr(tracked.width, m('steady state width*2') / 2)
-  const boundingHexINF = infOr(tracked.boundingHex, m('steady state minimum hexagon'))
+  const heightINF = skipThroughput ? null : infOr(tracked.height, m('steady state height'))
+  const widthINF = skipThroughput ? null : infOr(tracked.width, m('steady state width*2') / 2)
+  const boundingHexINF = skipThroughput ? null : infOr(tracked.boundingHex, m('steady state minimum hexagon'))
 
   return {
     cost: m('cost'),

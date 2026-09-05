@@ -1,4 +1,4 @@
-import type { VerifySolutionResult } from './types'
+import type { PartialListener, VerifySolutionResult } from './types'
 import { runVerification } from './run'
 import { compileVerifierModule } from './verifier'
 
@@ -9,15 +9,23 @@ export interface PoolTask {
   puzzleBytes: Uint8Array
 }
 
+type JobResolve = (r: VerifySolutionResult) => void
+interface JobCallbacks {
+  resolve: JobResolve
+  onPartial?: PartialListener
+  puzzleId: string
+  puzzleType: string
+}
+
 let workers: Worker[] = []
 let idle: Worker[] = []
-const callbacks = new Map<number, { resolve: (r: VerifySolutionResult) => void; puzzleId: string; puzzleType: string }>()
+const callbacks = new Map<number, JobCallbacks>()
 const workerCurrent = new Map<Worker, number>()
 let nextId = 0
 let initFailed = false
 let modulePromise: Promise<WebAssembly.Module> | null = null
 
-type QueuedJob = { task: PoolTask; resolve: (r: VerifySolutionResult) => void }
+type QueuedJob = { task: PoolTask; resolve: JobResolve; onPartial?: PartialListener }
 const queue: QueuedJob[] = []
 
 function workerCount(): number {
@@ -47,12 +55,16 @@ function spawnOne(): void {
       drain()
       return
     }
-    const res = data as { id: number; result: VerifySolutionResult }
-    const cb = callbacks.get(res.id)
-    if (cb) {
-      callbacks.delete(res.id)
-      cb.resolve(res.result)
+    const partial = data as { id: number; partial?: unknown }
+    const cb = callbacks.get(partial.id)
+    if (!cb) return
+    if (partial.partial && typeof partial.partial === 'object') {
+      cb.onPartial?.(partial.partial as Parameters<NonNullable<PartialListener>>[0])
+      return
     }
+    const res = data as { id: number; result: VerifySolutionResult }
+    callbacks.delete(res.id)
+    cb.resolve(res.result)
     workerCurrent.delete(w)
     idle.push(w)
     drain()
@@ -105,15 +117,15 @@ function handleWorkerError(w: Worker): void {
 function flushQueueToMainThread(): void {
   while (queue.length) {
     const job = queue.shift()!
-    runOnMainThread(job.task).then(
+    runOnMainThread(job.task, job.onPartial).then(
       (result) => job.resolve(result),
       () => job.resolve(makeErrorResult(job.task, 'worker failed')),
     )
   }
 }
 
-function runOnMainThread(task: PoolTask): Promise<VerifySolutionResult> {
-  return runVerification(task.solutionBytes, task.puzzleBytes, task.puzzleType, task.puzzleId)
+function runOnMainThread(task: PoolTask, onPartial?: PartialListener): Promise<VerifySolutionResult> {
+  return runVerification(task.solutionBytes, task.puzzleBytes, task.puzzleType, task.puzzleId, onPartial)
 }
 
 function makeErrorResult(task: PoolTask, error: string): VerifySolutionResult {
@@ -124,13 +136,13 @@ function drain(): void {
   while (queue.length && idle.length) {
     const job = queue.shift()!
     const w = idle.pop()!
-    dispatch(w, job.task, job.resolve)
+    dispatch(w, job.task, job.resolve, job.onPartial)
   }
 }
 
-function dispatch(w: Worker, task: PoolTask, resolve: (r: VerifySolutionResult) => void): void {
+function dispatch(w: Worker, task: PoolTask, resolve: JobResolve, onPartial?: PartialListener): void {
   const id = nextId++
-  callbacks.set(id, { resolve, puzzleId: task.puzzleId, puzzleType: task.puzzleType })
+  callbacks.set(id, { resolve, onPartial, puzzleId: task.puzzleId, puzzleType: task.puzzleType })
   workerCurrent.set(w, id)
   const msg = {
     id,
@@ -147,16 +159,16 @@ function dispatch(w: Worker, task: PoolTask, resolve: (r: VerifySolutionResult) 
   }
 }
 
-export function verifyInPool(task: PoolTask): Promise<VerifySolutionResult> {
+export function verifyInPool(task: PoolTask, onPartial?: PartialListener): Promise<VerifySolutionResult> {
   if (!ensurePool()) {
-    return runOnMainThread(task).catch((err) =>
+    return runOnMainThread(task, onPartial).catch((err) =>
       makeErrorResult(task, err instanceof Error ? err.message : String(err)),
     )
   }
   if (idle.length) {
     const w = idle.pop()!
-    return new Promise((resolve) => dispatch(w, task, resolve))
+    return new Promise((resolve) => dispatch(w, task, resolve, onPartial))
   }
-  return new Promise((resolve) => queue.push({ task, resolve }))
+  return new Promise((resolve) => queue.push({ task, resolve, onPartial }))
 }
 

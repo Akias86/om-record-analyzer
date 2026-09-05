@@ -1,6 +1,6 @@
 import { prefetchPuzzles } from './puzzle'
 import { verifyInPool } from './workerPool'
-import type { VerifySolutionResult } from './types'
+import type { PartialListener, VerifySolutionResult } from './types'
 
 export interface BatchInput {
   bytes: Uint8Array
@@ -20,6 +20,7 @@ export async function verifyBatch(
   inputs: BatchInput[],
   onResult?: (index: number, result: VerifySolutionResult) => void,
   onProgress?: (done: number, total: number) => void,
+  onPartial?: (index: number, partial: Parameters<NonNullable<PartialListener>>[0]) => void,
 ): Promise<VerifySolutionResult[]> {
   const results: VerifySolutionResult[] = new Array(inputs.length)
   const validIndices: number[] = []
@@ -65,7 +66,10 @@ export async function verifyBatch(
         return
       }
       const puzzleType = puzzleTypeMap.get(pid) ?? ''
-      const result = await verifyInPool({ puzzleId: pid, puzzleType, solutionBytes, puzzleBytes })
+      const result = await verifyInPool(
+        { puzzleId: pid, puzzleType, solutionBytes, puzzleBytes },
+        onPartial ? (partial) => onPartial(i, partial) : undefined,
+      )
       report(i, result)
     }),
   )
