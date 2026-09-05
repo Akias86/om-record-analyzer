@@ -437,12 +437,15 @@ export async function runVerification(
   // stops at complete); throughput (@∞) metrics are skipped.  A post-win
   // collision is carried into the analysis for display only — verdict stands.
   const score = computeScore(verifier, ptr, puzzleType || undefined, true)
+  // captured-variable note (see above): cast re-widens past the outer-flow
+  // narrowing to `null` (the only write TS sees outside emitPartial is the init).
+  const late = lateCollision as { cycle: number; reason: string } | null
   const analysis = buildAnalysis({
     steadyState: false,
     lastProductCycle,
     simulatedCycles: cycleEnd,
-    collisionCycle: lateCollision ? lateCollision.cycle : null,
-    collisionReason: lateCollision ? lateCollision.reason : null,
+    collisionCycle: late?.cycle ?? null,
+    collisionReason: late?.reason ?? null,
   })
   destroy()
   return { puzzleId, puzzleType: puzzleType || null, passed: true, score, error: null, analysis }
