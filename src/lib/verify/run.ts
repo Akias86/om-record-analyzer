@@ -11,9 +11,15 @@ import type {
   VictoryPartial,
 } from './types'
 
-const CYCLE_LIMIT = 1_000_000
+const CYCLE_LIMIT = 150000
 const COLLISION_CHECK_LIMIT = 0n
-const SLICE_CYCLES = 10_000
+// Per-cycle collision detection costs ~5x simulation time (A/B benchmarked on
+// community solutions via scripts/bench-collision.mjs).  False keeps the sim
+// ~5x faster but collision solutions may pass instead of failing (and can
+// drive the C sim into states it asserts on).  While true,
+// COLLISION_CHECK_LIMIT throttles the check frequency (0n = every cycle).
+const COLLISION_DETECTION = true
+const SLICE_CYCLES = 1000
 const PARTIAL_INTERVAL_MS = 500
 // The post-completion convergence chase after the @V verdict is streamed is NOT
 // time-boxed: only @∞ (rate/steady-state) can be hidden by waiting, so the loop
@@ -183,7 +189,8 @@ export async function runVerification(
   }
 
   verifier.setCycleLimit(ptr, CYCLE_LIMIT)
-  verifier.setCollisionCheckLimit(ptr, COLLISION_CHECK_LIMIT)
+  verifier.setCollisionDetection(ptr, COLLISION_DETECTION)
+  if (COLLISION_DETECTION) verifier.setCollisionCheckLimit(ptr, COLLISION_CHECK_LIMIT)
 
   let lastEmitAt = 0
   let phase: VerifyPartial['phase'] = 'verifying'
@@ -277,7 +284,7 @@ export async function runVerification(
   // background wait with nothing hidden behind it.  A collision on a board
   // that already completed is post-win noise: informational only, see the
   // lateCollision handling below.
-  for (;;) {
+  for (; ;) {
     verifier.advance(ptr, SLICE_CYCLES)
     const err = verifier.error(ptr)
     const converged = verifier.converged(ptr)

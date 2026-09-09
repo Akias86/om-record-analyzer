@@ -15,6 +15,7 @@ interface VerifierExports {
   verifier_output_intervals_repeat_after: (v: number) => number
   verifier_set_cycle_limit: (v: number, limit: number) => void
   verifier_set_collision_check_limit: (v: number, limit: bigint) => void
+  verifier_set_collision_detection: (v: number, on: number) => void
   verifier_advance: (v: number, cycles: number) => void
   verifier_current_cycle: (v: number) => number
   verifier_completed: (v: number) => number
@@ -46,6 +47,7 @@ export interface VerifierModule {
   outputIntervals(v: number): OutputIntervals
   setCycleLimit(v: number, limit: number): void
   setCollisionCheckLimit(v: number, limit: bigint): void
+  setCollisionDetection(v: number, on: boolean): void
   advance(v: number, cycles: number): void
   currentCycle(v: number): number
   completed(v: number): boolean
@@ -142,6 +144,9 @@ async function init(module?: WebAssembly.Module): Promise<VerifierModule> {
     },
     setCollisionCheckLimit(v, limit) {
       e.verifier_set_collision_check_limit(v, limit)
+    },
+    setCollisionDetection(v, on) {
+      e.verifier_set_collision_detection(v, on ? 1 : 0)
     },
     advance(v, cycles) {
       e.verifier_advance(v, cycles)
