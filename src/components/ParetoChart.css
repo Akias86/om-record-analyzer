@@ -270,12 +270,113 @@
   color: var(--text-h);
 }
 
+.gif-viewer-body {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 320px;
+  min-height: 200px;
+}
+
 .gif-viewer-img {
   display: block;
   min-height: 0;
   max-width: 100%;
-  max-height: calc(90vh - 40px);
+  max-height: calc(90vh - 90px);
   object-fit: contain;
+  transition: opacity 0.25s ease;
+}
+
+.gif-viewer-img--pending {
+  opacity: 0;
+}
+
+.gif-viewer-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.gif-viewer-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: gif-viewer-spin 0.8s linear infinite;
+}
+
+@keyframes gif-viewer-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gif-viewer-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger, #e74c3c);
+  font-size: 13px;
+}
+
+.gif-viewer-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.gif-viewer-btn {
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-h);
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 4px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.gif-viewer-btn:hover:not(:disabled) {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+}
+
+.gif-viewer-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.gif-viewer-action-error {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--danger, #e74c3c);
+  font-size: 12px;
+}
+
+.gif-viewer-action-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  opacity: 0.75;
+  font-size: 12px;
 }
 
 .pareto-chart-tooltip-user {

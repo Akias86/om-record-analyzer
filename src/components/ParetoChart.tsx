@@ -44,7 +44,13 @@ interface ParetoChartProps {
 
 export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForPuzzle }: ParetoChartProps) {
   const s = useParetoChartState({ puzzleId, userRecords, refreshFrontierForPuzzle })
-  const [gifViewer, setGifViewer] = useState<{ url: string; title: string } | null>(null)
+  const [gifViewer, setGifViewer] = useState<{
+    url: string
+    title: string
+    solution: string | null
+    puzzleId: string | null
+    puzzleName: string | null
+  } | null>(null)
   const [selectedPoint, setSelectedPoint] = useState<{ x: number; y: number } | null>(null)
   const [chartKey, setChartKey] = useState(0)
   const [hoveredUserRecordId, setHoveredUserRecordId] = useState<string | null>(null)
@@ -52,7 +58,16 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
     () => (hoveredUserRecordId ? new Set([`user-${hoveredUserRecordId}`]) : null),
     [hoveredUserRecordId],
   )
-  const showGif = useCallback((url: string, title: string) => setGifViewer({ url, title }), [])
+  const showGif = useCallback((p: ParetoPoint) => {
+    if (!p.gif) return
+    setGifViewer({
+      url: p.gif,
+      title: p.score || `${p.x} / ${p.y}`,
+      solution: p.solution ?? null,
+      puzzleId: p.puzzleId ?? null,
+      puzzleName: p.puzzleName ?? null,
+    })
+  }, [])
   const closeOverlays = useCallback(() => {
     setGifViewer(null)
     setSelectedPoint(null)
@@ -74,12 +89,12 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
       if (leaderboard.length === 0) return
       const single = leaderboard.length === 1 ? leaderboard[0] : null
       if (single && single.gif) {
-        setGifViewer({ url: single.gif, title: single.score || `${p.x} / ${p.y}` })
+        showGif(single)
         return
       }
       setSelectedPoint({ x: p.x, y: p.y })
     },
-    [s.pointMap],
+    [s.pointMap, showGif],
   )
 
   if (s.loading) {
@@ -260,7 +275,16 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
           onSelectGif={showGif}
         />
       )}
-      {gifViewer && <GifViewer url={gifViewer.url} title={gifViewer.title} onClose={closeGif} />}
+      {gifViewer && (
+        <GifViewer
+          url={gifViewer.url}
+          title={gifViewer.title}
+          solutionUrl={gifViewer.solution}
+          puzzleId={gifViewer.puzzleId}
+          puzzleName={gifViewer.puzzleName}
+          onClose={closeGif}
+        />
+      )}
     </div>
   )
 }

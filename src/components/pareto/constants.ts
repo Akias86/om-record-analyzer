@@ -10,6 +10,9 @@ export interface ParetoPoint {
   overlap: boolean
   trackless: boolean
   gif?: string | null
+  solution?: string | null
+  puzzleId?: string | null
+  puzzleName?: string | null
   isUser?: boolean
   name?: string | null
   fullScore?: string

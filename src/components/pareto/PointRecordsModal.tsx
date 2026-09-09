@@ -8,7 +8,7 @@ interface PointRecordsModalProps {
   y: number
   records: ParetoPoint[]
   onClose: () => void
-  onSelectGif: (url: string, title: string) => void
+  onSelectGif: (point: ParetoPoint) => void
 }
 
 export function PointRecordsModal({ x, y, records, onClose, onSelectGif }: PointRecordsModalProps) {
@@ -33,7 +33,7 @@ export function PointRecordsModal({ x, y, records, onClose, onSelectGif }: Point
                     type="button"
                     className="point-records-score point-records-score--link"
                     title="Click to view replay GIF"
-                    onClick={() => onSelectGif(gif, label)}
+                    onClick={() => onSelectGif(p)}
                   >
                     {label}
                   </button>
