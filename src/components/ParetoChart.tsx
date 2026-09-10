@@ -62,7 +62,7 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
     if (!p.gif) return
     setGifViewer({
       url: p.gif,
-      title: p.score || `${p.x} / ${p.y}`,
+      title: p.fullScore || p.score || `${p.x} / ${p.y}`,
       solution: p.solution ?? null,
       puzzleId: p.puzzleId ?? null,
       puzzleName: p.puzzleName ?? null,

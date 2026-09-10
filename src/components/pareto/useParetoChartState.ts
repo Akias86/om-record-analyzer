@@ -253,7 +253,7 @@ export function useParetoChartState({
         }
       }
       if (skip) return
-      points.push({ x, y, id: r.id ?? `${x}-${y}`, score: r.smartFormattedScore, categories: r.smartFormattedCategories, recordIndex: i, overlap: !!r.score.overlap, trackless: !!r.score.trackless, gif: r.gif, solution: r.solution, puzzleId: r.puzzle.id, puzzleName: r.puzzle.displayName })
+      points.push({ x, y, id: r.id ?? `${x}-${y}`, score: r.smartFormattedScore, fullScore: r.fullFormattedScore, categories: r.smartFormattedCategories, recordIndex: i, overlap: !!r.score.overlap, trackless: !!r.score.trackless, gif: r.gif, solution: r.solution, puzzleId: r.puzzle.id, puzzleName: r.puzzle.displayName })
     })
     return points
   }, [records, xMetric, yMetric, boolFilters, manifold, frontierRecordIndices])

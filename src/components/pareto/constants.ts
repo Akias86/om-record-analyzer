@@ -15,7 +15,7 @@ export interface ParetoPoint {
   puzzleName?: string | null
   isUser?: boolean
   name?: string | null
-  fullScore?: string
+  fullScore?: string | null
   green?: boolean
 }
 
