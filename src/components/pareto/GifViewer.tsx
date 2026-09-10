@@ -20,13 +20,6 @@ type ActionPending = 'download' | 'preview' | null
 const REPLAY_VIEWER_URL = 'https://ssk97.github.io/display/demo.html'
 const REPLAY_HANDSHAKE_TIMEOUT_MS = 20000
 
-// Puzzles omclone fails to parse ("bond2 to nonatom position"); its loader
-// accepts the bytes but shows "World Not Loaded" with the file inputs still
-// visible, and zlbb's own preview fails identically. Verified empirically —
-// sibling Journal CVIII Issue IX polymer puzzles (P295, P299) load fine, so
-// this is data-specific, not a puzzle-type rule. Extend as more are found.
-const REPLAY_UNSUPPORTED_PUZZLE_IDS = new Set(['P296', 'P297', 'P298'])
-
 function solutionFilename(puzzleName: string | null, title: string): string {
   const base = `${puzzleName ?? 'solution'}-${title}`.replace(/[^a-zA-Z0-9.()-]+/g, '_')
   return `${base}.solution`
@@ -70,8 +63,6 @@ export function GifViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClo
   const mediaClassName =
     status === 'loaded' ? 'gif-viewer-img' : 'gif-viewer-img gif-viewer-img--pending'
 
-  const replayUnsupported = puzzleId !== null && REPLAY_UNSUPPORTED_PUZZLE_IDS.has(puzzleId)
-
   // The zlbb short link 301-redirects to the raw .solution file on
   // raw.githubusercontent.com; both hops send `Access-Control-Allow-Origin: *`
   // so a plain fetch works from any origin.
@@ -96,7 +87,7 @@ export function GifViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClo
   }
 
   const openReplay = async () => {
-    if (!solutionUrl || !puzzleId || pending || replayUnsupported) return
+    if (!solutionUrl || !puzzleId || pending) return
     setActionError(null)
     const child = window.open(REPLAY_VIEWER_URL, '_blank')
     if (!child) {
@@ -188,18 +179,11 @@ export function GifViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClo
               type="button"
               className="gif-viewer-btn"
               onClick={openReplay}
-              disabled={pending !== null || replayUnsupported}
-              title={
-                replayUnsupported
-                  ? 'The omclone replay viewer cannot parse this puzzle'
-                  : 'Open the solution replay in the omclone viewer'
-              }
+              disabled={pending !== null}
+              title="Open the solution replay in the omclone viewer"
             >
               {pending === 'preview' ? 'Loading viewer...' : 'Preview'}
             </button>
-            {replayUnsupported && (
-              <span className="gif-viewer-action-note">Not supported by the replay viewer</span>
-            )}
             {actionError && <span className="gif-viewer-action-error">{actionError}</span>}
           </div>
         )}

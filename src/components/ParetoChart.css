@@ -369,16 +369,6 @@
   font-size: 12px;
 }
 
-.gif-viewer-action-note {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text);
-  opacity: 0.75;
-  font-size: 12px;
-}
-
 .pareto-chart-tooltip-user {
   border-top: 1px dashed var(--border);
   margin-top: 4px;
