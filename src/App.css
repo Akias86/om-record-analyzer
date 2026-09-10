@@ -29,9 +29,28 @@
 
 .app-placeholder {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 16px;
   height: 100%;
   color: var(--text);
   font-size: 16px;
+}
+
+.app-placeholder-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-decoration: none;
+}
+
+.app-placeholder-btn:hover {
+  background: var(--accent);
+  color: #fff;
 }

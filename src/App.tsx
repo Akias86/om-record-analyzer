@@ -95,7 +95,8 @@ function MainApp({ puzzleId, onSelectPuzzle }: { puzzleId: string | null; onSele
           </div>
         ) : (
           <div className="app-placeholder">
-            Select a puzzle from the sidebar
+            <span>Select a puzzle from the sidebar</span>
+            <a className="app-placeholder-btn" href="#/validator">Open Solution Validator</a>
           </div>
         )}
       </main>
