@@ -10,7 +10,7 @@ interface GifViewerProps {
   onClose: () => void
 }
 
-type MediaStatus = 'loading' | 'loaded' | 'error'
+type MediaStatus = 'loading' | 'streaming' | 'loaded' | 'error'
 type ActionPending = 'download' | 'preview' | null
 
 // Replay viewer (omclone wasm) opened in a popup. Per its demo.html
@@ -35,6 +35,7 @@ async function fetchBytes(url: string, notFoundMessage: string): Promise<ArrayBu
 
 export function GifViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose }: GifViewerProps) {
   const backdropRef = useRef<HTMLDivElement>(null)
+  const imgRef = useRef<HTMLImageElement | null>(null)
   useEscapeKey(backdropRef, onClose)
   const isVideo = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url)
   const [status, setStatus] = useState<MediaStatus>('loading')
@@ -50,6 +51,23 @@ export function GifViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClo
     setPending(null)
   }, [solutionUrl])
 
+  // Browsers stream-decode GIFs: frames animate as bytes arrive, and the
+  // dimensions are known from the header long before onLoad (full file).
+  // Reveal the image on first decoded data so slow GIFs play while loading.
+  // The img is keyed by url so a record switch remounts it — a reused element
+  // would keep the previous image's naturalWidth and reveal immediately.
+  useEffect(() => {
+    if (isVideo) return
+    const timer = setInterval(() => {
+      const node = imgRef.current
+      if (node && node.naturalWidth > 0) {
+        clearInterval(timer)
+        setStatus((s) => (s === 'loading' ? 'streaming' : s))
+      }
+    }, 100)
+    return () => clearInterval(timer)
+  }, [isVideo, url])
+
   // Cached media can finish before React attaches onLoad/onLoadedData.
   const attachMediaRef = (node: HTMLImageElement | HTMLVideoElement | null) => {
     if (!node) return
@@ -60,8 +78,8 @@ export function GifViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClo
     }
   }
 
-  const mediaClassName =
-    status === 'loaded' ? 'gif-viewer-img' : 'gif-viewer-img gif-viewer-img--pending'
+  const mediaVisible = status === 'streaming' || status === 'loaded'
+  const mediaClassName = mediaVisible ? 'gif-viewer-img' : 'gif-viewer-img gif-viewer-img--pending'
 
   // The zlbb short link 301-redirects to the raw .solution file on
   // raw.githubusercontent.com; both hops send `Access-Control-Allow-Origin: *`
@@ -156,7 +174,11 @@ export function GifViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClo
             />
           ) : (
             <img
-              ref={attachMediaRef}
+              key={url}
+              ref={(node) => {
+                imgRef.current = node
+                attachMediaRef(node)
+              }}
               className={mediaClassName}
               src={url}
               alt={title}
