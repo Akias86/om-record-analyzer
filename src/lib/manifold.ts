@@ -30,7 +30,7 @@ const FREESPACE: OmType[] = ['NORMAL', 'POLYMER_HEIGHT', 'POLYMER_WIDTH', 'POLYM
 
 const MANIFOLDS: Manifold[] = [
   { id: 'VICTORY_AREA', label: '@aV', supportedTypes: FREESPACE, scoreParts: ['overlap', 'cost', 'cycles', 'area', 'looping', 'instructions', 'trackless'] },
-  { id: 'VICTORY_PROD', label: '@iV', supportedTypes: ['PRODUCTION'], scoreParts: ['overlap', 'cost', 'instructions', 'looping', 'area', 'trackless'] },
+  { id: 'VICTORY_PROD', label: '@iV', supportedTypes: ['PRODUCTION'], scoreParts: ['overlap', 'cost', 'cycles', 'instructions', 'looping', 'area', 'trackless'] },
   { id: 'VICTORY_HEIGHT', label: '@hV', supportedTypes: ['NORMAL', 'POLYMER_HEIGHT'], scoreParts: ['overlap', 'cost', 'cycles', 'height', 'looping', 'instructions', 'trackless'] },
   { id: 'VICTORY_WIDTH', label: '@wV', supportedTypes: ['NORMAL', 'POLYMER_WIDTH'], scoreParts: ['overlap', 'cost', 'cycles', 'width', 'looping', 'instructions', 'trackless'] },
   { id: 'VICTORY_BHEX', label: '@bV', supportedTypes: ['NORMAL'], scoreParts: ['overlap', 'cost', 'cycles', 'boundingHex', 'looping', 'instructions', 'trackless'] },
