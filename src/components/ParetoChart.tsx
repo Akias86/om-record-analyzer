@@ -10,8 +10,6 @@ import {
 } from 'recharts'
 import { BOOL_SCORE_KEYS } from '../types'
 import { supportsScore } from '../lib/manifold'
-import type { UserSolutionRecord } from '../state/userSolutions'
-import type { OmRecordDTO } from '../types'
 import type { ParetoPoint } from './pareto/constants'
 import './ParetoChart.css'
 import { MARGIN } from './pareto/constants'
@@ -35,15 +33,15 @@ import { ParetoOverlay } from './pareto/ParetoOverlay'
 import { ResetZoomButton } from './pareto/ResetZoomButton'
 import { ZoomHandler } from './pareto/ZoomHandler'
 import { CLASS_ORDER, useParetoChartState } from './pareto/useParetoChartState'
+import type { PuzzleRecordsData } from '../state/usePuzzleRecords'
 
 interface ParetoChartProps {
   puzzleId: string
-  userRecords: UserSolutionRecord[]
-  refreshFrontierForPuzzle: (puzzleId: string, leaderboard: OmRecordDTO[]) => void
+  shared: PuzzleRecordsData
 }
 
-export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForPuzzle }: ParetoChartProps) {
-  const s = useParetoChartState({ puzzleId, userRecords, refreshFrontierForPuzzle })
+export default function ParetoChart({ puzzleId, shared }: ParetoChartProps) {
+  const s = useParetoChartState({ puzzleId, shared })
   const [gifViewer, setGifViewer] = useState<{
     url: string
     title: string
@@ -103,6 +101,10 @@ export default function ParetoChart({ puzzleId, userRecords, refreshFrontierForP
 
   if (s.error) {
     return <div className="pareto-chart-container"><div className="pareto-chart-error">Error: {s.error}</div></div>
+  }
+
+  if (!shared.recordsReady) {
+    return <div className="pareto-chart-container"><div className="pareto-chart-loading">Loading records...</div></div>
   }
 
   const ready = s.xMetric !== '' && s.yMetric !== ''

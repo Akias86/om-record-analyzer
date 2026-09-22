@@ -1,33 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { fetchRecords, fetchMetrics } from '../../api/om'
-import type { OmRecordDTO, OmMetricDTO, OmScoreDTO, NumericScoreKey, BoolFilter } from '../../types'
+import type { NumericScoreKey, BoolFilter, OmScoreDTO } from '../../types'
 import { NUMERIC_SCORE_KEYS, BOOL_SCORE_KEYS, METRIC_LABELS } from '../../types'
+import type { UserSolutionRecord } from '../../state/userSolutions'
 import {
   getManifold,
   manifoldsForType,
   computeFrontierIndices,
   supportsScore,
   type Manifold,
-  type OmType,
   type MetricId,
 } from '../../lib/manifold'
-import { computeUserFrontierByManifold } from '../../lib/userFrontier'
-import type { UserSolutionRecord } from '../../state/userSolutions'
+import { getMetricValue } from '../../lib/metrics'
 import { loadSetting, saveSetting } from '../../lib/settings'
+import type { PuzzleRecordsData } from '../../state/usePuzzleRecords'
 import {
   CLASS_ORDER,
   type ParetoPoint,
   type PointClass,
   type ZoomDomain,
 } from './constants'
-import { classifyPoint, computeParetoFrontier, getMetricValue } from './points'
+import { classifyPoint, computeParetoFrontier } from './points'
 import { generateLogTicks, generateTicks, niceLinearDomain, niceLogDomain } from './ticks'
 
 interface ParetoChartState {
   loading: boolean
   error: string | null
-  metricLabels: Map<string, string>
 
   manifoldId: string
   setManifoldIdFromEvent: (e: ChangeEvent<HTMLSelectElement>) => void
@@ -47,7 +45,6 @@ interface ParetoChartState {
   setBoolFilter: (key: string, value: string) => void
 
   availableManifolds: Manifold[]
-  availableMetrics: NumericScoreKey[]
   metricOptions: { key: NumericScoreKey; label: string }[]
   manifold: Manifold | undefined
 
@@ -55,8 +52,6 @@ interface ParetoChartState {
   userFrontierByManifold: Map<string, Set<string>>
   allPoints: ParetoPoint[]
   boundaryPoints: ParetoPoint[]
-  paretoPoints: ParetoPoint[]
-  nonParetoPoints: ParetoPoint[]
   userPoints: ParetoPoint[]
   userGreenPoints: ParetoPoint[]
   userRedPoints: ParetoPoint[]
@@ -70,7 +65,6 @@ interface ParetoChartState {
   xTicks: number[] | undefined
   yTicks: number[] | undefined
   isZoomed: boolean
-  zoomDomain: ZoomDomain | null
   handleZoom: (d: ZoomDomain) => void
   resetZoom: () => void
 
@@ -79,27 +73,14 @@ interface ParetoChartState {
 
 interface ParetoChartStateArgs {
   puzzleId: string
-  userRecords: UserSolutionRecord[]
-  refreshFrontierForPuzzle: (puzzleId: string, leaderboard: OmRecordDTO[]) => void
+  shared: PuzzleRecordsData
 }
 
 export function useParetoChartState({
   puzzleId,
-  userRecords,
-  refreshFrontierForPuzzle,
+  shared,
 }: ParetoChartStateArgs): ParetoChartState {
-  const [records, setRecords] = useState<OmRecordDTO[]>([])
-  // Which puzzle the `records` state belongs to. Stays `null` until the
-  // first successful fetch lands, and is updated together with `records`.
-  // Used to guard the frontier-refresh effect so navigating from puzzle A
-  // to B doesn't momentarily recompute B's slice against A's stale records
-  // (which are still in state until B's fetch resolves) — that race caused
-  // the sidebar list to flicker (records wrongly appearing/disappearing)
-  // before the correct data arrived.
-  const [recordsPuzzleId, setRecordsPuzzleId] = useState<string | null>(null)
-  const [metrics, setMetrics] = useState<OmMetricDTO[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { records, metrics, loading, error, puzzleType, puzzleUserRecords, userFrontierByManifold } = shared
   const [xMetric, setXMetric] = useState<NumericScoreKey | ''>(() =>
     loadSetting('om-chart:xMetric', '') as NumericScoreKey | '')
   const [yMetric, setYMetric] = useState<NumericScoreKey | ''>(() =>
@@ -118,60 +99,7 @@ export function useParetoChartState({
   const [zoomDomain, setZoomDomain] = useState<ZoomDomain | null>(null)
   const [manifoldId, setManifoldId] = useState<string>(() => loadSetting('om-chart:manifold', ''))
 
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    Promise.all([fetchRecords(puzzleId, { useCache: false }), fetchMetrics()])
-      .then(([recs, mets]) => {
-        if (cancelled) return
-        setRecords(recs)
-        setRecordsPuzzleId(puzzleId)
-        setMetrics(mets)
-        setLoading(false)
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setError(String(err))
-        setLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [puzzleId])
-
-  // The chart fetches the leaderboard with `useCache: false` (bypass), so
-  // it has the freshest data. Feed it back to the context so the sidebar
-  // frontier list reflects this puzzle's frontier computed against the
-  // latest leaderboard rather than the cached snapshot from upload time.
-  // The `recordsPuzzleId === puzzleId` guard is essential: without it,
-  // navigating from A to B recomputes B's slice against A's records (still
-  // in state until B's fetch resolves), corrupting the sidebar list.
-  useEffect(() => {
-    if (records.length === 0) return
-    if (recordsPuzzleId !== puzzleId) return
-    refreshFrontierForPuzzle(puzzleId, records)
-  }, [puzzleId, records, recordsPuzzleId, refreshFrontierForPuzzle])
-
-  const puzzleType = useMemo<OmType | null>(() => {
-    const t = records[0]?.puzzle.type
-    return t === 'NORMAL' || t === 'POLYMER_HEIGHT' || t === 'POLYMER_WIDTH' || t === 'POLYMER_SKEW' || t === 'PRODUCTION' ? t : null
-  }, [records])
-
   const availableManifolds = useMemo(() => (puzzleType ? manifoldsForType(puzzleType) : []), [puzzleType])
-
-  const puzzleUserRecords = useMemo(
-    () => (puzzleType ? userRecords.filter((r) => r.puzzleType === puzzleType) : []),
-    [userRecords, puzzleType],
-  )
-
-  const userFrontierByManifold = useMemo<Map<string, Set<string>>>(() => {
-    if (!puzzleType || puzzleUserRecords.length === 0) return new Map()
-    const leaderboardScores: OmScoreDTO[] = []
-    for (const r of records) {
-      if (r.score !== null) leaderboardScores.push(r.score)
-    }
-    const userItems = puzzleUserRecords.map((r) => ({ id: r.id, puzzleId: r.puzzleId, score: r.score }))
-    return computeUserFrontierByManifold(puzzleType, leaderboardScores, userItems)
-  }, [puzzleType, puzzleUserRecords, records])
 
   const anyManifoldGreen = useMemo<Set<string>>(() => {
     const set = new Set<string>()
@@ -446,7 +374,6 @@ export function useParetoChartState({
   return {
     loading,
     error,
-    metricLabels,
     manifoldId,
     setManifoldIdFromEvent,
     selectManifold,
@@ -461,15 +388,12 @@ export function useParetoChartState({
     boolFilters,
     setBoolFilter,
     availableManifolds,
-    availableMetrics,
     metricOptions,
     manifold,
     puzzleUserRecords,
     userFrontierByManifold,
     allPoints,
     boundaryPoints,
-    paretoPoints,
-    nonParetoPoints,
     userPoints,
     userGreenPoints,
     userRedPoints,
@@ -482,7 +406,6 @@ export function useParetoChartState({
     xTicks,
     yTicks,
     isZoomed,
-    zoomDomain,
     handleZoom,
     resetZoom,
     getLabel,

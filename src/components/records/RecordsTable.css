@@ -1,0 +1,284 @@
+.records-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.records-table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.records-table-modes {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--sidebar-bg);
+}
+
+.records-table-mode-btn {
+  padding: 3px 12px;
+  font-size: 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.records-table-mode-btn:hover {
+  color: var(--text-h);
+}
+
+.records-table-mode-btn.active {
+  background: var(--bg);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.records-table-sort {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.75;
+}
+
+.records-table-count {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.records-table-wrap {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* Fixed layout: column widths come only from the header row, so every
+   metric column is exactly the specified width — auto layout's excess
+   distribution made them differ by a couple of pixels. */
+.records-table-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12.5px;
+}
+
+.records-table-th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--sidebar-bg);
+  color: var(--text-h);
+  font-weight: 600;
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  user-select: none;
+  /* Fixed line box: the ∞ glyph falls back to a font with taller metrics,
+     which otherwise made the @∞ header a pixel taller than @V. */
+  line-height: 18px;
+}
+
+.records-table-th-rank {
+  width: 56px;
+}
+
+.records-table-th-cat {
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Rows with a replay gif open it on click anywhere in the row. */
+.records-table-row-clickable {
+  cursor: pointer;
+}
+
+/* Equal fixed width on every metric column: values rarely exceed eight
+   digits, and a rare wider one just overflows slightly. */
+.records-table-th-metric {
+  width: 80px;
+  cursor: grab;
+  text-align: center;
+}
+
+.records-table-th-metric:active {
+  cursor: grabbing;
+}
+
+/* The tint is layered over the header's opaque background instead of
+   replacing it: accent-bg is semi-transparent, and a sticky header with a
+   translucent background lets scrolled rows show through. */
+.records-table-th-metric.is-drop-target {
+  background-image: linear-gradient(var(--accent-bg), var(--accent-bg));
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.records-table-letter {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* Relatively positioned instead of <sup> so the raised glyph never grows
+   the line box — that kept the @∞ header taller than the @V one. */
+.records-table-inf {
+  font-size: 9px;
+  position: relative;
+  top: -0.35em;
+  margin-left: 1px;
+}
+
+/* Straddles the boundary between this column and the previous one: the
+   letter stays centered while the arrow marks the chain link exactly
+   between the two letters. It lives in the LATER <th> of each pair so it
+   paints above the previous sticky header's background (equal z-index
+   siblings paint in DOM order). */
+.records-table-chain-arrow {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.records-table-th-flag {
+  width: 44px;
+  text-align: center;
+  cursor: pointer;
+}
+
+/* Layered tint, same reason as .is-drop-target above. */
+.records-table-th-flag:hover {
+  background-image: linear-gradient(var(--accent-bg), var(--accent-bg));
+}
+
+.records-table-flag-glyph {
+  margin-left: 3px;
+  font-size: 9px;
+  opacity: 0.55;
+}
+
+.records-table-th-flag.is-active {
+  color: var(--accent);
+}
+
+.records-table-th-flag.is-active .records-table-flag-glyph {
+  opacity: 1;
+}
+
+.records-table-flag-overlap {
+  border-left: 1px solid var(--border);
+}
+
+.records-table-row:nth-child(even) .records-table-td {
+  background: var(--sidebar-bg);
+}
+
+.records-table-row:hover .records-table-td {
+  background: var(--accent-bg);
+}
+
+.records-table-row-user .records-table-td-rank {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.records-table-td {
+  padding: 5px 10px;
+  /* Minimum content height keeps rows with a replay button the same height
+     as rows without one. */
+  height: 22px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.records-table-row:last-child .records-table-td {
+  border-bottom: none;
+}
+
+.records-table-td-rank {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.65;
+  /* Fixed layout keeps this column narrow; user solution names ellipsize
+     instead of overflowing into the metric columns. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.records-table-td-num {
+  overflow: hidden;
+  text-align: center;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.records-table-td-flag {
+  text-align: center;
+  min-width: 30px;
+}
+
+.records-table-td-cat {
+  border-left: 1px solid var(--border);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.records-table-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.records-table-user-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.records-table-user-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.records-table-flag-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.records-table-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--text);
+  opacity: 0.6;
+}

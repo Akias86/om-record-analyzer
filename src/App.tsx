@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Sidebar from './components/Sidebar'
 import ParetoChart from './components/ParetoChart'
+import RecordsTable from './components/records/RecordsTable'
 import TestPage from './test/TestPage'
 import { fetchPuzzleDetail } from './api/om'
 import type { OmPuzzleDetail } from './api/om'
-import { UserSolutionsProvider, useUserSolutions } from './state/userSolutions'
+import { UserSolutionsProvider } from './state/userSolutions'
+import { usePuzzleRecords } from './state/usePuzzleRecords'
 import './App.css'
 
 interface Route {
@@ -46,11 +48,20 @@ function App() {
   )
 }
 
+type MainView = 'table' | 'chart'
+
 function MainApp({ puzzleId, onSelectPuzzle }: { puzzleId: string | null; onSelectPuzzle: (id: string | null) => void }) {
   const [detail, setDetail] = useState<OmPuzzleDetail | null>(null)
   const [expandCollectionId, setExpandCollectionId] = useState<string | null>(null)
   const [expandGroupId, setExpandGroupId] = useState<string | null>(null)
-  const { records: userRecords, refreshFrontierForPuzzle } = useUserSolutions()
+  // Selecting a puzzle always lands on the records table; the chart is one
+  // tab away. The shared fetch lives here so switching tabs doesn't refetch.
+  const [view, setView] = useState<MainView>('table')
+  const shared = usePuzzleRecords(puzzleId)
+
+  useEffect(() => {
+    setView('table')
+  }, [puzzleId])
 
   useEffect(() => {
     if (!puzzleId) {
@@ -74,11 +85,6 @@ function MainApp({ puzzleId, onSelectPuzzle }: { puzzleId: string | null; onSele
 
   const title = detail?.displayName ?? puzzleId
 
-  const puzzleUserRecords = useMemo(
-    () => (puzzleId ? userRecords.filter((r) => r.puzzleId === puzzleId) : []),
-    [userRecords, puzzleId],
-  )
-
   return (
     <div className="app-layout">
       <Sidebar
@@ -91,7 +97,23 @@ function MainApp({ puzzleId, onSelectPuzzle }: { puzzleId: string | null; onSele
         {puzzleId ? (
           <div className="app-content">
             <h1>{title}</h1>
-            <ParetoChart puzzleId={puzzleId} userRecords={puzzleUserRecords} refreshFrontierForPuzzle={refreshFrontierForPuzzle} />
+            <div className="app-tabs">
+              <button
+                type="button"
+                className={`app-tab ${view === 'table' ? 'active' : ''}`}
+                onClick={() => setView('table')}
+              >Records</button>
+              <button
+                type="button"
+                className={`app-tab ${view === 'chart' ? 'active' : ''}`}
+                onClick={() => setView('chart')}
+              >Pareto Chart</button>
+            </div>
+            {view === 'table' ? (
+              <RecordsTable puzzleId={puzzleId} puzzleName={detail?.displayName ?? puzzleId} shared={shared} />
+            ) : (
+              <ParetoChart puzzleId={puzzleId} shared={shared} />
+            )}
           </div>
         ) : (
           <div className="app-placeholder">
