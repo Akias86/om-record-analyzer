@@ -215,22 +215,3 @@ export async function summarizeUserFrontierPuzzles(
 
   return result
 }
-
-export async function summarizeUserFrontier(
-  userItems: ScoredUserItem[],
-  onProgress?: (info: FrontierProgressInfo) => void,
-): Promise<UserFrontierSummary> {
-  const allPuzzleIds = new Set(userItems.map((u) => u.puzzleId))
-  const byPuzzle = await summarizeUserFrontierPuzzles(userItems, allPuzzleIds, onProgress)
-
-  const greenIds = new Set<string>()
-  const records: FrontierRecordDetail[] = []
-  for (const details of byPuzzle.values()) {
-    for (const d of details) {
-      greenIds.add(d.id)
-      records.push(d)
-    }
-  }
-
-  return { greenCount: greenIds.size, records: sortDetails(records) }
-}

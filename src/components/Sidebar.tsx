@@ -70,8 +70,13 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
     if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [selectedPuzzleId, expandedGroups])
 
+  const prevGreenCountRef = useRef(0)
   useEffect(() => {
-    if (frontierSummary && frontierSummary.greenCount > 0) setFrontierExpanded(true)
+    const greenCount = frontierSummary?.greenCount ?? 0
+    // Auto-expand only when greens first appear; incremental merges during
+    // an upload must not re-expand a list the user collapsed manually.
+    if (greenCount > 0 && prevGreenCountRef.current === 0) setFrontierExpanded(true)
+    prevGreenCountRef.current = greenCount
   }, [frontierSummary])
 
   const toggleCollection = useCallback((collectionId: string) => {
@@ -226,18 +231,20 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
         >
           {uploading ? `Verifying ${progress?.done ?? 0}/${progress?.total ?? 0}` : 'Upload .solution files'}
         </button>
-        {!uploading && records.length > 0 && (
+        {records.length > 0 && (
           <div className="sidebar-upload-info">
             <span>
-              Loaded {records.length}{duplicated > 0 ? ` (dup ${duplicated})` : ''}{skipped > 0 ? ` (skipped ${skipped})` : ''}
+              Loaded {records.length}
+              {!uploading && duplicated > 0 ? ` (dup ${duplicated})` : ''}
+              {!uploading && skipped > 0 ? ` (skipped ${skipped})` : ''}
               {frontierLoading
                 ? ` · computing frontier ${frontierProgress?.done ?? 0}/${frontierProgress?.total ?? 0}${frontierProgress && frontierProgress.cacheHits > 0 ? ` · ${frontierProgress.cacheHits} cached` : ''}`
                 : ''}
             </span>
-            <button type="button" className="sidebar-clear-btn" onClick={clear}>Clear</button>
+            {!uploading && <button type="button" className="sidebar-clear-btn" onClick={clear}>Clear</button>}
           </div>
         )}
-        {!uploading && !frontierLoading && frontierSummary && frontierSummary.greenCount > 0 && (
+        {frontierSummary && frontierSummary.greenCount > 0 && (
           <div className="sidebar-frontier">
             <button
               type="button"
