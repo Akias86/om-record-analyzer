@@ -9,9 +9,13 @@ import { METRIC_LABELS } from '../../types'
 import type { OmScoreDTO } from '../../types'
 import { formatAreaINF, formatScoreNumber, getMetricValue } from '../../lib/metrics'
 import { loadSetting, saveSetting } from '../../lib/settings'
+import { evaluateCategoryHolders, parseCategoryCached } from '../../lib/customCategories'
+import type { CustomCategoryBadge } from '../../lib/customCategories'
+import { useCustomCategories } from '../../state/useCustomCategories'
 import { CLASS_COLOR, USER_GREEN, USER_RED } from '../pareto/constants'
 import { GifViewer } from '../pareto/GifViewer'
 import type { PuzzleRecordsData } from '../../state/usePuzzleRecords'
+import CategoryManager from './CategoryManager'
 import './RecordsTable.css'
 
 type TableMode = 'v' | 'inf'
@@ -68,6 +72,7 @@ interface TableRow {
   smart: string | null
   full: string | null
   categories: string | null
+  customCategories: CustomCategoryBadge[]
   gif: string | null
   solution: string | null
 }
@@ -131,6 +136,11 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
   const dragKeyRef = useRef<string | null>(null)
   const [dragOverKey, setDragOverKey] = useState<string | null>(null)
   const [gif, setGif] = useState<TableRow | null>(null)
+  const customState = useCustomCategories()
+  // Non-null while the custom category manager popover is open; carries the
+  // fixed-position anchor computed from the gear button's rect.
+  const [managerPos, setManagerPos] = useState<{ top: number; right: number } | null>(null)
+  const gearRef = useRef<HTMLButtonElement | null>(null)
 
   const chain = chains[mode]
 
@@ -164,13 +174,49 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
     return set
   }, [shared.userFrontierByManifold, mode])
 
+  // Custom category holders are evaluated over the same domain the green/red
+  // frontier uses — every leaderboard record plus every user solution for this
+  // puzzle — independent of the table's mode filter. Keys mirror the row keys
+  // below so badges can be attached while building rows.
+  const customHolders = useMemo(() => {
+    const byRow = new Map<string, CustomCategoryBadge[]>()
+    const type = shared.puzzleType
+    if (type === null || customState.categories.length === 0) return byRow
+    const scores: OmScoreDTO[] = []
+    const keys: string[] = []
+    shared.records.forEach((r, i) => {
+      if (r.score === null) return
+      scores.push(r.score)
+      keys.push(r.id ?? `lb-${i}`)
+    })
+    for (const r of shared.puzzleUserRecords) {
+      scores.push(r.score)
+      keys.push(`user-${r.id}`)
+    }
+    for (const def of customState.categories) {
+      if (!def.enabled) continue
+      const parsed = parseCategoryCached(def.expression)
+      if (!parsed.ok) continue
+      const holders = evaluateCategoryHolders(parsed.category, type, scores)
+      const badge: CustomCategoryBadge = { id: def.id, name: def.name, expression: def.expression }
+      for (const idx of holders) {
+        const key = keys[idx]
+        const list = byRow.get(key)
+        if (list) list.push(badge)
+        else byRow.set(key, [badge])
+      }
+    }
+    return byRow
+  }, [shared.records, shared.puzzleUserRecords, shared.puzzleType, customState.categories])
+
   const rows = useMemo<TableRow[]>(() => {
     const out: TableRow[] = []
     shared.records.forEach((r, i) => {
       if (r.score === null) return
       if (loopingOnly && r.score.rate == null) return
+      const key = r.id ?? `lb-${i}`
       out.push({
-        key: r.id ?? `lb-${i}`,
+        key,
         isUser: false,
         name: null,
         green: null,
@@ -178,14 +224,16 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
         smart: r.smartFormattedScore,
         full: r.fullFormattedScore,
         categories: r.smartFormattedCategories,
+        customCategories: customHolders.get(key) ?? [],
         gif: r.gif,
         solution: r.solution,
       })
     })
     for (const r of shared.puzzleUserRecords) {
       if (loopingOnly && r.score.rate == null) continue
+      const key = `user-${r.id}`
       out.push({
-        key: `user-${r.id}`,
+        key,
         isUser: true,
         name: r.solutionName ?? '(unnamed)',
         green: userGreen.has(r.id),
@@ -193,12 +241,13 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
         smart: null,
         full: r.fullScore,
         categories: null,
+        customCategories: customHolders.get(key) ?? [],
         gif: null,
         solution: null,
       })
     }
     return out
-  }, [shared.records, shared.puzzleUserRecords, userGreen, loopingOnly])
+  }, [shared.records, shared.puzzleUserRecords, userGreen, loopingOnly, customHolders])
 
   const leaderboardCount = useMemo(() => rows.filter((r) => !r.isUser).length, [rows])
   const userCount = useMemo(
@@ -298,11 +347,32 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
     })
   }
 
+  // Anchored to the gear button with fixed positioning: the table wrap
+  // scrolls and would clip an absolutely positioned child.
+  const toggleManager = () => {
+    if (managerPos !== null) {
+      setManagerPos(null)
+      return
+    }
+    const rect = gearRef.current?.getBoundingClientRect()
+    setManagerPos({
+      top: rect ? rect.bottom + 6 : 96,
+      right: rect ? Math.max(8, window.innerWidth - rect.right) : 16,
+    })
+  }
+
   const sortParts = useMemo(() => {
     const parts: string[] = []
     for (const k of visibleChain) parts.push(METRIC_LABELS[k] ?? k)
     return parts
   }, [visibleChain])
+
+  // Border-box column widths from RecordsTable.css: rank 76px, each metric
+  // 100px, overlap flag 65px + trackless flag 64px, and a usable minimum for
+  // the auto-width Category column. Without this the fixed table layout gives
+  // Category only the leftover space, which is zero on narrow viewports and
+  // would hide the gear button and the chips.
+  const minTableWidth = 76 + visibleChain.length * 100 + 129 + 200
 
   const sortTitle = sortParts.length > 0
     ? `Sorted by ${sortParts.join(', then ')} — metrics ascend (best first). Drag a metric header to reorder the chain.`
@@ -332,7 +402,7 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
         </span>
       </div>
       <div className="records-table-wrap">
-        <table className="records-table-table">
+        <table className="records-table-table" style={{ minWidth: minTableWidth }}>
           <thead>
             <tr>
               <th className="records-table-th records-table-th-rank" title="Leaderboard rank">#</th>
@@ -382,16 +452,33 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
                   </th>
                 )
               })}
-              <th className="records-table-th records-table-th-cat" title="Solution categories">Category</th>
+              <th className="records-table-th records-table-th-cat" title="Solution categories">
+                <span className="records-table-cat-head">
+                  <span>Category</span>
+                  <button
+                    ref={gearRef}
+                    type="button"
+                    data-cat-toggle
+                    className={`records-table-cat-gear${managerPos !== null ? ' is-open' : ''}`}
+                    title="Custom categories"
+                    aria-label="Custom categories"
+                    onClick={toggleManager}
+                  >
+                    {'\u2699'}
+                  </button>
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row) => {
               const rank = row.original.isUser ? null : ++leaderboardRank
               const clickable = !!row.original.gif
+              const customNames = row.original.customCategories.map((c) => c.name).join(', ')
               const title = [
                 row.original.smart ?? row.original.full,
                 row.original.categories,
+                customNames ? `Custom: ${customNames}` : null,
                 clickable ? 'Click to view replay GIF' : null,
               ].filter(Boolean).join('\n')
               return (
@@ -435,7 +522,22 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
                       )}
                     </td>
                   ))}
-                  <td className="records-table-td records-table-td-cat">{row.original.categories ?? ''}</td>
+                  <td className="records-table-td records-table-td-cat">
+                    {row.original.categories ?? ''}
+                    {row.original.customCategories.length > 0 && (
+                      <span className="records-table-cat-chips">
+                        {row.original.customCategories.map((badge) => (
+                          <span
+                            key={badge.id}
+                            className="records-table-cat-chip"
+                            title={`Custom category ${badge.name}\n${badge.expression}`}
+                          >
+                            {badge.name}
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </td>
                 </tr>
               )
             })}
@@ -453,6 +555,17 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
           puzzleId={puzzleId}
           puzzleName={puzzleName}
           onClose={() => setGif(null)}
+        />
+      )}
+      {managerPos !== null && (
+        <CategoryManager
+          position={managerPos}
+          categories={customState.categories}
+          addCategory={customState.addCategory}
+          updateCategory={customState.updateCategory}
+          removeCategory={customState.removeCategory}
+          toggleCategory={customState.toggleCategory}
+          onClose={() => setManagerPos(null)}
         />
       )}
     </div>

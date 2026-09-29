@@ -49,6 +49,10 @@ export function getManifold(id: string): Manifold | undefined {
   return MANIFOLDS.find((m) => m.id === id)
 }
 
+export function getManifoldByLabel(label: string): Manifold | undefined {
+  return MANIFOLDS.find((m) => m.label === label)
+}
+
 type MetricKind = 'bool-overlap' | 'bool-reverse' | 'num' | 'infinint' | 'levelvalue'
 
 function metricKind(m: MetricId): MetricKind {
@@ -106,7 +110,7 @@ function sign(n: number): number {
   return 0
 }
 
-function compareMetric(m: MetricId, x: OmScoreDTO, y: OmScoreDTO): number {
+export function compareMetric(m: MetricId, x: OmScoreDTO, y: OmScoreDTO): number {
   const kind = metricKind(m)
   if (kind === 'bool-overlap') {
     const a = x.overlap ? 1 : 0

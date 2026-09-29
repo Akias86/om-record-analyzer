@@ -32,7 +32,7 @@ export interface VerifierErrorInfo {
   location: { u: number; v: number }
 }
 
-export interface OutputIntervals {
+interface OutputIntervals {
   count: number
   intervals: number[]
   repeatAfter: number

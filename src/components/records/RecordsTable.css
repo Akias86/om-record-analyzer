@@ -103,6 +103,11 @@
 }
 
 .records-table-th-cat {
+  /* Auto width, as before: it absorbs the leftover space so the metric
+     columns keep their fixed widths. The table gets a matching min-width
+     inline (see RecordsTable.tsx) so the column never collapses to zero —
+     the fixed table layout would otherwise give it nothing once rank +
+     metrics + flags exceed the viewport, hiding the gear button. */
   border-left: 1px solid var(--border);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -281,4 +286,352 @@
   padding: 24px;
   color: var(--text);
   opacity: 0.6;
+}
+
+/* ---- custom categories ---- */
+
+.records-table-cat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.records-table-cat-gear {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1;
+  padding: 1px 3px;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.records-table-cat-gear:hover,
+.records-table-cat-gear.is-open {
+  opacity: 1;
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.records-table-cat-chips {
+  margin-left: 6px;
+  display: inline-flex;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+/* Outlined chip, visually distinct from the plain official category text. */
+.records-table-cat-chip {
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 15px;
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+
+.category-manager {
+  position: fixed;
+  z-index: 900;
+  width: 480px;
+  max-width: calc(100vw - 16px);
+  max-height: min(70vh, 640px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--sidebar-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.category-manager-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.category-manager-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.category-manager-close {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.category-manager-close:hover {
+  color: var(--text-h);
+}
+
+.category-manager-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  max-height: 260px;
+  overflow: auto;
+}
+
+.category-manager-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.category-manager-row:last-child {
+  border-bottom: none;
+}
+
+.category-manager-row.is-disabled .category-manager-name,
+.category-manager-row.is-disabled .category-manager-expr {
+  opacity: 0.45;
+}
+
+.category-manager-row.is-editing {
+  background: var(--accent-bg);
+}
+
+.category-manager-toggle {
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.category-manager-name {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-h);
+  white-space: nowrap;
+}
+
+.category-manager-expr {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text);
+}
+
+.category-manager-expr.is-invalid {
+  color: #ef4444;
+  text-decoration: underline dotted;
+}
+
+.category-manager-row-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.category-manager-row-actions button {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font-size: 11px;
+  padding: 1px 6px;
+  cursor: pointer;
+}
+
+.category-manager-row-actions button:hover {
+  color: var(--text-h);
+  background: var(--sidebar-hover);
+}
+
+.category-manager-empty {
+  padding: 10px 8px;
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.6;
+}
+
+.category-manager-editor {
+  display: flex;
+  gap: 6px;
+}
+
+.category-manager-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 5px 8px;
+}
+
+.category-manager-name-input {
+  flex: 0 0 132px;
+}
+
+.category-manager-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+.category-manager-save,
+.category-manager-cancel {
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.category-manager-save:disabled {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.category-manager-cancel {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text);
+  font-weight: 400;
+}
+
+.category-manager-preview {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  padding: 6px 8px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.category-manager-preview.is-error {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.category-manager-preview-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.category-manager-preview-name {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.category-manager-preview.is-error .category-manager-preview-name {
+  color: #ef4444;
+}
+
+.category-manager-preview-manifold {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.75;
+}
+
+.category-manager-preview-auto {
+  font-size: 10px;
+  color: var(--text);
+  opacity: 0.6;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 3px;
+}
+
+.category-manager-preview-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-h);
+}
+
+.category-manager-chain-entry {
+  display: inline-flex;
+  align-items: center;
+}
+
+.category-manager-chain-sep {
+  margin: 0 5px;
+  opacity: 0.4;
+}
+
+.category-manager-preview-tiebreak {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.7;
+}
+
+.category-manager-note {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.category-manager-note.is-error {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.category-manager-note.is-warning {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.category-manager-help {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.category-manager-help summary {
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.category-manager-help pre {
+  margin: 6px 0 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow: auto;
+  white-space: pre;
 }
