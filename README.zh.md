@@ -75,7 +75,7 @@ pnpm deploy
 ```
 om-record-analyzer/
 ├── worker/index.ts          Cloudflare Worker:/api/om/* → 排行榜 API 代理
-├── public/puzzles/          252 个 .puzzle 文件(静态资源,用于验证)
+├── public/puzzles/          264 个 .puzzle 文件(静态资源,用于验证)
 ├── src/
 │   ├── App.tsx              哈希路由
 │   ├── api/om.ts            API 客户端 + localStorage 缓存层

@@ -75,7 +75,7 @@ pnpm deploy
 ```
 om-record-analyzer/
 ├── worker/index.ts          Cloudflare Worker: /api/om/* → leaderboard API proxy
-├── public/puzzles/          252 .puzzle files (static assets for verification)
+├── public/puzzles/          264 .puzzle files (static assets for verification)
 ├── src/
 │   ├── App.tsx              Hash-based router
 │   ├── api/om.ts            API client + localStorage cache layer
