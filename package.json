@@ -7,6 +7,7 @@
 		"dev": "vite",
 		"build": "tsc -b && vite build",
 		"lint": "oxlint",
+		"test": "node --test tests/*.test.mjs",
 		"preview": "pnpm run build && vite preview",
 		"deploy": "pnpm run build && wrangler deploy",
 		"cf-typegen": "wrangler types"

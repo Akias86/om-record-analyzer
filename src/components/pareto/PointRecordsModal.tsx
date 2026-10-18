@@ -32,7 +32,7 @@ export function PointRecordsModal({ x, y, records, onClose, onSelectGif }: Point
                   <button
                     type="button"
                     className="point-records-score point-records-score--link"
-                    title="Click to view replay GIF"
+                    title="Click to view solution replay"
                     onClick={() => onSelectGif(p)}
                   >
                     {label}

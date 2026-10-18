@@ -47,7 +47,8 @@
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
 	"vars": {
-		"LEADERBOARD_API": "https://zlbb.faendir.com"
+		"LEADERBOARD_API": "https://zlbb.faendir.com",
+		"PLAYER_ORIGIN": "https://omsim-web.pages.dev"
 	}
 	/**
 	 * Service Bindings (communicate between multiple Workers)

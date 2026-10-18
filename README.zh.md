@@ -10,6 +10,7 @@
 - **本地解答验证** — 上传 `.solution` 文件(Opus Magnum 导出的存档),由编译为 WebAssembly 的引擎在浏览器内完成验证与评分,全程本地计算,无需服务端模拟。
 - **前沿检测** — 验证后的解答会叠加在排行榜图上,自动判定「在前沿上」(绿钻)或「不在前沿」(红钻)。上传后,侧边栏会列出具体哪些解答登上了帕累托前沿,以及属于哪些 manifold。
 - **批量验证页** — 独立的 `#/validator` 路由,可拖入一整个 `.solution` 文件夹,一次性验证全部,并以表格展示通过/失败/跳过结果。
+- **解答播放** — 内嵌 [om-web-simulator](https://omsim-web.pages.dev/player/) 播放器,支持播放/暂停、逐周期前后步进、调速及下载解答,同时保留原 omclone 独立 **Preview** 预览按钮。缺少解答文件或 WebGPU 不可用时回退原 GIF/视频。
 - **API 代理** — Cloudflare Worker 将请求代理到排行榜 API(`zlbb.faendir.com`),规避 CORS 并使 API 基址可配置。
 
 ## 技术栈
@@ -51,6 +52,21 @@ pnpm dev
 
 打开 Vite 打印的本地开发地址。开发服务器通过 `@cloudflare/vite-plugin` 同时本地运行 Cloudflare Worker,因此 `/api/om/*` 代理开箱即用。
 
+## 播放器配置
+
+模拟器域名默认使用 `https://omsim-web.pages.dev`,内嵌播放器访问其 `/player/` 路径。与 `LEADERBOARD_API` 相同,通过 `wrangler.jsonc` 中的 **Worker 运行时变量** `PLAYER_ORIGIN` 配置:
+
+```jsonc
+"vars": {
+  "LEADERBOARD_API": "https://zlbb.faendir.com",
+  "PLAYER_ORIGIN": "https://omsim-web.pages.dev"
+}
+```
+
+播放区域保持原版 GIF 的 826:647 比例（最大 826×647 CSS 像素）,弹窗按可用视口收紧,不在画面周围额外留白。播放器直接绘制固定 826×647 画布,浏览器自然处理缩放,不补偿 DPR。
+
+本地开发时将 `.dev.vars.example` 复制为 `.dev.vars`;本地运行 `om-web-simulator` 时可设置 `PLAYER_ORIGIN=http://127.0.0.1:4173`,然后重启 `pnpm dev`。线上通过 Wrangler 配置或 secret 更新 Worker 变量并刷新页面即可,**无需重新构建前端**。前端每次打开播放器都会读取 `/api/config`,不缓存配置;该接口仅公开播放器域名,不会暴露其他变量或 secret。WebGPU 需要 HTTPS 或 localhost 及兼容浏览器,远程解答文件下载需支持 CORS。
+
 ## 脚本
 
 | 命令 | 说明 |
@@ -60,6 +76,7 @@ pnpm dev
 | `pnpm preview` | 构建后本地预览生产产物 |
 | `pnpm deploy` | 构建后部署到 Cloudflare Workers(`wrangler deploy`) |
 | `pnpm lint` | 运行 Oxlint |
+| `pnpm test` | 使用 Node.js 内置测试运行器检查播放器协议及运行时配置 |
 | `pnpm cf-typegen` | 重新生成 Cloudflare Worker 类型定义 |
 
 ## 部署
@@ -108,7 +125,7 @@ om-record-analyzer/
 
 - 解答验证完全在客户端进行。WASM 二进制(约 150 KB)在主线程编译一次,编译后的 `WebAssembly.Module` 共享给每个 worker,worker 只需执行廉价的实例化/链接步骤。
 - 上传后的前沿列表基于**最新**排行榜数据重新计算(绕过缓存),避免排行榜更新后将过时记录误判为前沿。
-- 未配置测试框架;`src/test/` 存放的是运行时批量验证页面,而非自动化测试。
+- `tests/` 使用 Node.js 内置测试运行器检查播放器客户端、协议及 Worker 运行时配置;`src/test/` 存放的是运行时批量验证页面,而非自动化测试。
 
 ## 感谢
 

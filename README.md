@@ -10,6 +10,7 @@ A web tool for analyzing **Opus Magnum** (a Zachtronics puzzle game) records. It
 - **Local Solution Verification** — upload `.solution` files (exported Opus Magnum saves) and verify them entirely in the browser via a compiled WebAssembly engine. Scores are computed locally — no server-side simulation.
 - **Frontier Detection** — your verified solutions are overlaid on the leaderboard chart and classified as "on frontier" (green) or "off frontier" (red). After upload, the sidebar lists exactly which of your solutions reached the Pareto frontier, across which manifolds.
 - **Batch Verification Page** — a dedicated `#/validator` route for dropping a folder of `.solution` files and verifying them all at once with a pass/fail/skip table.
+- **Solution Playback** — embedded [om-web-simulator](https://omsim-web.pages.dev/player/) player with play/pause, cycle stepping, speed controls and solution downloads, while retaining the independent omclone **Preview** button. Falls back to the recorded GIF/video when solution files or WebGPU are unavailable.
 - **API Proxy** — a Cloudflare Worker proxies requests to the leaderboard API (`zlbb.faendir.com`), avoiding CORS and keeping the API base configurable.
 
 ## Tech Stack
@@ -51,6 +52,21 @@ pnpm dev
 
 Open the local dev server (Vite prints the URL). The dev server also runs the Cloudflare Worker locally via `@cloudflare/vite-plugin`, so `/api/om/*` proxying works out of the box.
 
+## Player Configuration
+
+The simulator origin defaults to `https://omsim-web.pages.dev`; the embedded player uses its `/player/` endpoint. Like `LEADERBOARD_API`, configure the **Worker runtime binding** `PLAYER_ORIGIN` in `wrangler.jsonc`:
+
+```jsonc
+"vars": {
+  "LEADERBOARD_API": "https://zlbb.faendir.com",
+  "PLAYER_ORIGIN": "https://omsim-web.pages.dev"
+}
+```
+
+The playback area follows the native GIF's 826:647 aspect ratio (up to 826×647 CSS pixels), and the dialog fits the available viewport without padding around the image. The player draws into a fixed 826×647 canvas; browser zoom is left to the browser, without DPR compensation.
+
+For local development, copy `.dev.vars.example` to `.dev.vars`; use `PLAYER_ORIGIN=http://127.0.0.1:4173` for a locally running `om-web-simulator`, then restart `pnpm dev`. In production, update the Worker binding through Wrangler configuration or secrets and refresh the page; **no frontend rebuild is required**. The frontend reads `/api/config` whenever a viewer opens, without caching it. This endpoint exposes only the public player origin, not other bindings or secrets. WebGPU requires HTTPS or localhost and a supported browser; remote solution downloads require CORS.
+
 ## Scripts
 
 | Command | Description |
@@ -60,6 +76,7 @@ Open the local dev server (Vite prints the URL). The dev server also runs the Cl
 | `pnpm preview` | Build then preview the production build locally |
 | `pnpm deploy` | Build then deploy to Cloudflare Workers (`wrangler deploy`) |
 | `pnpm lint` | Run Oxlint |
+| `pnpm test` | Run player client/protocol and runtime configuration tests (Node.js test runner) |
 | `pnpm cf-typegen` | Regenerate Cloudflare Worker type definitions |
 
 ## Deployment
@@ -108,7 +125,7 @@ om-record-analyzer/
 
 - Solution verification runs entirely client-side. The WASM binary (~150 KB) is compiled once on the main thread and the compiled `WebAssembly.Module` is shared with each worker, which only performs a cheap instantiation/link step.
 - The frontier list after upload is recomputed against the **latest** leaderboard data (cache bypassed) to avoid stale records being misclassified as frontier after the leaderboard updates.
-- No test framework is configured; `src/test/` holds the runtime batch-verifier page, not automated tests.
+- `tests/` tests the embedded player client/protocol and Worker runtime configuration with Node.js's built-in test runner. `src/test/` holds the runtime batch-verifier page, not automated tests.
 
 ## Thanks
 

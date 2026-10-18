@@ -479,7 +479,7 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
                 row.original.smart ?? row.original.full,
                 row.original.categories,
                 customNames ? `Custom: ${customNames}` : null,
-                clickable ? 'Click to view replay GIF' : null,
+                clickable ? 'Click to view solution replay' : null,
               ].filter(Boolean).join('\n')
               return (
                 <tr

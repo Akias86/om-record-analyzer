@@ -87,6 +87,17 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url)
 
+    // Public frontend configuration comes from Worker bindings, not the build.
+    // Do not expose other bindings (in particular upstream URLs or secrets).
+    if (url.pathname === '/api/config') {
+      if (request.method !== 'GET') {
+        return new Response(null, { status: 405, headers: { Allow: 'GET', 'Cache-Control': 'no-store' } })
+      }
+      return Response.json({
+        playerOrigin: env.PLAYER_ORIGIN?.trim().replace(/\/+$/, '') || 'https://omsim-web.pages.dev',
+      }, { headers: { 'Cache-Control': 'no-store' } })
+    }
+
     if (!url.pathname.startsWith('/api/om/')) {
       return new Response(null, { status: 404 })
     }
