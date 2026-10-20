@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPlayerClient, type PlayerClient, type PlayerState } from '../../lib/player/client.js'
 import { fetchPlayerUrl } from '../../api/config'
+import { fetchRecordAuthor } from '../../api/recordAuthor'
+import type { RecordAuthor } from '../../lib/recordAuthor'
 import { useEscapeKey } from './useEscapeKey'
 import { usePlayerLayout } from './usePlayerLayout'
 import './GifViewer.css'
@@ -54,8 +56,17 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
   const [downloadPending, setDownloadPending] = useState(false)
   const [previewPending, setPreviewPending] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [author, setAuthor] = useState<RecordAuthor | null>(null)
   useEscapeKey(backdropRef, onClose)
   usePlayerLayout(backdropRef, panelRef)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchRecordAuthor(solutionUrl, controller.signal).then((value) => {
+      if (!controller.signal.aborted) setAuthor(value)
+    }).catch(() => { /* Optional attribution must never interrupt playback. */ })
+    return () => { controller.abort() }
+  }, [solutionUrl])
 
   useEffect(() => {
     const iframe = iframeRef.current
@@ -203,7 +214,14 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
     <div ref={backdropRef} className="gif-viewer-backdrop solution-player-backdrop" onClick={onClose}>
       <div ref={panelRef} className="gif-viewer-panel solution-player-panel" role="dialog" aria-modal="true" aria-label={title} onClick={(event) => event.stopPropagation()}>
         <div className="gif-viewer-header">
-          <div className="gif-viewer-title">{title}</div>
+          <div className="gif-viewer-heading">
+            <div className="gif-viewer-title">{title}</div>
+            {author && (
+              <div className="gif-viewer-author" title={`by ${author.name}`}>
+                by <a href={author.url} target="_blank" rel="noopener noreferrer">{author.name}</a>
+              </div>
+            )}
+          </div>
           <button type="button" className="gif-viewer-close" onClick={onClose} aria-label="Close">{'\u00D7'}</button>
         </div>
         <div className="solution-player-body">

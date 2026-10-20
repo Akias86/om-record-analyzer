@@ -1,3 +1,6 @@
+import { createAuthorHandler, type AuthorBindings } from './recordAuthor.ts'
+
+const recordAuthor = createAuthorHandler()
 const CACHE_NAME = 'om-api-v1'
 const RECORDS_TTL_MS = 30 * 60 * 1000 // 30 min for puzzle records
 const STATIC_TTL_MS = 24 * 60 * 60 * 1000 // 1 day for metrics / puzzle list
@@ -98,6 +101,8 @@ export default {
       }, { headers: { 'Cache-Control': 'no-store' } })
     }
 
+    if (url.pathname === '/api/record-author') return recordAuthor(request, env)
+
     if (!url.pathname.startsWith('/api/om/')) {
       return new Response(null, { status: 404 })
     }
@@ -190,4 +195,4 @@ export default {
       headers: clientHeaders(upstreamRes.headers, bypass ? 'bypass' : 'miss'),
     })
   },
-} satisfies ExportedHandler<Env>
+} satisfies ExportedHandler<Env & AuthorBindings>

@@ -78,6 +78,16 @@ The playback area follows the native GIF's 826:647 aspect ratio (up to 826×647 
 
 For local development, copy `.dev.vars.example` to `.dev.vars`; use `PLAYER_ORIGIN=http://127.0.0.1:4173` for a locally running `om-web-simulator`, then restart `pnpm dev`. In production, update the Worker binding through Wrangler configuration or secrets and refresh the page; **no frontend rebuild is required**. The frontend reads `/api/config` whenever a viewer opens, without caching it. This endpoint exposes only the public player origin, not other bindings or secrets. WebGPU requires HTTPS or localhost and a supported browser; remote solution downloads require CORS.
 
+### Record author attribution
+
+Only the playback dialog shows a small `by Author` line below its title; the name links to the attribution commit. It is hidden while loading, on lookup failure, or when no reliable attribution exists. Tables and chart tooltips are unchanged.
+
+The browser asynchronously calls `/api/record-author?solution=…`. The Worker accepts only immutable zlbb solution links, extracts the commit SHA, and queries the fixed `zachtronics-leaderboards/om-leaderboard` repository. It accepts explicit `[BOT] … [Solution] by …` messages with a single corresponding solution file, not Git's author field. History-reset/import commits cannot recover the original authors.
+
+`AUTHOR_CACHE` is a Workers KV binding declared in `wrangler.jsonc`. Local development uses local persistent KV; current Wrangler provisions/reuses the production namespace during deployment when its ID is omitted. You can also set an existing namespace's `id` explicitly. Full-SHA results and short-SHA aliases have **no expiration**, including confirmed unknowns. Versioned keys allow future parser changes. KV is eventually consistent, so simultaneous misses in different regions can still issue duplicate requests. Transient failures are never stored as permanent unknowns; the Worker briefly backs off and a later viewer open can retry.
+
+GitHub works without authentication but has a lower rate limit. Optionally set a server-only token with `pnpm exec wrangler secret put GITHUB_TOKEN`; for local development add `GITHUB_TOKEN` to `.dev.vars`. Never use a `VITE_` variable or commit the token. Author lookup never blocks playback.
+
 ## Scripts
 
 | Command | Description |

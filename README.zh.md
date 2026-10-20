@@ -78,6 +78,16 @@ pnpm dev
 
 本地开发时将 `.dev.vars.example` 复制为 `.dev.vars`;本地运行 `om-web-simulator` 时可设置 `PLAYER_ORIGIN=http://127.0.0.1:4173`,然后重启 `pnpm dev`。线上通过 Wrangler 配置或 secret 更新 Worker 变量并刷新页面即可,**无需重新构建前端**。前端每次打开播放器都会读取 `/api/config`,不缓存配置;该接口仅公开播放器域名,不会暴露其他变量或 secret。WebGPU 需要 HTTPS 或 localhost 及兼容浏览器,远程解答文件下载需支持 CORS。
 
+### 记录作者署名
+
+仅在播放器标题下显示小字 `by Author`,作者名链接到署名提交。加载中、查询失败或无法可靠确认作者时整行隐藏;记录表和图表提示不变。
+
+浏览器异步请求 `/api/record-author?solution=…`。Worker 仅接受 zlbb 不可变解答链接,提取提交 SHA,并查询固定的 `zachtronics-leaderboards/om-leaderboard` 仓库。仅采信明确的 `[BOT] … [Solution] by …` 信息及唯一对应的解答文件,不使用 Git 作者字段。历史重建/导入提交无法恢复原作者。
+
+`wrangler.jsonc` 已声明 Workers KV 绑定 `AUTHOR_CACHE`。开发环境使用本地持久化 KV;未填写命名空间 ID 时,当前 Wrangler 会在部署时创建或复用线上命名空间,也可显式填写已有命名空间的 `id`。完整 SHA 的结果与短 SHA 别名均**不设置过期时间**,确认无署名的结果也永久保存;缓存键包含解析版本,方便未来修正规则后重建。KV 是最终一致的,不同地区同时首次查询仍可能发生重复请求。临时失败不会保存为永久未知,Worker 短暂退避后,再次打开播放器可重试。
+
+GitHub 无需认证也可查询,但限额较低。可选运行 `pnpm exec wrangler secret put GITHUB_TOKEN` 配置服务端 Token;本地放在 `.dev.vars` 中。不要使用 `VITE_` 变量或提交 Token。作者查询不会阻塞播放。
+
 ## 脚本
 
 | 命令 | 说明 |

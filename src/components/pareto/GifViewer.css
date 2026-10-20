@@ -16,6 +16,30 @@
   min-width: 0;
 }
 
+.gif-viewer-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.gif-viewer-author {
+  margin-top: 2px;
+  color: var(--text);
+  font-size: 11px;
+  line-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gif-viewer-author a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.gif-viewer-author a:hover {
+  text-decoration: underline;
+}
+
 .solution-player-panel .gif-viewer-title {
   overflow: hidden;
   text-overflow: ellipsis;

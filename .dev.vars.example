@@ -1,3 +1,5 @@
 # Local Worker bindings. Copy this file to .dev.vars and restart pnpm dev.
 LEADERBOARD_API=https://zlbb.faendir.com
 PLAYER_ORIGIN=https://omsim-web.pages.dev
+# Optional: increases GitHub's rate limit for author lookups. Never use a VITE_ variable.
+# GITHUB_TOKEN=your-github-token

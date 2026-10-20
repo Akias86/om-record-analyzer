@@ -26,6 +26,8 @@
 		}
 	},
 	"upload_source_maps": true,
+	// Local KV in dev; Wrangler provisions/reuses the namespace on deployment.
+	"kv_namespaces": [{ "binding": "AUTHOR_CACHE" }],
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
