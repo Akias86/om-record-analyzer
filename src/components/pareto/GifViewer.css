@@ -33,7 +33,7 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: #252720;
+  background: var(--bg);
 }
 
 .solution-player-iframe {
@@ -69,7 +69,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #e0e2d8;
+  background: var(--bg);
+  color: var(--text);
   font-size: 13px;
 }
 
@@ -134,13 +135,19 @@
   max-width: 100%;
 }
 
+.solution-player-footer select:hover:not(:disabled),
+.solution-player-footer option {
+  background: var(--sidebar-bg);
+  color: var(--text-h);
+}
+
 .solution-player-cycle {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .solution-player-status {
-  flex: 1 1 180px;
+  flex: 1 1 100%;
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--text);
@@ -159,9 +166,5 @@
   .solution-player-footer .gif-viewer-btn {
     padding: 4px 7px;
     font-size: 12px;
-  }
-
-  .solution-player-status {
-    flex-basis: 100%;
   }
 }

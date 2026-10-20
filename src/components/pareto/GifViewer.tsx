@@ -48,6 +48,7 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
   const downloadAbort = useRef<AbortController | null>(null)
   const previewAbort = useRef<AbortController | null>(null)
   const [state, setState] = useState<PlayerState | null>(null)
+  const [playerLoaded, setPlayerLoaded] = useState(false)
   const [fallback, setFallback] = useState(!solutionUrl || !puzzleId)
   const [reason, setReason] = useState('')
   const [downloadPending, setDownloadPending] = useState(false)
@@ -94,6 +95,7 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
         autoplay: true,
         signal: controller.signal,
       })
+      if (active && !controller.signal.aborted) setPlayerLoaded(true)
     }
     loadPlayer().catch((error) => failed(error instanceof Error ? error : new Error(String(error))))
     return () => {
@@ -189,7 +191,8 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
     }
   }
 
-  const loading = !fallback && (!state?.ready || state.busy)
+  // Rewinds/seeks are busy too; keep the last frame visible after the initial load.
+  const loading = !fallback && !playerLoaded
   const controlsDisabled = !state?.ready || state.busy || !!state.stepping
   const stateText = state?.collision ? 'Collision — playback stopped'
     : state?.analysisStatus === 'pending' ? 'Analyzing playback loop…'
