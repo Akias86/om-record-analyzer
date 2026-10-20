@@ -13,6 +13,8 @@ interface VerifierExports {
   verifier_number_of_output_intervals: (v: number) => number
   verifier_output_interval: (v: number, which: number) => number
   verifier_output_intervals_repeat_after: (v: number) => number
+  verifier_number_of_outputs: (v: number) => number
+  verifier_output_intervals_for_output_repeat_after: (v: number, output: number) => number
   verifier_set_cycle_limit: (v: number, limit: number) => void
   verifier_set_collision_check_limit: (v: number, limit: bigint) => void
   verifier_set_collision_detection: (v: number, on: number) => void
@@ -45,6 +47,7 @@ export interface VerifierModule {
   clearError(v: number): void
   evaluate(v: number, metric: string): number
   outputIntervals(v: number): OutputIntervals
+  looping(v: number): boolean
   setCycleLimit(v: number, limit: number): void
   setCollisionCheckLimit(v: number, limit: bigint): void
   setCollisionDetection(v: number, on: boolean): void
@@ -137,7 +140,18 @@ async function init(module?: WebAssembly.Module): Promise<VerifierModule> {
       const count = e.verifier_number_of_output_intervals(v)
       const intervals: number[] = []
       for (let i = 0; i < count; i++) intervals.push(e.verifier_output_interval(v, i))
-      return { count, intervals, repeatAfter: e.verifier_output_intervals_repeat_after(v) }
+      const repeatAfter = e.verifier_output_intervals_repeat_after(v)
+      // New omsim may use count as the repeat index for an empty repeating
+      // tail. Preserve our analysis API's -1 = no infinite output contract.
+      return { count, intervals, repeatAfter: repeatAfter >= 0 && repeatAfter < count ? repeatAfter : -1 }
+    },
+    looping(v) {
+      const count = e.verifier_number_of_outputs(v)
+      for (let output = 0; output < count; output++) {
+        const repeatAfter = e.verifier_output_intervals_for_output_repeat_after(v, output)
+        if (repeatAfter !== 0 && repeatAfter !== 1) return false
+      }
+      return true
     },
     setCycleLimit(v, limit) {
       e.verifier_set_cycle_limit(v, limit)

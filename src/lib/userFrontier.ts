@@ -64,9 +64,9 @@ export function computeUserFrontierByManifold(
   // green while the better one was red.
   //
   // partialCompare treats null metrics as ∞ (worse). For cross-manifold
-  // user-vs-user comparison this is correct: a non-looping solution's
-  // null rate/INF makes it globally "worse" than a looping one with
-  // equal shared dims, so the looping solution sorts first and wins the
+  // user-vs-user comparison this is correct: a solution without steady-state
+  // production has null rate/INF, making it globally "worse" than one with
+  // equal shared dims and steady-state scores, so the latter wins the
   // dedup tie — matching the expectation that it covers more manifolds.
   const sortedItems = [...userItems].sort((a, b) => {
     const order = partialCompare(allParts, a.score, b.score)

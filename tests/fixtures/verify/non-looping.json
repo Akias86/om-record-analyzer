@@ -1,0 +1,32 @@
+﻿{
+    "score":  {
+                  "cost":  130,
+                  "instructions":  11,
+                  "overlap":  false,
+                  "trackless":  true,
+                  "cycles":  29,
+                  "area":  63,
+                  "height":  9,
+                  "width":  9.0,
+                  "boundingHex":  6,
+                  "looping":  false,
+                  "rate":  2.5,
+                  "areaINF":  {
+                                  "level":  0,
+                                  "value":  63.0
+                              },
+                  "heightINF":  {
+                                    "level":  0,
+                                    "value":  9.0
+                                },
+                  "widthINF":  {
+                                   "level":  0,
+                                   "value":  9.0
+                               },
+                  "boundingHexINF":  {
+                                         "level":  0,
+                                         "value":  6.0
+                                     }
+              },
+    "source":  "https://zlbb.faendir.com/l/om/5565748b/P007/130g-11i-29c-63a-9h-9w-6b-2.5r-63a-9h-9w-6b-T"
+}

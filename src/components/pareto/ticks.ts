@@ -16,12 +16,12 @@ export function formatTick(n: number): string {
     const v = n / 1e3
     return Number.isInteger(v) ? `${v}K` : `${v.toFixed(1)}K`
   }
-  return Number.isInteger(n) ? String(n) : n.toFixed(1)
+  return Number.isInteger(n) ? String(n) : String(Number(n.toPrecision(6)))
 }
 
 export function generateTicks(domain: [number, number], isInteger: boolean): number[] | undefined {
   const [lo, hi] = domain
-  if (lo >= hi) return undefined
+  if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo >= hi) return undefined
   const range = hi - lo
   const rawStep = range / 8
   const mag = Math.pow(10, Math.floor(Math.log(rawStep) / Math.LN10))
@@ -31,12 +31,14 @@ export function generateTicks(domain: [number, number], isInteger: boolean): num
   else if (residual <= 3.5) step = 2 * mag
   else if (residual <= 7.5) step = 5 * mag
   else step = 10 * mag
-  const minStep = isInteger ? 1 : 0.5
-  step = Math.max(minStep, step)
+  if (isInteger) step = Math.max(1, step)
+  if (!(step > 0)) return undefined
   const first = Math.ceil(lo / step) * step
   const ticks: number[] = []
-  for (let t = first; t <= hi + 1e-9; t += step) {
-    ticks.push(Math.round(t * 1e10) / 1e10)
+  for (let i = 0; i < 100; i++) {
+    const t = first + i * step
+    if (t > hi + step * 1e-9) break
+    ticks.push(Number(t.toPrecision(12)))
   }
   return ticks.length > 1 ? ticks : undefined
 }
@@ -67,13 +69,14 @@ export function niceLinearDomain(max: number, isInteger: boolean): { hi: number;
   else if (residual <= 3.5) step = 2 * mag
   else if (residual <= 7.5) step = 5 * mag
   else step = 10 * mag
-  const minStep = isInteger ? 1 : 0.5
-  step = Math.max(minStep, step)
+  if (isInteger) step = Math.max(1, step)
   let hi = Math.ceil(max / step) * step
   if (hi - max <= step * 1e-6) hi += step
   const ticks: number[] = []
-  for (let t = 0; t <= hi + 1e-9; t += step) {
-    ticks.push(Math.round(t * 1e10) / 1e10)
+  for (let i = 0; i < 100; i++) {
+    const t = i * step
+    if (t > hi + step * 1e-9) break
+    ticks.push(Number(t.toPrecision(12)))
   }
   return { hi, ticks }
 }

@@ -1,20 +1,7 @@
-export interface VerifiedScore {
-  cost: number
-  instructions: number
-  overlap: boolean
-  trackless: boolean
-  cycles: number
-  area: number
-  width: number | null
-  height: number | null
-  boundingHex: number | null
-  rate: number | null
-  areaINFLevel: number | null
-  areaINFValue: number | null
-  heightINF: number | null
-  widthINF: number | null
-  boundingHexINF: number | null
-}
+import type { OmScoreDTO } from '../../types'
+
+// Local verification and leaderboard records share the same score schema.
+export type VerifiedScore = OmScoreDTO
 
 export interface SolutionAnalysis {
   collisionCycle: number | null

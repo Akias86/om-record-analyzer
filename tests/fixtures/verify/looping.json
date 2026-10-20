@@ -1,0 +1,32 @@
+﻿{
+    "score":  {
+                  "cost":  40,
+                  "instructions":  6,
+                  "overlap":  false,
+                  "trackless":  true,
+                  "cycles":  143,
+                  "area":  12,
+                  "height":  4,
+                  "width":  4.0,
+                  "boundingHex":  3,
+                  "looping":  true,
+                  "rate":  24.0,
+                  "areaINF":  {
+                                  "level":  0,
+                                  "value":  12.0
+                              },
+                  "heightINF":  {
+                                    "level":  0,
+                                    "value":  4.0
+                                },
+                  "widthINF":  {
+                                   "level":  0,
+                                   "value":  4.0
+                               },
+                  "boundingHexINF":  {
+                                         "level":  0,
+                                         "value":  3.0
+                                     }
+              },
+    "source":  "https://zlbb.faendir.com/l/om/5565748b/P007/40g-6i-143c-12a-4h-4w-3b-24r-12a-4h-4w-3b-TL"
+}

@@ -1,4 +1,4 @@
-export interface PuzzleMeta {
+interface PuzzleMeta {
   name: string | null
   isProduction: boolean
 }

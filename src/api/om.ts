@@ -1,4 +1,5 @@
 import type { OmRecordDTO, OmMetricDTO } from '../types'
+import { normalizeScore } from '../lib/scores'
 
 const BASE = '/api/om'
 const CACHE_PREFIX = 'om-cache:'
@@ -97,14 +98,18 @@ const RECORDS_URL = (puzzleId: string) => `${BASE}/puzzle/${puzzleId}/records?in
 // Records bypass the localStorage cache; the Worker edge cache (30 min TTL)
 // is the source of truth so the returned `x-om-cache` status is meaningful.
 export function fetchRecords(puzzleId: string, options?: RequestOptions): Promise<OmRecordDTO[]> {
-  return get<OmRecordDTO[]>(RECORDS_URL(puzzleId), { localCache: false, ...options })
+  return fetchRecordsWithStatus(puzzleId, options).then(({ data }) => data)
 }
 
 // Same as fetchRecords but exposes the Worker cache status, used by the
 // batch-upload frontier summary to report how many puzzles were served
 // from the edge cache.
-export function fetchRecordsWithStatus(puzzleId: string, options?: RequestOptions): Promise<FetchResult<OmRecordDTO[]>> {
-  return getWithStatus<OmRecordDTO[]>(RECORDS_URL(puzzleId), { localCache: false, ...options })
+export async function fetchRecordsWithStatus(puzzleId: string, options?: RequestOptions): Promise<FetchResult<OmRecordDTO[]>> {
+  const result = await getWithStatus<OmRecordDTO[]>(RECORDS_URL(puzzleId), { localCache: false, ...options })
+  return {
+    ...result,
+    data: result.data.map((record) => ({ ...record, score: record.score ? normalizeScore(record.score) : null })),
+  }
 }
 
 export function fetchMetrics(options?: RequestOptions): Promise<OmMetricDTO[]> {

@@ -6,14 +6,16 @@ import {
 } from '@tanstack/react-table'
 import type { ColumnDef, SortingFn, SortingState } from '@tanstack/react-table'
 import { METRIC_LABELS } from '../../types'
-import type { OmScoreDTO } from '../../types'
-import { formatAreaINF, formatScoreNumber, getMetricValue } from '../../lib/metrics'
+import type { BoolScoreKey, OmRecordDTO, OmScoreDTO } from '../../types'
+import { formatAreaINF, formatLevelValue, formatScoreNumber, getMetricValue, isInfinityScoreKey } from '../../lib/metrics'
+import { FLAG_ORDER, FLAG_STATE_KEYS, activeFlagSorting, nextFlagState, parseFlags } from './flags'
+import type { Flags, FlagState } from './flags'
 import { loadSetting, saveSetting } from '../../lib/settings'
+import { compareMetric } from '../../lib/manifold'
 import { evaluateCategoryHolders, parseCategoryCached } from '../../lib/customCategories'
 import type { CustomCategoryBadge } from '../../lib/customCategories'
 import { useCustomCategories } from '../../state/useCustomCategories'
 import { CLASS_COLOR, USER_GREEN, USER_RED } from '../pareto/constants'
-import { GifViewer } from '../pareto/GifViewer'
 import type { PuzzleRecordsData } from '../../state/usePuzzleRecords'
 import CategoryManager from './CategoryManager'
 import './RecordsTable.css'
@@ -46,21 +48,15 @@ const METRIC_LETTERS: Record<string, { letter: string; inf?: boolean }> = {
   boundingHexINF: { letter: 'B', inf: true },
 }
 
-// O and T are the only columns whose sorting reacts to clicks: a three-state
-// cycle starting from each column's default state. O defaults to ▴ (false
-// first = cleaner solutions on top); T defaults to − (off), its first click
-// lands on ▾ (trackless solutions first).
-type FlagState = 'asc' | 'desc' | null
-const FLAG_CYCLES: Record<'overlap' | 'trackless', FlagState[]> = {
-  overlap: ['asc', 'desc', null],
-  trackless: [null, 'desc', 'asc'],
-}
-
+// O defaults to false first. T and L default off, then cycle through true
+// first, false first, and off. Only flag columns react to sort clicks.
 const FLAG_GLYPHS: Record<Exclude<FlagState, null>, string> = { asc: '▴', desc: '▾' }
-const FLAG_LABELS: Record<'overlap' | 'trackless', string> = { overlap: 'Overlap', trackless: 'Trackless' }
-const FLAG_TITLES: Record<'overlap' | 'trackless', string> = {
+const FLAG_LABELS: Record<BoolScoreKey, string> = { overlap: 'Overlap', trackless: 'Trackless', looping: 'Looping' }
+const FLAG_COLORS: Record<BoolScoreKey, string> = CLASS_COLOR
+const FLAG_TITLES: Record<BoolScoreKey, string> = {
   overlap: 'Overlap — click to cycle sort: ▴ false first / ▾ true first / − off',
   trackless: 'Trackless — click to cycle sort: − off / ▾ true first / ▴ false first',
+  looping: 'Looping — click to cycle sort: − off / ▾ true first / ▴ false first',
 }
 
 interface TableRow {
@@ -73,16 +69,10 @@ interface TableRow {
   full: string | null
   categories: string | null
   customCategories: CustomCategoryBadge[]
-  gif: string | null
-  solution: string | null
+  record: OmRecordDTO | null
 }
 
 type ChainMap = Record<TableMode, string[]>
-
-interface Flags {
-  o: FlagState
-  t: FlagState
-}
 
 function loadChainMap(): ChainMap {
   try {
@@ -104,30 +94,29 @@ function loadFlags(): Flags {
   try {
     const saved = localStorage.getItem('om-table:flags')
     if (saved) {
-      const parsed = JSON.parse(saved) as Partial<Flags>
-      if (parsed.o !== undefined) return { o: parsed.o ?? null, t: parsed.t ?? null }
+      return parseFlags(saved)
     }
   } catch { }
-  return { o: 'asc', t: null }
+  return parseFlags(null)
 }
 
 interface RecordsTableProps {
-  puzzleId: string
-  puzzleName: string
   shared: PuzzleRecordsData
+  onPlayRecord: (record: OmRecordDTO) => void
 }
 
-// @∞ area is written the way score strings write it (raw value plus the
-// apostrophe-level suffix); every other metric shows its full number,
+// @∞ metrics show the raw value plus the apostrophe-level suffix, not the
+// graded numeric value used for charts. Every metric shows its full number,
 // never an SI abbreviation (1728679, not 1.7M).
 function metricCellText(score: OmScoreDTO | null, key: string): string {
   if (score === null) return '–'
   if (key === 'areaINF') return formatAreaINF(score) ?? '–'
+  if (isInfinityScoreKey(key)) return formatLevelValue(score[key]) ?? '–'
   const v = getMetricValue(score, key)
   return v === null ? '–' : formatScoreNumber(v)
 }
 
-export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTableProps) {
+export default function RecordsTable({ shared, onPlayRecord }: RecordsTableProps) {
   const [mode, setMode] = useState<TableMode>(() => (loadSetting('om-table:mode', 'v') === 'inf' ? 'inf' : 'v'))
   const [chains, setChains] = useState<ChainMap>(loadChainMap)
   const [flags, setFlags] = useState<Flags>(loadFlags)
@@ -135,7 +124,6 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
   // drop arrives in the same tick (before a re-render could propagate it).
   const dragKeyRef = useRef<string | null>(null)
   const [dragOverKey, setDragOverKey] = useState<string | null>(null)
-  const [gif, setGif] = useState<TableRow | null>(null)
   const customState = useCustomCategories()
   // Non-null while the custom category manager popover is open; carries the
   // fixed-position anchor computed from the gear button's rect.
@@ -144,22 +132,21 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
 
   const chain = chains[mode]
 
-  // @∞ scores only looping solutions: rate === null marks a non-looping
-  // run (the same rule manifold.ts uses for the 'looping' metric), and such
-  // solutions have no meaningful @∞ row. @V shows everything.
-  const loopingOnly = mode === 'inf'
+  // @∞ requires sustained steady-state production, not the stricter Looping
+  // condition. A non-Looping score with a rate still belongs here.
+  const steadyStateOnly = mode === 'inf'
 
   // Metrics with no value anywhere on this puzzle's leaderboard are hidden.
   const availableKeys = useMemo(() => {
     const keys = new Set<string>()
     for (const key of MODE_CHAINS[mode]) {
       if (shared.records.some((r) =>
-        r.score !== null && (!loopingOnly || r.score.rate != null) && getMetricValue(r.score, key) !== null)) {
+        r.score !== null && (!steadyStateOnly || r.score.rate != null) && getMetricValue(r.score, key) !== null)) {
         keys.add(key)
       }
     }
     return keys
-  }, [shared.records, mode, loopingOnly])
+  }, [shared.records, mode, steadyStateOnly])
 
   const visibleChain = useMemo(() => chain.filter((k) => availableKeys.has(k)), [chain, availableKeys])
 
@@ -213,7 +200,7 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
     const out: TableRow[] = []
     shared.records.forEach((r, i) => {
       if (r.score === null) return
-      if (loopingOnly && r.score.rate == null) return
+      if (steadyStateOnly && r.score.rate == null) return
       const key = r.id ?? `lb-${i}`
       out.push({
         key,
@@ -225,12 +212,11 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
         full: r.fullFormattedScore,
         categories: r.smartFormattedCategories,
         customCategories: customHolders.get(key) ?? [],
-        gif: r.gif,
-        solution: r.solution,
+        record: r,
       })
     })
     for (const r of shared.puzzleUserRecords) {
-      if (loopingOnly && r.score.rate == null) continue
+      if (steadyStateOnly && r.score.rate == null) continue
       const key = `user-${r.id}`
       out.push({
         key,
@@ -242,19 +228,18 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
         full: r.fullScore,
         categories: null,
         customCategories: customHolders.get(key) ?? [],
-        gif: null,
-        solution: null,
+        record: null,
       })
     }
     return out
-  }, [shared.records, shared.puzzleUserRecords, userGreen, loopingOnly, customHolders])
+  }, [shared.records, shared.puzzleUserRecords, userGreen, steadyStateOnly, customHolders])
 
   const leaderboardCount = useMemo(() => rows.filter((r) => !r.isUser).length, [rows])
   const userCount = useMemo(
-    () => (loopingOnly
+    () => (steadyStateOnly
       ? shared.puzzleUserRecords.filter((r) => r.score.rate != null)
       : shared.puzzleUserRecords).length,
-    [shared.puzzleUserRecords, loopingOnly],
+    [shared.puzzleUserRecords, steadyStateOnly],
   )
 
   // The flag comparators read the live flag state through a ref so the column
@@ -267,6 +252,9 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
   flagsRef.current = flags
 
   const metricSortingFn = useCallback<SortingFn<TableRow>>((rowA, rowB, columnId) => {
+    if (isInfinityScoreKey(columnId) && rowA.original.score && rowB.original.score) {
+      return compareMetric(columnId, rowA.original.score, rowB.original.score)
+    }
     const a = rowA.original.score ? getMetricValue(rowA.original.score, columnId) : null
     const b = rowB.original.score ? getMetricValue(rowB.original.score, columnId) : null
     if (a === null && b === null) return 0
@@ -274,11 +262,14 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
     if (b === null) return -1
     return a < b ? -1 : a > b ? 1 : 0
   }, [])
-  const makeFlagSortingFn = useCallback((flag: 'overlap' | 'trackless'): SortingFn<TableRow> => (rowA, rowB) => {
-    const a = rowA.original.score?.[flag] ? 1 : 0
-    const b = rowB.original.score?.[flag] ? 1 : 0
-    const desc = (flag === 'overlap' ? flagsRef.current.o : flagsRef.current.t) === 'desc'
-    return desc ? b - a : a - b
+  const makeFlagSortingFn = useCallback((flag: BoolScoreKey): SortingFn<TableRow> => (rowA, rowB) => {
+    const a = rowA.original.score?.[flag]
+    const b = rowB.original.score?.[flag]
+    if (a == null && b == null) return 0
+    if (a == null) return 1
+    if (b == null) return -1
+    const desc = flagsRef.current[FLAG_STATE_KEYS[flag]] === 'desc'
+    return desc ? Number(b) - Number(a) : Number(a) - Number(b)
   }, [])
 
   const columns = useMemo<ColumnDef<TableRow>[]>(() => [
@@ -287,20 +278,19 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
       accessorFn: (row: TableRow) => (row.score ? getMetricValue(row.score, key) : null),
       sortingFn: metricSortingFn,
     })),
-    { id: 'overlap', accessorFn: (row: TableRow) => row.score?.overlap ?? false, sortingFn: makeFlagSortingFn('overlap') },
-    { id: 'trackless', accessorFn: (row: TableRow) => row.score?.trackless ?? false, sortingFn: makeFlagSortingFn('trackless') },
-    { id: 'category' },
-    { id: 'actions' },
+    ...FLAG_ORDER.map((flag) => ({
+      id: flag,
+      accessorFn: (row: TableRow) => row.score?.[flag],
+      sortingFn: makeFlagSortingFn(flag),
+    })),
   ], [mode, metricSortingFn, makeFlagSortingFn])
 
-  // O and T, when active, are a fixed prefix (O before T) ahead of the
+  // O, T and L, when active, are a fixed prefix in that order ahead of the
   // metric chain. Metrics are always ascending (best first); priority is
   // expressed by chain order, which is changed by dragging headers, never
   // by clicking them.
   const sorting = useMemo<SortingState>(() => {
-    const state: SortingState = []
-    if (flags.o) state.push({ id: 'overlap', desc: false })
-    if (flags.t) state.push({ id: 'trackless', desc: false })
+    const state: SortingState = activeFlagSorting(flags)
     for (const key of visibleChain) state.push({ id: key, desc: false })
     return state
   }, [flags, visibleChain])
@@ -336,12 +326,10 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
     })
   }
 
-  const cycleFlag = (flag: 'overlap' | 'trackless') => {
+  const cycleFlag = (flag: BoolScoreKey) => {
     setFlags((f) => {
-      const cur = flag === 'overlap' ? f.o : f.t
-      const cycle = FLAG_CYCLES[flag]
-      const next = cycle[(cycle.indexOf(cur) + 1) % cycle.length]
-      const updated = { ...f, [flag === 'overlap' ? 'o' : 't']: next }
+      const key = FLAG_STATE_KEYS[flag]
+      const updated = { ...f, [key]: nextFlagState(flag, f[key]) }
       try { localStorage.setItem('om-table:flags', JSON.stringify(updated)) } catch { }
       return updated
     })
@@ -368,11 +356,11 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
   }, [visibleChain])
 
   // Border-box column widths from RecordsTable.css: rank 76px, each metric
-  // 100px, overlap flag 65px + trackless flag 64px, and a usable minimum for
+  // 100px, three flag columns 64px each (+ O's border), and a usable minimum for
   // the auto-width Category column. Without this the fixed table layout gives
   // Category only the leftover space, which is zero on narrow viewports and
   // would hide the gear button and the chips.
-  const minTableWidth = 76 + visibleChain.length * 100 + 129 + 200
+  const minTableWidth = 76 + visibleChain.length * 100 + FLAG_ORDER.length * 64 + 1 + 200
 
   const sortTitle = sortParts.length > 0
     ? `Sorted by ${sortParts.join(', then ')} — metrics ascend (best first). Drag a metric header to reorder the chain.`
@@ -438,8 +426,8 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
                   </th>
                 )
               })}
-              {(['overlap', 'trackless'] as const).map((flag) => {
-                const state = flag === 'overlap' ? flags.o : flags.t
+              {FLAG_ORDER.map((flag) => {
+                const state = flags[FLAG_STATE_KEYS[flag]]
                 return (
                   <th
                     key={flag}
@@ -473,7 +461,8 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
           <tbody>
             {table.getRowModel().rows.map((row) => {
               const rank = row.original.isUser ? null : ++leaderboardRank
-              const clickable = !!row.original.gif
+              const record = row.original.record
+              const clickable = !!record?.gif
               const customNames = row.original.customCategories.map((c) => c.name).join(', ')
               const title = [
                 row.original.smart ?? row.original.full,
@@ -490,7 +479,7 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
                     clickable ? 'records-table-row-clickable' : '',
                   ].filter(Boolean).join(' ')}
                   title={title || undefined}
-                  onClick={clickable ? () => setGif(row.original) : undefined}
+                  onClick={clickable && record ? () => onPlayRecord(record) : undefined}
                 >
                   <td className="records-table-td records-table-td-rank">
                     {row.original.isUser ? (
@@ -511,12 +500,14 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
                       {metricCellText(row.original.score, key)}
                     </td>
                   ))}
-                  {(['overlap', 'trackless'] as const).map((flag) => (
+                  {FLAG_ORDER.map((flag) => (
                     <td key={flag} className={`records-table-td records-table-td-flag records-table-flag-${flag}`}>
-                      {row.original.score?.[flag] && (
+                      {row.original.score?.[flag] == null ? (
+                        <span title={flag === 'looping' ? 'Looping unknown (legacy score or unfinished steady-state analysis)' : `${FLAG_LABELS[flag]} unavailable`}>–</span>
+                      ) : row.original.score[flag] && (
                         <span
                           className="records-table-flag-dot"
-                          style={{ background: CLASS_COLOR[flag] }}
+                          style={{ background: FLAG_COLORS[flag] }}
                           title={FLAG_LABELS[flag]}
                         />
                       )}
@@ -542,21 +533,11 @@ export default function RecordsTable({ puzzleId, puzzleName, shared }: RecordsTa
               )
             })}
             {rows.length === 0 && (
-              <tr><td className="records-table-empty" colSpan={visibleChain.length + 4}>No records</td></tr>
+              <tr><td className="records-table-empty" colSpan={visibleChain.length + FLAG_ORDER.length + 2}>No records</td></tr>
             )}
           </tbody>
         </table>
       </div>
-      {gif && (
-        <GifViewer
-          url={gif.gif!}
-          title={gif.full ?? gif.smart ?? ''}
-          solutionUrl={gif.solution}
-          puzzleId={puzzleId}
-          puzzleName={puzzleName}
-          onClose={() => setGif(null)}
-        />
-      )}
       {managerPos !== null && (
         <CategoryManager
           position={managerPos}

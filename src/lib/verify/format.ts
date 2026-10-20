@@ -1,5 +1,6 @@
 import type { VerifiedScore } from './types'
 import { trackedGeometry } from './metrics'
+import { formatLevelValue } from '../metrics'
 
 function isProductionType(puzzleType?: string | null): boolean {
   return puzzleType === 'PRODUCTION'
@@ -23,10 +24,7 @@ function fmt(n: number): string {
 }
 
 function fmtAreaINF(score: VerifiedScore): string {
-  const v = score.areaINFValue
-  if (v === null) return `${score.area}a`
-  const suffix = score.areaINFLevel === 0 ? '' : score.areaINFLevel === 1 ? "'" : "''"
-  return `${fmt(v)}a${suffix}`
+  return formatLevelValue(score.areaINF, 'a') ?? `${score.area}a`
 }
 
 export interface ScoreParts {
@@ -46,13 +44,12 @@ export function formatScoreParts(score: VerifiedScore, puzzleType?: string): Sco
   if (tracked.height && score.height !== null) vParts.push(`${fmt(score.height)}h`)
   if (tracked.width && score.width !== null) vParts.push(`${fmt(score.width)}w`)
   if (tracked.boundingHex && score.boundingHex !== null) vParts.push(`${fmt(score.boundingHex)}b`)
-  if (score.trackless) vParts.push('T')
+  const victoryFlags = `${score.overlap ? 'O' : ''}${score.trackless ? 'T' : ''}${score.looping ? 'L' : ''}`
+  if (victoryFlags) vParts.push(victoryFlags)
 
   if (score.rate === null) {
     return { victory: vParts.join('/'), infinity: null }
   }
-
-  vParts.push('L')
 
   const infParts: string[] = [
     `${score.cost}g`,
@@ -60,10 +57,11 @@ export function formatScoreParts(score: VerifiedScore, puzzleType?: string): Sco
     fmtAreaINF(score),
     `${score.instructions}i`,
   ]
-  if (tracked.height && score.heightINF !== null) infParts.push(`${fmt(score.heightINF)}h`)
-  if (tracked.width && score.widthINF !== null) infParts.push(`${fmt(score.widthINF)}w`)
-  if (tracked.boundingHex && score.boundingHexINF !== null) infParts.push(`${fmt(score.boundingHexINF)}b`)
-  if (score.trackless) infParts.push('T')
+  if (tracked.height && score.heightINF !== null) infParts.push(formatLevelValue(score.heightINF, 'h')!)
+  if (tracked.width && score.widthINF !== null) infParts.push(formatLevelValue(score.widthINF, 'w')!)
+  if (tracked.boundingHex && score.boundingHexINF !== null) infParts.push(formatLevelValue(score.boundingHexINF, 'b')!)
+  const infinityFlags = `${score.overlap ? 'O' : ''}${score.trackless ? 'T' : ''}`
+  if (infinityFlags) infParts.push(infinityFlags)
 
   return { victory: vParts.join('/') + '@V', infinity: infParts.join('/') + '@\u221E' }
 }

@@ -7,20 +7,12 @@ import { fetchPuzzleDetail } from './api/om'
 import type { OmPuzzleDetail } from './api/om'
 import { UserSolutionsProvider } from './state/userSolutions'
 import { usePuzzleRecords } from './state/usePuzzleRecords'
+import { loadSetting, saveSetting } from './lib/settings'
+import { findPlaybackRecord, parseHash, puzzleHash, recordPlaybackTarget } from './lib/routes'
+import type { PlaybackTarget, Route } from './lib/routes'
+import type { OmRecordDTO } from './types'
+import { GifViewer } from './components/pareto/GifViewer'
 import './App.css'
-
-interface Route {
-  validator: boolean
-  puzzleId: string | null
-}
-
-function parseHash(hash: string): Route {
-  const raw = hash.replace(/^#/, '')
-  if (raw === '/validator') return { validator: true, puzzleId: null }
-  const m = raw.match(/^\/puzzle\/(.+)$/)
-  if (m) return { validator: false, puzzleId: decodeURIComponent(m[1]) }
-  return { validator: false, puzzleId: null }
-}
 
 function App() {
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash))
@@ -33,35 +25,66 @@ function App() {
 
   const navigatePuzzle = useCallback((id: string | null) => {
     if (id) {
-      window.location.hash = `/puzzle/${id}`
+      window.location.hash = puzzleHash(id)
     } else if (window.location.hash) {
       history.replaceState(null, '', window.location.pathname + window.location.search)
-      setRoute({ validator: false, puzzleId: null })
+      setRoute(parseHash(''))
     }
+  }, [])
+
+  const playRecord = useCallback((record: OmRecordDTO) => {
+    const target = recordPlaybackTarget(record)
+    if (target) window.location.hash = puzzleHash(record.puzzle.id, target)
+  }, [])
+
+  const closePlayback = useCallback(() => {
+    const current = parseHash(window.location.hash)
+    if (!current.puzzleId || !current.playback) return
+    // Closing a directly opened link must not navigate away from the app.
+    history.replaceState(null, '', puzzleHash(current.puzzleId))
+    setRoute(parseHash(window.location.hash))
   }, [])
 
   if (route.validator) return <TestPage />
   return (
     <UserSolutionsProvider>
-      <MainApp puzzleId={route.puzzleId} onSelectPuzzle={navigatePuzzle} />
+      <MainApp
+        puzzleId={route.puzzleId}
+        playback={route.playback}
+        onSelectPuzzle={navigatePuzzle}
+        onPlayRecord={playRecord}
+        onClosePlayback={closePlayback}
+      />
     </UserSolutionsProvider>
   )
 }
 
 type MainView = 'table' | 'chart'
 
-function MainApp({ puzzleId, onSelectPuzzle }: { puzzleId: string | null; onSelectPuzzle: (id: string | null) => void }) {
+interface MainAppProps {
+  puzzleId: string | null
+  playback: PlaybackTarget | null
+  onSelectPuzzle: (id: string | null) => void
+  onPlayRecord: (record: OmRecordDTO) => void
+  onClosePlayback: () => void
+}
+
+function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onClosePlayback }: MainAppProps) {
   const [detail, setDetail] = useState<OmPuzzleDetail | null>(null)
   const [expandCollectionId, setExpandCollectionId] = useState<string | null>(null)
   const [expandGroupId, setExpandGroupId] = useState<string | null>(null)
-  // Selecting a puzzle always lands on the records table; the chart is one
-  // tab away. The shared fetch lives here so switching tabs doesn't refetch.
-  const [view, setView] = useState<MainView>('table')
+  // Remember the last tab across puzzle changes and reloads. The shared
+  // fetch lives here so switching tabs doesn't refetch.
+  const [view, setView] = useState<MainView>(() =>
+    loadSetting('om-app:view', 'table') === 'chart' ? 'chart' : 'table')
   const shared = usePuzzleRecords(puzzleId)
+  const playbackReady = shared.recordsReady && !shared.loading && !shared.error
+  const playingRecord = playbackReady && puzzleId && playback
+    ? findPlaybackRecord(shared.records, puzzleId, playback) : undefined
 
   useEffect(() => {
-    setView('table')
-  }, [puzzleId])
+    saveSetting('om-app:view', view)
+  }, [view])
 
   useEffect(() => {
     if (!puzzleId) {
@@ -109,10 +132,16 @@ function MainApp({ puzzleId, onSelectPuzzle }: { puzzleId: string | null; onSele
                 onClick={() => setView('chart')}
               >Pareto Chart</button>
             </div>
+            {playback && playbackReady && !playingRecord?.gif && (
+              <div className="pareto-chart-error" role="alert">
+                This record is unavailable or has no replay.{' '}
+                <button type="button" onClick={onClosePlayback}>Dismiss</button>
+              </div>
+            )}
             {view === 'table' ? (
-              <RecordsTable puzzleId={puzzleId} puzzleName={detail?.displayName ?? puzzleId} shared={shared} />
+              <RecordsTable shared={shared} onPlayRecord={onPlayRecord} />
             ) : (
-              <ParetoChart puzzleId={puzzleId} shared={shared} />
+              <ParetoChart puzzleId={puzzleId} shared={shared} onPlayRecord={onPlayRecord} playbackOpen={!!playingRecord?.gif} />
             )}
           </div>
         ) : (
@@ -122,6 +151,16 @@ function MainApp({ puzzleId, onSelectPuzzle }: { puzzleId: string | null; onSele
           </div>
         )}
       </main>
+      {playingRecord?.gif && (
+        <GifViewer
+          url={playingRecord.gif}
+          title={playingRecord.fullFormattedScore ?? playingRecord.smartFormattedScore ?? ''}
+          solutionUrl={playingRecord.solution}
+          puzzleId={playingRecord.puzzle.id}
+          puzzleName={playingRecord.puzzle.displayName}
+          onClose={onClosePlayback}
+        />
+      )}
     </div>
   )
 }

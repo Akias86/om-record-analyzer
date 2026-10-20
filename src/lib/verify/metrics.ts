@@ -1,3 +1,4 @@
+import type { LevelValue } from '../../types'
 import type { VerifiedScore } from './types'
 import type { VerifierModule } from './verifier'
 
@@ -30,43 +31,32 @@ export function computeScore(
     }
     return val
   }
+  const outputs = skipThroughput ? NaN : m('per repetition outputs')
+  const cycles = outputs > 0 ? m('per repetition cycles') : NaN
+  const rate = outputs > 0 && cycles >= 0 ? Math.ceil((100 * cycles) / outputs) / 100 : null
 
-  const measureRate = (): number | null => {
-    const c = m('per repetition cycles')
-    const o = m('per repetition outputs')
-    if (!(o > 0) || !(c >= 0)) return null
-    return Math.ceil((100 * c) / o) / 100
+  const directOr = (trackedDim: boolean, name: string): number | null => {
+    if (!trackedDim) return null
+    const value = m(name)
+    return Number.isFinite(value) ? value : null
   }
-  const measureAreaAtInfinity = (): { level: number; value: number } | null => {
-    if (!measureRate()) return null
-    const o = m('per repetition outputs')
-    const a2 = m('per repetition^2 area') / o ** 2
+  const measureAreaAtInfinity = (): LevelValue | null => {
+    if (rate === null) return null
+    const a2 = m('per repetition^2 area') / outputs ** 2
     if (a2 > 0) return { level: 2, value: a2 }
-    const a1 = m('per repetition area') / o
+    const a1 = m('per repetition area') / outputs
     if (a1 > 0) return { level: 1, value: a1 }
-    return { level: 0, value: m('steady state area') }
+    const value = directOr(true, 'steady state area')
+    return value === null ? null : { level: 0, value }
   }
-
-  const rate = skipThroughput ? null : measureRate()
-  const aINF = skipThroughput ? null : measureAreaAtInfinity()
-
-  const directOr = (trackedDim: boolean | undefined, name: string): number | null => {
-    if (!trackedDim) return null
-    const x = m(name)
-    return Number.isNaN(x) ? null : x
+  const measureSizeAtInfinity = (trackedDim: boolean, metric: string): LevelValue | null => {
+    if (!trackedDim || rate === null) return null
+    const growth = m(`per repetition ${metric}`)
+    if (!Number.isFinite(growth)) return null
+    if (growth > 0) return { level: 1, value: growth / outputs }
+    const value = directOr(true, `steady state ${metric}`)
+    return value === null ? null : { level: 0, value }
   }
-  const infOr = (trackedDim: boolean | undefined, val: number): number | null => {
-    if (!trackedDim) return null
-    if (!rate) return null
-    return val >= 0 ? val : Infinity
-  }
-
-  const height = directOr(tracked.height, 'height')
-  const widthRaw = directOr(tracked.width, 'width*2')
-  const boundingHex = directOr(tracked.boundingHex, 'minimum hexagon')
-  const heightINF = skipThroughput ? null : infOr(tracked.height, m('steady state height'))
-  const widthINF = skipThroughput ? null : infOr(tracked.width, m('steady state width*2') / 2)
-  const boundingHexINF = skipThroughput ? null : infOr(tracked.boundingHex, m('steady state minimum hexagon'))
 
   return {
     cost: m('cost'),
@@ -75,14 +65,14 @@ export function computeScore(
     trackless: m('number of track segments') === 0,
     cycles: m('cycles'),
     area: m('area'),
-    width: widthRaw === null ? null : widthRaw / 2,
-    height,
-    boundingHex,
+    width: directOr(tracked.width, 'width'),
+    height: directOr(tracked.height, 'height'),
+    boundingHex: directOr(tracked.boundingHex, 'minimum hexagon'),
+    looping: skipThroughput ? null : v.looping(ptr),
     rate,
-    areaINFLevel: aINF ? aINF.level : null,
-    areaINFValue: aINF ? aINF.value : null,
-    heightINF,
-    widthINF,
-    boundingHexINF,
+    areaINF: measureAreaAtInfinity(),
+    heightINF: measureSizeAtInfinity(tracked.height, 'height'),
+    widthINF: measureSizeAtInfinity(tracked.width, 'width'),
+    boundingHexINF: measureSizeAtInfinity(tracked.boundingHex, 'minimum hexagon'),
   }
 }

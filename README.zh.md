@@ -6,12 +6,23 @@
 
 ## 功能
 
-- **帕累托前沿可视化** — 为选定关卡绘制任意两个指标(成本、周期、面积、指令、高度、宽度、包围六边形、速率及其 `@∞` 变体)的交互式二维散点图。支持对数/线性坐标、拖拽缩放、overlap/trackless 过滤、多 manifold 前沿计算。
+- **帕累托前沿可视化** — 为选定关卡绘制任意两个指标(成本、周期、面积、指令、高度、宽度、包围六边形、速率及其 `@∞` 变体)的交互式二维散点图。支持对数/线性坐标、拖拽缩放、overlap/trackless/looping 过滤、多 manifold 前沿计算。设置按组收纳在左侧可折叠面板中,图表空间不足时改为覆盖展开。
+- **Records 排序** — 布尔标记按 O → T → L 优先于数值指标排序。T 和 L 默认关闭,点击依次切换为 true 优先、false 优先、关闭,并保存设置。
 - **本地解答验证** — 上传 `.solution` 文件(Opus Magnum 导出的存档),由编译为 WebAssembly 的引擎在浏览器内完成验证与评分,全程本地计算,无需服务端模拟。
 - **前沿检测** — 验证后的解答会叠加在排行榜图上,自动判定「在前沿上」(绿钻)或「不在前沿」(红钻)。上传后,侧边栏会列出具体哪些解答登上了帕累托前沿,以及属于哪些 manifold。
 - **批量验证页** — 独立的 `#/validator` 路由,可拖入一整个 `.solution` 文件夹,一次性验证全部,并以表格展示通过/失败/跳过结果。
 - **解答播放** — 内嵌 [om-web-simulator](https://omsim-web.pages.dev/player/) 播放器,支持播放/暂停、逐周期前后步进、调速及下载解答,同时保留原 omclone 独立 **Preview** 预览按钮。缺少解答文件或 WebGPU 不可用时回退原 GIF/视频。
 - **API 代理** — Cloudflare Worker 将请求代理到排行榜 API(`zlbb.faendir.com`),规避 CORS 并使 API 基址可配置。
+
+### 成绩兼容性
+
+新版排行榜的 `areaINF`、`heightINF`、`widthINF`、`boundingHexINF` 均使用 `{ level, value }`,增长率用撇号显示。Pareto 坐标轴对四个 `@∞` 字段统一沿用 `value × 100000^level` 数值转换,支持小数刻度及小于 1 的对数范围。`looping` 独立于 `rate`:进入稳态但不满足 Looping 的解仍可拥有 @∞ 成绩。
+
+旧版已保存成绩会保留有限尺寸,但新版 Looping 状态和此前未测量的增长率显示为未知。重新上传相应 `.solution` 文件即可重算;旧版本的同内容文件不会被重复检测跳过。
+
+内置验证器由 [Akias86/omsim fork](https://github.com/Akias86/omsim) 编译,使用包含增量模拟和碰撞控制的工作区(当前为 `extension` 分支)。这些接口已由 fork 提供,本项目无需额外补丁。
+
+更新时,先启用 Emscripten 环境,在本地 fork 目录运行 `make libverify.wasm`。构建直接使用当前工作区,包括未提交修改,无需先提交或推送。编译选项和导出接口由 fork 的 Makefile 管理,默认启用 PGO(`PGO=0` 可关闭)。仅在构建成功后,手动将 `build/libverify.wasm` 复制到本项目的 `src/lib/verify/libverify.wasm`,再运行 `pnpm test`。
 
 ## 技术栈
 
@@ -33,7 +44,7 @@
    └─ libverify.wasm     (加载到 Web Worker 中,模拟并评分解答)
 ```
 
-- **路由** — 轻量哈希路由:`#/puzzle/:id` 打开关卡的帕累托图;`#/validator` 打开批量验证器。
+- **路由** — 轻量哈希路由:`#/puzzle/:id` 打开关卡;`#/validator` 打开批量验证器。从记录表或图表播放时,URL 自动变为 `#/puzzle/:id?record=:recordId`,复制或刷新此链接会自动打开播放器并从头播放,不受当前视图和筛选影响。关闭播放器会清除播放参数,浏览器前进/后退也会同步播放状态。缺少记录 ID 的旧记录使用 `solution` 或 `gif` 参数定位。
 - **验证流水线** — `verifyBatch` 编排:并行预取全部唯一关卡字节(内存缓存)→ 将解答字节派发到 Web Worker 池(2–4 个 worker,共享同一份编译后的 WASM 模块)→ 通过进度回调收集结果。解答缓冲区以 transferable 形式发送(零拷贝)。worker 不可用时自动回退主线程。
 - **前沿计算** — `computeUserFrontierByManifold` 将排行榜分数与用户分数合并,按 manifold 计算非支配集,并标记「登上前沿 **且不等于任何排行榜记录**」的用户解答(即真正推进前沿的新点,而非平局)。
 - **缓存** — API 响应缓存于 localStorage(1 天 TTL)。用户解答与前沿摘要同样持久化,刷新页面后前沿列表仍然保留。
@@ -76,7 +87,7 @@ pnpm dev
 | `pnpm preview` | 构建后本地预览生产产物 |
 | `pnpm deploy` | 构建后部署到 Cloudflare Workers(`wrangler deploy`) |
 | `pnpm lint` | 运行 Oxlint |
-| `pnpm test` | 使用 Node.js 内置测试运行器检查播放器协议及运行时配置 |
+| `pnpm test` | 使用 Node.js 内置测试运行器检查播放器、配置、成绩、图表及 WASM 回归测试 |
 | `pnpm cf-typegen` | 重新生成 Cloudflare Worker 类型定义 |
 
 ## 部署
@@ -113,7 +124,6 @@ om-record-analyzer/
 │   │       ├── metrics.ts    从 WASM 计算评分指标
 │   │       ├── solution-parse.ts  解析 .solution 头(关卡 ID、名称)
 │   │       ├── format.ts     VerifiedScore → 可读字符串
-│   │       ├── convert.ts    VerifiedScore → OmScoreDTO
 │   │       ├── compare.ts    对比验证分数与排行榜记录
 │   │       └── libverify.wasm  预编译 Emscripten 验证器二进制
 │   └── test/TestPage.tsx    批量验证页(#/validator)
@@ -123,12 +133,13 @@ om-record-analyzer/
 
 ## 说明
 
-- 解答验证完全在客户端进行。WASM 二进制(约 150 KB)在主线程编译一次,编译后的 `WebAssembly.Module` 共享给每个 worker,worker 只需执行廉价的实例化/链接步骤。
+- 解答验证完全在客户端进行。WASM 二进制(约 180 KB)在主线程编译一次,编译后的 `WebAssembly.Module` 共享给每个 worker,worker 只需执行廉价的实例化/链接步骤。
 - 上传后的前沿列表基于**最新**排行榜数据重新计算(绕过缓存),避免排行榜更新后将过时记录误判为前沿。
-- `tests/` 使用 Node.js 内置测试运行器检查播放器客户端、协议及 Worker 运行时配置;`src/test/` 存放的是运行时批量验证页面,而非自动化测试。
+- `tests/` 使用 Node.js 内置测试运行器检查播放器客户端与协议、Worker 运行时配置、成绩、图表控件与坐标轴及内置 WASM 验证器;`src/test/` 存放的是运行时批量验证页面,而非自动化测试。
 
 ## 感谢
 
-- [**omsim**](https://github.com/ianh/omsim) — WebAssembly 验证器(`libverify.wasm`)由该项目的 C/C++ 源码编译而来。所有解答模拟与评分均运行于其引擎之上。
-- [**zachtronics-leaderboard-bot**](https://github.com/F43nd1r/zachtronics-leaderboard-bot) — 帕累托前沿的计算规则(manifold 定义、指标偏序关系、支配判定)通过分析该项目得出。
+- [**omsim — Akias86 fork**](https://github.com/Akias86/omsim) — 内置 WebAssembly 验证器的源码来源,提供增量模拟和碰撞控制接口。
+- [**omsim — 原始项目**](https://github.com/ianh/omsim) — fork 所基于的原始 C 模拟与评分引擎。
+- [**zachtronics-leaderboard-bot**](https://github.com/zachtronics-leaderboards/zachtronics-leaderboard-bot) — 帕累托前沿的计算规则(manifold 定义、指标偏序关系、支配判定)通过分析该项目得出。
 

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { OmRecordDTO, OmScoreDTO } from '../types'
 import { parseSolutionMeta, formatFullScore, verifyBatch } from '../lib/verify'
 import type { BatchInput, SolutionMeta } from '../lib/verify'
-import { verifiedToOmScore } from '../lib/verify/convert'
+import { normalizeScore } from '../lib/scores'
 import { summarizeUserFrontierPuzzles, computeFrontierDetailsForPuzzle, mergeFrontierForPuzzle } from '../lib/userFrontier'
 import type { UserFrontierSummary, FrontierProgressInfo } from '../lib/userFrontier'
 
@@ -14,6 +14,7 @@ export interface UserSolutionRecord {
   solutionName: string | null
   fileName?: string
   hash?: string
+  scoreVersion?: number
   score: OmScoreDTO
   fullScore: string
 }
@@ -42,7 +43,8 @@ interface UserSolutionsContextValue {
 }
 
 const STORAGE_KEY = 'om-user-solutions'
-const FRONTIER_STORAGE_KEY = 'om-user-solutions-frontier'
+const FRONTIER_STORAGE_KEY = 'om-user-solutions-frontier:v2'
+const SCORE_VERSION = 2
 
 const UserSolutionsContext = createContext<UserSolutionsContextValue | null>(null)
 
@@ -103,7 +105,10 @@ function loadRecords(): UserSolutionRecord[] {
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) return []
-    return parsed as UserSolutionRecord[]
+    return (parsed as UserSolutionRecord[]).map((record) => {
+      const score = normalizeScore(record.score)
+      return { ...record, score, fullScore: formatFullScore(score, record.puzzleType) }
+    })
   } catch {
     return []
   }
@@ -189,7 +194,7 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
       for (const p of parsed) {
         const match = findRecordMatch(records, p)
         const recordHash = match !== null ? records[match].hash : undefined
-        if (recordHash && p.hash && recordHash === p.hash) {
+        if (recordHash && p.hash && recordHash === p.hash && records[match!].scoreVersion === SCORE_VERSION) {
           duplicatedCount++
           continue
         }
@@ -284,7 +289,8 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
                   solutionName: plan.meta.solutionName,
                   fileName: plan.fileName,
                   hash: plan.hash ?? undefined,
-                  score: verifiedToOmScore(result.score),
+                  scoreVersion: SCORE_VERSION,
+                  score: { ...result.score },
                   fullScore: formatFullScore(result.score, result.puzzleType ?? undefined),
                 }
                 const next = (merged ?? records).slice()

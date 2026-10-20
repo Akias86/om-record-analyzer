@@ -330,7 +330,7 @@ export async function runVerification(
     // the advance sim), so a completed board can only harbor a POST-WIN
     // collision — unobservable in the game, must not invalidate the pass.
     const { lastProductCycle } = readIntervals()
-    const score = computeScore(verifier, ptr, puzzleType || undefined, true)
+    const score = { ...computeScore(verifier, ptr, puzzleType || undefined, true), looping: false }
     const analysis = buildAnalysis({
       collisionCycle: finalInfo!.cycle,
       collisionReason: finalError,

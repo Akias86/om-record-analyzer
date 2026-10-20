@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { sumScores, trackedGeometry } from '../lib/verify'
 import type { VerifyPartial, VerifySolutionResult } from '../lib/verify'
+import type { LevelValue } from '../types'
 
 interface SolutionDetailModalProps {
   result: VerifySolutionResult | null
@@ -76,6 +77,7 @@ function buildFinalSections(result: VerifySolutionResult, partial: VerifyPartial
     if (tracked.height) victory.push({ label: 'Height', value: fmtNum(score.height) })
     if (tracked.width) victory.push({ label: 'Width', value: fmtNum(score.width) })
     if (tracked.boundingHex) victory.push({ label: 'Bounding Hex', value: fmtNum(score.boundingHex) })
+    victory.push({ label: 'Looping', value: fmtBool(score.looping) })
     victory.push({ label: 'Sum', value: fmtNum(sums.sum) })
     if (!production) victory.push({ label: 'Sum4', value: fmtNum(sums.sum4) })
   } else {
@@ -105,8 +107,8 @@ function buildFinalSections(result: VerifySolutionResult, partial: VerifyPartial
     return `\u2248 ${fmtExact(liveVal)}`
   }
   if (score) {
-    const areaINF = score.areaINFLevel !== null && score.areaINFValue !== null
-      ? `${fmtNum(score.areaINFValue)}a${"'".repeat(score.areaINFLevel)}`
+    const areaINF = score.areaINF !== null
+      ? `${fmtNum(score.areaINF.value)}a${"'".repeat(score.areaINF.level)}`
       : inf?.area != null
         ? `\u2248 ${fmtNum(inf.area)}a`
         : '-'
@@ -119,9 +121,12 @@ function buildFinalSections(result: VerifySolutionResult, partial: VerifyPartial
       },
       { label: 'Area', value: areaINF },
     )
-    if (tracked.height) infinity.push({ label: 'Height', value: est(score.heightINF, inf?.height) })
-    if (tracked.width) infinity.push({ label: 'Width', value: est(score.widthINF, inf?.width) })
-    if (tracked.boundingHex) infinity.push({ label: 'Bounding Hex', value: est(score.boundingHexINF, inf?.boundingHex) })
+    const size = (value: LevelValue | null, live: number | null | undefined): string => value !== null
+      ? `${fmtExact(value.value)}${"'".repeat(value.level)}`
+      : est(null, live)
+    if (tracked.height) infinity.push({ label: 'Height', value: size(score.heightINF, inf?.height) })
+    if (tracked.width) infinity.push({ label: 'Width', value: size(score.widthINF, inf?.width) })
+    if (tracked.boundingHex) infinity.push({ label: 'Bounding Hex', value: size(score.boundingHexINF, inf?.boundingHex) })
   } else {
     infinity.push(
       { label: 'Rate', value: est(null, inf?.rate), sub: inf?.rate != null ? 'last live estimate' : undefined },

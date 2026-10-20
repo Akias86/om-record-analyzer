@@ -1,7 +1,7 @@
 import type { OmScoreDTO } from '../types'
 import { compareMetric, getManifoldByLabel, supportsScore } from './manifold'
 import type { Manifold, MetricId, OmType } from './manifold'
-import { getMetricValue } from './metrics'
+import { getMetricValue, isInfinityScoreKey } from './metrics'
 
 // User-defined categories, described by a text DSL:
 //
@@ -17,7 +17,7 @@ import { getMetricValue } from './metrics'
 //
 // The semantics mirror the zlbb bot's OmCategory: candidates pass
 // manifold.supportsScore (all manifold fields non-null, which makes @∞
-// categories looping-only) plus the admission boolean; the declared chain is
+// categories steady-state-only, not Looping-only) plus the admission boolean; the declared chain is
 // compared lexicographically, then the manifold fields not covered by the
 // declaration are appended in manifold declaration order, and a full tie
 // falls back to the bot's `dataOrder`. Only scores identical in every field
@@ -169,11 +169,6 @@ export const OFFICIAL_CATEGORY_NAMES: readonly string[] = [
 // Value access
 // ---------------------------------------------------------------------------
 
-function infToNumber(v: number | 'Infinity' | null | undefined): number | null {
-  if (v === null || v === undefined || v === 'Infinity') return null
-  return v
-}
-
 // Finite numeric value used for comparing a single atom and for arithmetic
 // inside an expression metric. Non-finite values (Infinity) and missing
 // values collapse to null, which sorts last (worst) everywhere.
@@ -187,13 +182,12 @@ function finiteAtomValue(score: OmScoreDTO, atom: NumAtom): number | null {
     case 'width': return score.width
     case 'boundingHex': return score.boundingHex
     case 'rate': return score.rate
-    case 'heightINF': return infToNumber(score.heightINF)
-    case 'widthINF': return infToNumber(score.widthINF)
-    case 'boundingHexINF': return infToNumber(score.boundingHexINF)
+    case 'heightINF':
+    case 'widthINF':
+    case 'boundingHexINF': return getMetricValue(score, atom.metric)
     case 'areaINF': {
-      const value = score.areaINFValue
-      const level = score.areaINFLevel
-      if (value === null || level === null) return null
+      if (score.areaINF === null) return null
+      const { value, level } = score.areaINF
       if (atom.view === 'a0') return level === 0 ? value : null
       if (atom.view === 'a1') return level === 0 ? 0 : level === 1 ? value : null
       if (atom.view === 'a2') return level <= 1 ? 0 : value
@@ -219,7 +213,7 @@ function evalBoolExpr(expr: BoolExpr, score: OmScoreDTO): boolean {
     case 'mod':
       if (expr.mod === 'overlap') return score.overlap
       if (expr.mod === 'trackless') return score.trackless
-      return score.rate !== null
+      return score.looping === true
     case 'not': return !evalBoolExpr(expr.expr, score)
     case 'and': return evalBoolExpr(expr.left, score) && evalBoolExpr(expr.right, score)
   }
@@ -241,10 +235,10 @@ function compareBoolMetric(a: OmScoreDTO, b: OmScoreDTO, expr: BoolExpr): number
 }
 
 function compareNumMetric(a: OmScoreDTO, b: OmScoreDTO, m: ChainMetric & { kind: 'num' }): number {
-  // A bare area∞ keeps the bot's level-then-value order; anything else is
-  // plain arithmetic on the finite numeric value.
+  // Bare @∞ metrics keep the bot's level-then-value order; arithmetic
+  // expressions use the graded numeric scale instead.
   const atom = m.expr.kind === 'atom' ? m.expr.atom : null
-  if (atom !== null && atom.metric === 'areaINF' && atom.view === null) return compareMetric('areaINF', a, b)
+  if (atom !== null && isInfinityScoreKey(atom.metric) && atom.view === null) return compareMetric(atom.metric, a, b)
   return compareRaw(evalNumExpr(a, m.expr), evalNumExpr(b, m.expr))
 }
 

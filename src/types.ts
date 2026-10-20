@@ -4,6 +4,11 @@ interface OmGroupDTO {
   collectionId: string
 }
 
+export interface LevelValue {
+  level: number
+  value: number
+}
+
 export interface OmScoreDTO {
   cost: number
   instructions: number
@@ -15,11 +20,12 @@ export interface OmScoreDTO {
   width: number | null
   boundingHex: number | null
   rate: number | null
-  areaINFLevel: number | null
-  areaINFValue: number | null
-  heightINF: number | 'Infinity' | null
-  widthINF: number | 'Infinity' | null
-  boundingHexINF: number | 'Infinity' | null
+  // Unknown for legacy scores or when steady-state analysis was skipped.
+  looping: boolean | null
+  areaINF: LevelValue | null
+  heightINF: LevelValue | null
+  widthINF: LevelValue | null
+  boundingHexINF: LevelValue | null
 }
 
 interface OmPuzzleDetailDTO {
@@ -70,9 +76,12 @@ export const NUMERIC_SCORE_KEYS = [
 
 export type NumericScoreKey = (typeof NUMERIC_SCORE_KEYS)[number]
 
-export const BOOL_SCORE_KEYS = ['overlap', 'trackless'] as const
+export const INFINITY_SCORE_KEYS = ['areaINF', 'heightINF', 'widthINF', 'boundingHexINF'] as const
+export type InfinityScoreKey = (typeof INFINITY_SCORE_KEYS)[number]
 
-type BoolScoreKey = (typeof BOOL_SCORE_KEYS)[number]
+export const BOOL_SCORE_KEYS = ['overlap', 'trackless', 'looping'] as const
+
+export type BoolScoreKey = (typeof BOOL_SCORE_KEYS)[number]
 
 export type BoolFilter = { [K in BoolScoreKey]: 'any' | 'true' | 'false' }
 
@@ -93,4 +102,5 @@ export const METRIC_LABELS: Record<string, string> = {
   sum4: 'Sum4',
   overlap: 'Overlap',
   trackless: 'Trackless',
+  looping: 'Looping',
 }

@@ -9,30 +9,28 @@ export interface ParetoPoint {
   recordIndex: number
   overlap: boolean
   trackless: boolean
+  looping: boolean
   gif?: string | null
-  solution?: string | null
-  puzzleId?: string | null
-  puzzleName?: string | null
   isUser?: boolean
   name?: string | null
   fullScore?: string | null
   green?: boolean
 }
 
-export type PointClass = 'overlap' | 'trackless' | 'normal'
+export type PointClass = 'overlap' | 'trackless' | 'looping' | 'normal'
 
-export const CLASS_ORDER: PointClass[] = ['overlap', 'trackless', 'normal']
+export const CLASS_ORDER: PointClass[] = ['overlap', 'trackless', 'looping', 'normal']
 
 export const CLASS_COLOR: Record<PointClass, string> = {
   normal: 'var(--text)',
   overlap: '#ff7bd7',
   trackless: '#8389fc',
+  looping: '#76BBF9',
 }
 
 export const CLASS_FRONTIER_COLOR: Record<PointClass, string> = {
+  ...CLASS_COLOR,
   normal: 'var(--accent)',
-  overlap: '#ff7bd7',
-  trackless: '#8389fc',
 }
 
 export const FRONTIER_RADIUS = 5

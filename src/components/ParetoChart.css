@@ -1,9 +1,11 @@
 .pareto-chart-container {
   display: flex;
-  flex-direction: column;
   flex: 1;
+  gap: 14px;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 
 .pareto-chart-loading,
@@ -17,48 +19,266 @@
   color: var(--danger, #e74c3c);
 }
 
-.pareto-chart-controls {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 8px 0 16px;
-  flex-wrap: wrap;
+.pareto-chart-settings {
+  flex: 0 0 36px;
+  min-width: 0;
+  min-height: 0;
 }
 
-.pareto-chart-label {
+.is-controls-open:not(.is-controls-overlay) .pareto-chart-settings {
+  flex-basis: 208px;
+}
+
+.pareto-chart-controls {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--sidebar-bg);
+}
+
+.pareto-chart-controls[hidden],
+.pareto-chart-controls-launcher[hidden] {
+  display: none;
+}
+
+.pareto-chart-controls-header {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 10px 10px 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-h);
+  flex-shrink: 0;
+}
+
+.pareto-chart-controls-header h2 {
+  flex: 1;
+  margin: 0;
   font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.pareto-chart-controls-close {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
   color: var(--text);
-  white-space: nowrap;
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.pareto-chart-controls-launcher {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--sidebar-bg);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pareto-chart-controls-launcher > span:not(.pareto-chart-controls-chevron) {
+  writing-mode: vertical-rl;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+}
+
+.pareto-chart-controls-chevron {
+  font-size: 18px;
+  line-height: 16px;
+}
+
+.pareto-chart-controls-close:hover,
+.pareto-chart-controls-launcher:hover {
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.pareto-chart-controls-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  padding: 0;
+  border: none;
+  background: rgba(0, 0, 0, 0.22);
+  cursor: default;
+}
+
+.is-controls-overlay .pareto-chart-controls {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 71;
+  width: 208px;
+  max-width: 100%;
+  height: auto;
+  box-shadow: 8px 0 28px rgba(0, 0, 0, 0.2);
+}
+
+.pareto-chart-controls-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  padding: 14px 12px;
+  overflow-y: auto;
+}
+
+.pareto-chart-control-section {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pareto-chart-control-section + .pareto-chart-control-section {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.pareto-chart-control-section h3 {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 15px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.pareto-chart-axis-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pareto-chart-field-heading,
+.pareto-chart-filter-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-h);
+}
+
+.pareto-chart-filter-control > span {
+  min-width: 0;
 }
 
 .pareto-chart-select {
-  padding: 4px 8px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: 32px;
+  padding: 5px 8px;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--sidebar-bg);
-  color: var(--text);
-  font-size: 13px;
-  font-family: inherit;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 12px;
   cursor: pointer;
-  min-width: 140px;
 }
 
 .pareto-chart-select:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+.pareto-chart-segmented {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.pareto-chart-segment-btn {
+  min-width: 0;
+  padding: 3px 5px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.pareto-chart-segment-btn[aria-pressed="true"] {
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.pareto-chart-segment-btn:hover:not([aria-pressed="true"]) {
+  background: var(--sidebar-hover);
+}
+
+.pareto-chart-filter-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: 0 0 104px;
+  box-sizing: border-box;
+}
+
+.pareto-chart-controls button:focus-visible,
+.pareto-chart-controls-launcher:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .pareto-chart-info {
-  font-size: 12px;
-  color: var(--text);
-  opacity: 0.7;
-  margin-left: auto;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 3px;
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.pareto-chart-record-count {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-bottom: 2px;
+}
+
+.pareto-chart-record-count strong {
+  color: var(--text-h);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 24px;
+  font-variant-numeric: tabular-nums;
 }
 
 .pareto-chart-reset-btn {
@@ -79,6 +299,7 @@
 .pareto-chart-body {
   display: flex;
   flex: 1;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -98,37 +319,6 @@
   color: var(--text);
   font-size: 14px;
   opacity: 0.6;
-}
-
-.pareto-chart-scale {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.pareto-chart-scale-btn {
-  padding: 2px 6px;
-  border: none;
-  background: var(--sidebar-bg);
-  color: var(--text);
-  font-size: 11px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.pareto-chart-scale-btn:not(:last-child) {
-  border-right: 1px solid var(--border);
-}
-
-.pareto-chart-scale-btn.active {
-  background: var(--accent);
-  color: #fff;
-}
-
-.pareto-chart-scale-btn:hover:not(.active) {
-  background: var(--sidebar-hover);
 }
 
 .pareto-chart-tooltip {

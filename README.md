@@ -6,12 +6,23 @@ A web tool for analyzing **Opus Magnum** (a Zachtronics puzzle game) records. It
 
 ## Features
 
-- **Pareto Frontier Visualization** — interactive 2D scatter plots comparing any two metrics (cost, cycles, area, instructions, height, width, bounding hex, rate, and their `@∞` variants) for a selected puzzle. Supports log/linear scales, drag-to-zoom, overlap/trackless filters, and multi-manifold frontier computation.
+- **Pareto Frontier Visualization** — interactive 2D scatter plots comparing any two metrics (cost, cycles, area, instructions, height, width, bounding hex, rate, and their `@∞` variants) for a selected puzzle. Supports log/linear scales, drag-to-zoom, overlap/trackless/looping filters, and multi-manifold frontier computation. Settings are grouped in a collapsible left panel, opening as an overlay when chart space is limited.
+- **Records Sorting** — independent O → T → L flag priority ahead of the numeric metric chain. T and L default off and cycle through true-first, false-first, then off; settings persist across reloads.
 - **Local Solution Verification** — upload `.solution` files (exported Opus Magnum saves) and verify them entirely in the browser via a compiled WebAssembly engine. Scores are computed locally — no server-side simulation.
 - **Frontier Detection** — your verified solutions are overlaid on the leaderboard chart and classified as "on frontier" (green) or "off frontier" (red). After upload, the sidebar lists exactly which of your solutions reached the Pareto frontier, across which manifolds.
 - **Batch Verification Page** — a dedicated `#/validator` route for dropping a folder of `.solution` files and verifying them all at once with a pass/fail/skip table.
 - **Solution Playback** — embedded [om-web-simulator](https://omsim-web.pages.dev/player/) player with play/pause, cycle stepping, speed controls and solution downloads, while retaining the independent omclone **Preview** button. Falls back to the recorded GIF/video when solution files or WebGPU are unavailable.
 - **API Proxy** — a Cloudflare Worker proxies requests to the leaderboard API (`zlbb.faendir.com`), avoiding CORS and keeping the API base configurable.
+
+### Score compatibility
+
+The current leaderboard schema uses `{ level, value }` for `areaINF`, `heightINF`, `widthINF`, and `boundingHexINF`. Growth rates are displayed with prime marks. Pareto axes keep the existing `value × 100000^level` numeric projection for all four `@∞` fields, with decimal ticks and sub-unit log domains. `looping` is independent of `rate`: steady-state solutions can have @∞ scores without being Looping.
+
+Old saved scores retain finite measurements, but their new Looping status and previously unmeasured growth rates are unknown. Re-upload those `.solution` files to recalculate them; identical files from the old score version are not skipped as duplicates.
+
+The bundled verifier is built from the [Akias86/omsim fork](https://github.com/Akias86/omsim), using the checkout with incremental simulation and collision controls (currently the `extension` branch). Those interfaces are already provided by the fork; no additional patch is needed in this project.
+
+To update it, activate Emscripten and run `make libverify.wasm` inside your local fork checkout. This uses the current working tree, including uncommitted changes; no commit or push is required. The fork’s Makefile owns the compiler flags and exports, with PGO enabled by default (`PGO=0` disables it). Only after a successful build, manually copy `build/libverify.wasm` to this project’s `src/lib/verify/libverify.wasm`, then run `pnpm test`.
 
 ## Tech Stack
 
@@ -33,7 +44,7 @@ Browser SPA ── /api/om/* ──▶ Cloudflare Worker ──▶ zlbb.faendir.
    └─ libverify.wasm     (loaded into Web Workers, simulates & scores solutions)
 ```
 
-- **Routing** — lightweight hash-based: `#/puzzle/:id` opens the Pareto chart for a puzzle; `#/validator` opens the batch verifier.
+- **Routing** — lightweight hash-based: `#/puzzle/:id` opens a puzzle; `#/validator` opens the batch verifier. Playing from either the records table or chart updates the URL to `#/puzzle/:id?record=:recordId`. Sharing or reloading it automatically opens the player and plays from the beginning, independent of the current view or filters. Closing clears the playback parameter; browser back/forward also synchronizes playback. Legacy records without IDs use a `solution` or `gif` parameter instead.
 - **Verification pipeline** — `verifyBatch` orchestrates: prefetch all unique puzzle bytes (in-memory cached) → dispatch solution bytes to a Web Worker pool (2–4 workers, sharing one compiled WASM module) → collect results with progress callbacks. Workers receive solution buffers as transferables (zero-copy). Main-thread fallback if workers are unavailable.
 - **Frontier computation** — `computeUserFrontierByManifold` merges leaderboard scores with user scores, computes the non-dominated set per manifold, and marks user solutions that reach the frontier **without being equal to any leaderboard record** (i.e. truly new frontier points, not ties).
 - **Caching** — API responses are cached in `localStorage` (1-day TTL). User solutions and frontier summaries are also persisted, so the frontier list survives page reloads.
@@ -76,7 +87,7 @@ For local development, copy `.dev.vars.example` to `.dev.vars`; use `PLAYER_ORIG
 | `pnpm preview` | Build then preview the production build locally |
 | `pnpm deploy` | Build then deploy to Cloudflare Workers (`wrangler deploy`) |
 | `pnpm lint` | Run Oxlint |
-| `pnpm test` | Run player client/protocol and runtime configuration tests (Node.js test runner) |
+| `pnpm test` | Run player/configuration, score, chart and WASM regression tests (Node.js test runner) |
 | `pnpm cf-typegen` | Regenerate Cloudflare Worker type definitions |
 
 ## Deployment
@@ -113,7 +124,6 @@ om-record-analyzer/
 │   │       ├── metrics.ts    Score metric computation from WASM
 │   │       ├── solution-parse.ts  Parse .solution headers (puzzle ID, name)
 │   │       ├── format.ts     Format VerifiedScore → readable string
-│   │       ├── convert.ts    VerifiedScore → OmScoreDTO
 │   │       ├── compare.ts    Diff verified score vs leaderboard record
 │   │       └── libverify.wasm  Pre-compiled Emscripten verifier binary
 │   └── test/TestPage.tsx    Batch verifier page (#/validator)
@@ -123,12 +133,13 @@ om-record-analyzer/
 
 ## Notes
 
-- Solution verification runs entirely client-side. The WASM binary (~150 KB) is compiled once on the main thread and the compiled `WebAssembly.Module` is shared with each worker, which only performs a cheap instantiation/link step.
+- Solution verification runs entirely client-side. The WASM binary (~180 KB) is compiled once on the main thread and the compiled `WebAssembly.Module` is shared with each worker, which only performs a cheap instantiation/link step.
 - The frontier list after upload is recomputed against the **latest** leaderboard data (cache bypassed) to avoid stale records being misclassified as frontier after the leaderboard updates.
-- `tests/` tests the embedded player client/protocol and Worker runtime configuration with Node.js's built-in test runner. `src/test/` holds the runtime batch-verifier page, not automated tests.
+- `tests/` covers the embedded player client/protocol, Worker runtime configuration, scores, chart controls/axes and the bundled WASM verifier with Node.js's built-in test runner. `src/test/` holds the runtime batch-verifier page, not automated tests.
 
 ## Thanks
 
-- [**omsim**](https://github.com/ianh/omsim) — the WebAssembly verifier (`libverify.wasm`) is compiled from this project's C/C++ source. All solution simulation and scoring runs on its engine.
-- [**zachtronics-leaderboard-bot**](https://github.com/F43nd1r/zachtronics-leaderboard-bot) — the Pareto frontier computation rules (manifold definitions, metric partial ordering, dominance detection) were derived from analyzing this project.
+- [**omsim — Akias86 fork**](https://github.com/Akias86/omsim) — source of the bundled WebAssembly verifier, including incremental simulation and collision controls.
+- [**omsim — original project**](https://github.com/ianh/omsim) — the original C simulation and scoring engine on which the fork is based.
+- [**zachtronics-leaderboard-bot**](https://github.com/zachtronics-leaderboards/zachtronics-leaderboard-bot) — the Pareto frontier computation rules (manifold definitions, metric partial ordering, dominance detection) were derived from analyzing this project.
 

@@ -1,4 +1,5 @@
-import type { OmScoreDTO } from '../types'
+import type { LevelValue, OmScoreDTO } from '../types'
+import { isInfinityScoreKey } from './metrics'
 
 export type OmType = 'NORMAL' | 'POLYMER_HEIGHT' | 'POLYMER_WIDTH' | 'POLYMER_SKEW' | 'PRODUCTION'
 
@@ -53,13 +54,12 @@ export function getManifoldByLabel(label: string): Manifold | undefined {
   return MANIFOLDS.find((m) => m.label === label)
 }
 
-type MetricKind = 'bool-overlap' | 'bool-reverse' | 'num' | 'infinint' | 'levelvalue'
+type MetricKind = 'bool-overlap' | 'bool-reverse' | 'num' | 'levelvalue'
 
 function metricKind(m: MetricId): MetricKind {
   if (m === 'overlap') return 'bool-overlap'
   if (m === 'trackless' || m === 'looping') return 'bool-reverse'
-  if (m === 'areaINF') return 'levelvalue'
-  if (m === 'heightINF' || m === 'widthINF' || m === 'boundingHexINF') return 'infinint'
+  if (isInfinityScoreKey(m)) return 'levelvalue'
   return 'num'
 }
 
@@ -77,30 +77,20 @@ function getNum(score: OmScoreDTO, m: MetricId): number | null {
   }
 }
 
-function getInfinInt(score: OmScoreDTO, m: MetricId): number | 'Infinity' | null {
-  if (m === 'heightINF') return score.heightINF
-  if (m === 'widthINF') return score.widthINF
-  if (m === 'boundingHexINF') return score.boundingHexINF
-  return null
+function getLevelValue(score: OmScoreDTO, m: MetricId): LevelValue | null {
+  return isInfinityScoreKey(m) ? score[m] : null
 }
 
-function getLevelValue(score: OmScoreDTO, m: MetricId): { level: number; value: number } | null {
-  if (m !== 'areaINF') return null
-  if (score.areaINFLevel == null || score.areaINFValue == null) return null
-  return { level: score.areaINFLevel, value: score.areaINFValue }
-}
-
-function getBool(score: OmScoreDTO, m: MetricId): boolean {
+function getBool(score: OmScoreDTO, m: MetricId): boolean | null {
   if (m === 'overlap') return score.overlap
   if (m === 'trackless') return score.trackless
-  return score.rate != null
+  return score.looping
 }
 
 function hasValue(score: OmScoreDTO, m: MetricId): boolean {
   const kind = metricKind(m)
   if (kind === 'bool-overlap' || kind === 'bool-reverse') return true
   if (kind === 'levelvalue') return getLevelValue(score, m) !== null
-  if (kind === 'infinint') return getInfinInt(score, m) !== null
   return getNum(score, m) !== null
 }
 
@@ -118,9 +108,12 @@ export function compareMetric(m: MetricId, x: OmScoreDTO, y: OmScoreDTO): number
     return a - b
   }
   if (kind === 'bool-reverse') {
-    const a = getBool(x, m) ? 1 : 0
-    const b = getBool(y, m) ? 1 : 0
-    return b - a
+    const a = getBool(x, m)
+    const b = getBool(y, m)
+    if (a == null && b == null) return 0
+    if (a == null) return 1
+    if (b == null) return -1
+    return Number(b) - Number(a)
   }
   if (kind === 'levelvalue') {
     const a = getLevelValue(x, m)
@@ -130,16 +123,6 @@ export function compareMetric(m: MetricId, x: OmScoreDTO, y: OmScoreDTO): number
     if (b == null) return -1
     if (a.level !== b.level) return a.level - b.level
     return sign(a.value - b.value)
-  }
-  if (kind === 'infinint') {
-    const a = getInfinInt(x, m)
-    const b = getInfinInt(y, m)
-    if (a == null && b == null) return 0
-    if (a == null) return 1
-    if (b == null) return -1
-    const an = a === 'Infinity' ? Infinity : a
-    const bn = b === 'Infinity' ? Infinity : b
-    return sign(an - bn)
   }
   const a = getNum(x, m)
   const b = getNum(y, m)

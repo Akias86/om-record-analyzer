@@ -2,7 +2,7 @@ import type { PartialListener, VerifySolutionResult } from './types'
 import { runVerification } from './run'
 import { compileVerifierModule } from './verifier'
 
-export interface PoolTask {
+interface PoolTask {
   puzzleId: string
   puzzleType: string
   solutionBytes: Uint8Array
