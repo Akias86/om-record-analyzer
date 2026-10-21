@@ -5,10 +5,11 @@ import RecordsTable from './components/records/RecordsTable'
 import TestPage from './test/TestPage'
 import { fetchPuzzleDetail } from './api/om'
 import type { OmPuzzleDetail } from './api/om'
-import { UserSolutionsProvider } from './state/userSolutions'
+import { UserSolutionsProvider, useUserSolutions } from './state/userSolutions'
+import type { UserSolutionRecord } from './state/userSolutions'
 import { usePuzzleRecords } from './state/usePuzzleRecords'
 import { loadSetting, saveSetting } from './lib/settings'
-import { findPlaybackRecord, parseHash, puzzleHash, recordPlaybackTarget } from './lib/routes'
+import { findPlaybackRecord, findUserPlaybackRecord, parseHash, puzzleHash, recordPlaybackTarget } from './lib/routes'
 import type { PlaybackTarget, Route } from './lib/routes'
 import type { OmRecordDTO } from './types'
 import { GifViewer } from './components/pareto/GifViewer'
@@ -37,6 +38,10 @@ function App() {
     if (target) window.location.hash = puzzleHash(record.puzzle.id, target)
   }, [])
 
+  const playUserSolution = useCallback((record: UserSolutionRecord) => {
+    window.location.hash = puzzleHash(record.puzzleId, { kind: 'user', value: record.id })
+  }, [])
+
   const closePlayback = useCallback(() => {
     const current = parseHash(window.location.hash)
     if (!current.puzzleId || !current.playback) return
@@ -53,6 +58,7 @@ function App() {
         playback={route.playback}
         onSelectPuzzle={navigatePuzzle}
         onPlayRecord={playRecord}
+        onPlayUserSolution={playUserSolution}
         onClosePlayback={closePlayback}
       />
     </UserSolutionsProvider>
@@ -66,10 +72,11 @@ interface MainAppProps {
   playback: PlaybackTarget | null
   onSelectPuzzle: (id: string | null) => void
   onPlayRecord: (record: OmRecordDTO) => void
+  onPlayUserSolution: (record: UserSolutionRecord) => void
   onClosePlayback: () => void
 }
 
-function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onClosePlayback }: MainAppProps) {
+function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onPlayUserSolution, onClosePlayback }: MainAppProps) {
   const [detail, setDetail] = useState<OmPuzzleDetail | null>(null)
   const [expandCollectionId, setExpandCollectionId] = useState<string | null>(null)
   const [expandGroupId, setExpandGroupId] = useState<string | null>(null)
@@ -78,9 +85,12 @@ function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onClosePlay
   const [view, setView] = useState<MainView>(() =>
     loadSetting('om-app:view', 'table') === 'chart' ? 'chart' : 'table')
   const shared = usePuzzleRecords(puzzleId)
-  const playbackReady = shared.recordsReady && !shared.loading && !shared.error
+  const { records: userRecords } = useUserSolutions()
+  const playbackReady = playback?.kind === 'user' || (shared.recordsReady && !shared.loading && !shared.error)
   const playingRecord = playbackReady && puzzleId && playback
     ? findPlaybackRecord(shared.records, puzzleId, playback) : undefined
+  const playingUser = puzzleId && playback ? findUserPlaybackRecord(userRecords, puzzleId, playback) : undefined
+  const playbackOpen = !!(playingUser?.solutionKey || playingRecord?.gif || playingRecord?.solution)
 
   useEffect(() => {
     saveSetting('om-app:view', view)
@@ -132,16 +142,18 @@ function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onClosePlay
                 onClick={() => setView('chart')}
               >Pareto Chart</button>
             </div>
-            {playback && playbackReady && !playingRecord?.gif && (
+            {playback && playbackReady && !playbackOpen && (
               <div className="pareto-chart-error" role="alert">
-                This record is unavailable or has no replay.{' '}
+                {playback.kind === 'user'
+                  ? 'This local solution file is unavailable in this browser. Re-upload the .solution file to play it.'
+                  : 'This record is unavailable or has no replay.'}{' '}
                 <button type="button" onClick={onClosePlayback}>Dismiss</button>
               </div>
             )}
             {view === 'table' ? (
-              <RecordsTable shared={shared} onPlayRecord={onPlayRecord} />
+              <RecordsTable shared={shared} onPlayRecord={onPlayRecord} onPlayUserSolution={onPlayUserSolution} />
             ) : (
-              <ParetoChart puzzleId={puzzleId} shared={shared} onPlayRecord={onPlayRecord} playbackOpen={!!playingRecord?.gif} />
+              <ParetoChart puzzleId={puzzleId} shared={shared} onPlayRecord={onPlayRecord} onPlayUserSolution={onPlayUserSolution} playbackOpen={playbackOpen} />
             )}
           </div>
         ) : (
@@ -151,7 +163,18 @@ function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onClosePlay
           </div>
         )}
       </main>
-      {playingRecord?.gif && (
+      {playingUser?.solutionKey ? (
+        <GifViewer
+          url={null}
+          title={`${playingUser.solutionName ?? playingUser.fileName ?? '(unnamed)'} — ${playingUser.fullScore}`}
+          solutionUrl={null}
+          solutionKey={playingUser.solutionKey}
+          fileName={playingUser.fileName}
+          puzzleId={playingUser.puzzleId}
+          puzzleName={detail?.id === playingUser.puzzleId ? detail.displayName : playingUser.puzzleId}
+          onClose={onClosePlayback}
+        />
+      ) : playingRecord && (playingRecord.gif || playingRecord.solution) ? (
         <GifViewer
           url={playingRecord.gif}
           title={playingRecord.fullFormattedScore ?? playingRecord.smartFormattedScore ?? ''}
@@ -160,7 +183,7 @@ function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onClosePlay
           puzzleName={playingRecord.puzzle.displayName}
           onClose={onClosePlayback}
         />
-      )}
+      ) : null}
     </div>
   )
 }

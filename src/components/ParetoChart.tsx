@@ -36,15 +36,17 @@ import { ChartControls } from './pareto/ChartControls'
 import { useChartControlsPanel } from './pareto/useChartControlsPanel'
 import type { PuzzleRecordsData } from '../state/usePuzzleRecords'
 import type { OmRecordDTO } from '../types'
+import type { UserSolutionRecord } from '../state/userSolutions'
 
 interface ParetoChartProps {
   puzzleId: string
   shared: PuzzleRecordsData
   onPlayRecord: (record: OmRecordDTO) => void
+  onPlayUserSolution: (record: UserSolutionRecord) => void
   playbackOpen: boolean
 }
 
-export default function ParetoChart({ puzzleId, shared, onPlayRecord, playbackOpen }: ParetoChartProps) {
+export default function ParetoChart({ puzzleId, shared, onPlayRecord, onPlayUserSolution, playbackOpen }: ParetoChartProps) {
   const s = useParetoChartState({ puzzleId, shared })
   const controls = useChartControlsPanel(s.puzzleUserRecords.length > 0)
   const [selectedPoint, setSelectedPoint] = useState<{ x: number; y: number } | null>(null)
@@ -54,31 +56,35 @@ export default function ParetoChart({ puzzleId, shared, onPlayRecord, playbackOp
     () => (hoveredUserRecordId ? new Set([`user-${hoveredUserRecordId}`]) : null),
     [hoveredUserRecordId],
   )
-  const showGif = useCallback((p: ParetoPoint) => {
-    const record = shared.records[p.recordIndex]
-    if (record?.gif && !p.isUser) onPlayRecord(record)
-  }, [shared.records, onPlayRecord])
+  const playPoint = useCallback((p: ParetoPoint) => {
+    if (p.isUser) {
+      const record = shared.puzzleUserRecords.find((r) => r.id === p.userRecordId)
+      if (record) onPlayUserSolution(record)
+    } else {
+      const record = p.recordIndex === undefined ? undefined : shared.records[p.recordIndex]
+      if (record && (record.gif || record.solution)) onPlayRecord(record)
+    }
+  }, [shared.records, shared.puzzleUserRecords, onPlayRecord, onPlayUserSolution])
   const closeOverlays = useCallback(() => {
     setSelectedPoint(null)
     setChartKey((k) => k + 1)
   }, [])
   const selectedRecords = useMemo(
-    () => (selectedPoint ? (s.pointMap.get(`${selectedPoint.x}|${selectedPoint.y}`) ?? []).filter((r) => !r.isUser) : []),
+    () => (selectedPoint ? (s.pointMap.get(`${selectedPoint.x}|${selectedPoint.y}`) ?? []) : []),
     [selectedPoint, s.pointMap],
   )
   const handleSelectPoint = useCallback(
     (p: ParetoPoint) => {
       const records = s.pointMap.get(`${p.x}|${p.y}`) ?? []
-      const leaderboard = records.filter((r) => !r.isUser)
-      if (leaderboard.length === 0) return
-      const single = leaderboard.length === 1 ? leaderboard[0] : null
-      if (single && single.gif) {
-        showGif(single)
+      if (records.length === 0) return
+      const single = records.length === 1 ? records[0] : null
+      if (single?.canPlay) {
+        playPoint(single)
         return
       }
       setSelectedPoint({ x: p.x, y: p.y })
     },
-    [s.pointMap, showGif],
+    [s.pointMap, playPoint],
   )
 
   if (s.loading) {
@@ -181,7 +187,7 @@ export default function ParetoChart({ puzzleId, shared, onPlayRecord, playbackOp
                   onMouseEnter={() => setHoveredUserRecordId(r.id)}
                   onMouseLeave={() => setHoveredUserRecordId(null)}
                 >
-                  <span className="pareto-chart-user-name">{r.solutionName ?? '(unnamed)'}</span>
+                  <button type="button" className="pareto-chart-user-name" title="Play local solution" onClick={() => onPlayUserSolution(r)}>{r.solutionName ?? '(unnamed)'}</button>
                   <span className="pareto-chart-user-score">{parts[0]}</span>
                   {parts[1] && <span className="pareto-chart-user-score">{parts[1]}</span>}
                   {greenManifolds.length > 0 && (
@@ -210,7 +216,7 @@ export default function ParetoChart({ puzzleId, shared, onPlayRecord, playbackOp
           y={selectedPoint.y}
           records={selectedRecords}
           onClose={closeOverlays}
-          onSelectGif={showGif}
+          onPlay={playPoint}
         />
       )}
     </div>

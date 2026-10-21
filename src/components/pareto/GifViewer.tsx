@@ -3,14 +3,17 @@ import { createPlayerClient, type PlayerClient, type PlayerState } from '../../l
 import { fetchPlayerUrl } from '../../api/config'
 import { fetchRecordAuthor } from '../../api/recordAuthor'
 import type { RecordAuthor } from '../../lib/recordAuthor'
+import { loadSolutionBytes } from '../../lib/player/solution'
 import { useEscapeKey } from './useEscapeKey'
 import { usePlayerLayout } from './usePlayerLayout'
 import './GifViewer.css'
 
 interface GifViewerProps {
-  url: string
+  url: string | null
   title: string
   solutionUrl: string | null
+  solutionKey?: string
+  fileName?: string
   puzzleId: string | null
   puzzleName: string | null
   onClose: () => void
@@ -38,11 +41,13 @@ async function fetchBytes(url: string, signal: AbortSignal): Promise<ArrayBuffer
 
 export function GifViewer(props: GifViewerProps) {
   // Remount for a new record so old downloads, state and iframe resources cannot leak.
-  const key = JSON.stringify([props.puzzleId, props.solutionUrl, props.url, props.title, props.puzzleName, props.playerUrl])
+  const key = JSON.stringify([props.puzzleId, props.solutionUrl, props.url, props.title, props.puzzleName, props.playerUrl, props.solutionKey, props.fileName])
   return <RecordViewer key={key} {...props} />
 }
 
-function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, playerUrl }: GifViewerProps) {
+function RecordViewer({ url, title, solutionUrl, solutionKey, fileName, puzzleId, puzzleName, onClose, playerUrl }: GifViewerProps) {
+  const hasSolution = !!(solutionKey || solutionUrl)
+  const filename = fileName ?? solutionFilename(puzzleName, title)
   const backdropRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -51,7 +56,7 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
   const previewAbort = useRef<AbortController | null>(null)
   const [state, setState] = useState<PlayerState | null>(null)
   const [playerLoaded, setPlayerLoaded] = useState(false)
-  const [fallback, setFallback] = useState(!solutionUrl || !puzzleId)
+  const [fallback, setFallback] = useState(!hasSolution || !puzzleId)
   const [reason, setReason] = useState('')
   const [downloadPending, setDownloadPending] = useState(false)
   const [previewPending, setPreviewPending] = useState(false)
@@ -62,15 +67,15 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
 
   useEffect(() => {
     const controller = new AbortController()
-    fetchRecordAuthor(solutionUrl, controller.signal).then((value) => {
+    fetchRecordAuthor(solutionKey ? null : solutionUrl, controller.signal).then((value) => {
       if (!controller.signal.aborted) setAuthor(value)
     }).catch(() => { /* Optional attribution must never interrupt playback. */ })
     return () => { controller.abort() }
-  }, [solutionUrl])
+  }, [solutionUrl, solutionKey])
 
   useEffect(() => {
     const iframe = iframeRef.current
-    if (!iframe || !solutionUrl || !puzzleId) return
+    if (!iframe || !hasSolution || !puzzleId) return
     const controller = new AbortController()
     let active = true
     let client: PlayerClient | null = null
@@ -96,12 +101,12 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
       const connection = client
       const [puzzle, solution] = await Promise.all([
         fetchBytes(`/puzzles/${encodeURIComponent(puzzleId)}.puzzle`, controller.signal),
-        fetchBytes(solutionUrl, controller.signal),
+        loadSolutionBytes(solutionUrl, solutionKey, controller.signal),
       ])
       if (!active || controller.signal.aborted) return
       await connection.load({
         puzzle: { name: `${puzzleId}.puzzle`, bytes: puzzle },
-        solution: { name: solutionFilename(puzzleName, title), bytes: solution },
+        solution: { name: filename, bytes: solution },
         title: puzzleName || undefined,
         autoplay: true,
         signal: controller.signal,
@@ -115,7 +120,7 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
       client?.dispose()
       clientRef.current = null
     }
-  }, [playerUrl, solutionUrl, puzzleId, puzzleName, title])
+  }, [playerUrl, solutionUrl, solutionKey, hasSolution, filename, puzzleId, puzzleName])
 
   useEffect(() => () => {
     downloadAbort.current?.abort()
@@ -132,18 +137,18 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
   }
 
   const downloadSolution = async () => {
-    if (!solutionUrl || downloadPending || previewPending) return
+    if (!hasSolution || downloadPending || previewPending) return
     const controller = new AbortController()
     downloadAbort.current = controller
     setActionError('')
     setDownloadPending(true)
     try {
-      const bytes = await fetchBytes(solutionUrl, controller.signal)
+      const bytes = await loadSolutionBytes(solutionUrl, solutionKey, controller.signal)
       if (controller.signal.aborted) return
       const objectUrl = URL.createObjectURL(new Blob([bytes]))
       const anchor = document.createElement('a')
       anchor.href = objectUrl
-      anchor.download = solutionFilename(puzzleName, title)
+      anchor.download = filename
       anchor.click()
       setTimeout(() => URL.revokeObjectURL(objectUrl), 10000)
     } catch (error) {
@@ -157,7 +162,7 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
   }
 
   const openReplay = async () => {
-    if (!solutionUrl || !puzzleId || downloadPending || previewPending) return
+    if (!hasSolution || !puzzleId || downloadPending || previewPending) return
     setActionError('')
     const child = window.open(REPLAY_VIEWER_URL, '_blank')
     if (!child) {
@@ -184,7 +189,7 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
       const [, puzzle, solution] = await Promise.all([
         hello,
         fetchBytes(`/puzzles/${encodeURIComponent(puzzleId)}.puzzle`, controller.signal),
-        fetchBytes(solutionUrl, controller.signal),
+        loadSolutionBytes(solutionUrl, solutionKey, controller.signal),
       ])
       if (child.closed) throw new Error('The replay viewer window was closed.')
       child.postMessage({ command: 'load', puzzle: new Uint8Array(puzzle), solution: new Uint8Array(solution) }, REPLAY_VIEWER_ORIGIN)
@@ -232,7 +237,9 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
               <span>Loading real-time player…</span>
             </div>
           )}
-          {fallback && <RecordedMedia url={url} title={title} />}
+          {fallback && (url ? <RecordedMedia url={url} title={title} /> : (
+            <div className="gif-viewer-error" role="alert">{reason || 'No recorded replay is available for this solution.'}</div>
+          ))}
         </div>
         <div className="gif-viewer-footer solution-player-footer">
           {!fallback && <>
@@ -248,7 +255,7 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
               <option value="16">16 cycles/s</option>
             </select>
           </>}
-          {solutionUrl && <>
+          {hasSolution && <>
             <button type="button" className="gif-viewer-btn" onClick={downloadSolution} disabled={downloadPending || previewPending}>
               {downloadPending ? 'Downloading…' : 'Download'}
             </button>
@@ -257,7 +264,7 @@ function RecordViewer({ url, title, solutionUrl, puzzleId, puzzleName, onClose, 
             </button>
           </>}
           <span className={`solution-player-status${actionError ? ' solution-player-status--error' : ''}`} role="status">
-            {actionError || (fallback ? reason || 'Showing recorded GIF / video' : loading ? 'Loading solution…' : stateText)}
+            {actionError || (fallback ? reason || (url ? 'Showing recorded GIF / video' : 'No recorded replay available') : loading ? 'Loading solution…' : stateText)}
           </span>
         </div>
       </div>

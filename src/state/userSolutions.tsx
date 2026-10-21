@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import type { OmRecordDTO, OmScoreDTO } from '../types'
 import { parseSolutionMeta, formatFullScore, verifyBatch } from '../lib/verify'
 import type { BatchInput, SolutionMeta } from '../lib/verify'
-import { normalizeScore } from '../lib/scores'
+import { canReuseUserScore, normalizeScore, USER_SCORE_VERSION } from '../lib/scores'
+import { clearUserSolutionFiles, saveUserSolutionFile } from '../lib/userSolutionFiles'
 import { summarizeUserFrontierPuzzles, computeFrontierDetailsForPuzzle, mergeFrontierForPuzzle } from '../lib/userFrontier'
 import type { UserFrontierSummary, FrontierProgressInfo } from '../lib/userFrontier'
 
@@ -13,6 +14,7 @@ export interface UserSolutionRecord {
   puzzleType: string
   solutionName: string | null
   fileName?: string
+  solutionKey?: string
   hash?: string
   scoreVersion?: number
   score: OmScoreDTO
@@ -31,6 +33,7 @@ interface UserSolutionsContextValue {
   skipped: number
   duplicated: number
   lastUploadTotal: number
+  storageWarning: string | null
   frontierSummary: UserFrontierSummary | null
   frontierLoading: boolean
   frontierProgress: FrontierProgressInfo | null
@@ -44,7 +47,6 @@ interface UserSolutionsContextValue {
 
 const STORAGE_KEY = 'om-user-solutions'
 const FRONTIER_STORAGE_KEY = 'om-user-solutions-frontier:v2'
-const SCORE_VERSION = 2
 
 const UserSolutionsContext = createContext<UserSolutionsContextValue | null>(null)
 
@@ -76,7 +78,7 @@ interface ParsedSolutionFile {
 interface PendingSolution {
   index: number | null
   meta: SolutionMeta
-  fileName: string
+  file: File
   hash: string | null
 }
 
@@ -146,6 +148,7 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
   const [skipped, setSkipped] = useState(0)
   const [duplicated, setDuplicated] = useState(0)
   const [lastUploadTotal, setLastUploadTotal] = useState(0)
+  const [storageWarning, setStorageWarning] = useState<string | null>(null)
   const [frontierSummary, setFrontierSummary] = useState<UserFrontierSummary | null>(() => loadFrontierSummary())
   const [frontierLoading, setFrontierLoading] = useState(false)
   const [frontierProgress, setFrontierProgress] = useState<FrontierProgressInfo | null>(null)
@@ -173,6 +176,7 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
     setSkipped(0)
     setDuplicated(0)
     setLastUploadTotal(all.length)
+    setStorageWarning(null)
 
     let skippedCount = 0
     let duplicatedCount = 0
@@ -180,6 +184,13 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
     // finished solutions become visible immediately instead of only after
     // the whole batch. Null until the first verified record arrives.
     let merged: UserSolutionRecord[] | null = null
+    const writes: Promise<void>[] = []
+    const keepFile = (file: File, key: string) => {
+      writes.push(saveUserSolutionFile(key, file).then((persisted) => {
+        if (!persisted) setStorageWarning('Some solution files could not be saved in this browser. Keep this tab open, or re-upload them after reloading to play.')
+      }))
+      return key
+    }
 
     try {
       const parsed = await Promise.all(
@@ -193,12 +204,19 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
       const pendingPlans: PendingSolution[] = []
       for (const p of parsed) {
         const match = findRecordMatch(records, p)
-        const recordHash = match !== null ? records[match].hash : undefined
-        if (recordHash && p.hash && recordHash === p.hash && records[match!].scoreVersion === SCORE_VERSION) {
+        if (canReuseUserScore(match !== null ? records[match] : undefined, p.hash)) {
+          // Even an unchanged upload must restore bytes for legacy scores or
+          // browser storage that was cleared independently of the score list.
+          const existing = records[match!]
+          const solutionKey = keepFile(p.file, existing.solutionKey ?? `sha256:${p.hash}`)
+          const next: UserSolutionRecord[] = (merged ?? records).slice()
+          next[match!] = { ...existing, solutionKey }
+          merged = next
+          setRecords(next)
           duplicatedCount++
           continue
         }
-        pendingPlans.push({ index: match, meta: p.meta, fileName: p.file.name, hash: p.hash })
+        pendingPlans.push({ index: match, meta: p.meta, file: p.file, hash: p.hash })
         pendingInputs.push({ bytes: p.bytes, puzzleId: p.meta.puzzleId })
       }
 
@@ -287,9 +305,10 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
                   puzzleId: result.puzzleId,
                   puzzleType: result.puzzleType ?? '',
                   solutionName: plan.meta.solutionName,
-                  fileName: plan.fileName,
+                  fileName: plan.file.name,
+                  solutionKey: keepFile(plan.file, plan.hash ? `sha256:${plan.hash}` : genId()),
                   hash: plan.hash ?? undefined,
-                  scoreVersion: SCORE_VERSION,
+                  scoreVersion: USER_SCORE_VERSION,
                   score: { ...result.score },
                   fullScore: formatFullScore(result.score, result.puzzleType ?? undefined),
                 }
@@ -326,6 +345,9 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
       if (merged === null) skippedCount = all.length
     }
 
+    // Clear cannot race an outstanding write, and upload completion means the
+    // files have either been persisted or retained with a visible warning.
+    await Promise.all(writes)
     setSkipped(skippedCount)
     setDuplicated(duplicatedCount)
     setUploading(false)
@@ -337,6 +359,8 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
     if (runningRef.current) return
     frontierGenRef.current++
     setRecords([])
+    void clearUserSolutionFiles()
+    setStorageWarning(null)
     setSkipped(0)
     setDuplicated(0)
     setLastUploadTotal(0)
@@ -376,8 +400,8 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
   }, [records])
 
   const value = useMemo<UserSolutionsContextValue>(
-    () => ({ records, uploading, progress, skipped, duplicated, lastUploadTotal, frontierSummary, frontierLoading, frontierProgress, addFiles, clear, refreshFrontierForPuzzle }),
-    [records, uploading, progress, skipped, duplicated, lastUploadTotal, frontierSummary, frontierLoading, frontierProgress, addFiles, clear, refreshFrontierForPuzzle],
+    () => ({ records, uploading, progress, skipped, duplicated, lastUploadTotal, storageWarning, frontierSummary, frontierLoading, frontierProgress, addFiles, clear, refreshFrontierForPuzzle }),
+    [records, uploading, progress, skipped, duplicated, lastUploadTotal, storageWarning, frontierSummary, frontierLoading, frontierProgress, addFiles, clear, refreshFrontierForPuzzle],
   )
 
   return <UserSolutionsContext.Provider value={value}>{children}</UserSolutionsContext.Provider>

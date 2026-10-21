@@ -1,0 +1,23 @@
+{
+  "puzzleId": "P296",
+  "puzzleType": "POLYMER_HEIGHT",
+  "source": "https://zlbb.faendir.com/l/om/5565748b/P296/470g-109i-29c-235a-21h-T",
+  "collisionCycle": 39,
+  "score": {
+    "cost": 470,
+    "instructions": 109,
+    "overlap": false,
+    "trackless": true,
+    "cycles": 29,
+    "area": 235,
+    "height": 21,
+    "width": null,
+    "boundingHex": null,
+    "looping": false,
+    "rate": null,
+    "areaINF": null,
+    "heightINF": null,
+    "widthINF": null,
+    "boundingHexINF": null
+  }
+}

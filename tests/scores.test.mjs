@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {importTs} from './helpers/import-ts.mjs';
 
-const {normalizeScore} = await importTs(new URL('../src/lib/scores.ts', import.meta.url));
+const {normalizeScore, canReuseUserScore, USER_SCORE_VERSION} = await importTs(new URL('../src/lib/scores.ts', import.meta.url));
 const {getMetricValue, formatLevelValue, formatAreaINF} = await importTs(new URL('../src/lib/metrics.ts', import.meta.url));
 const {compareMetric, getManifold, supportsScore, computeFrontierIndices} = await importTs(new URL('../src/lib/manifold.ts', import.meta.url));
 const {parseCategoryCached, evaluateCategoryHolders} = await importTs(new URL('../src/lib/customCategories.ts', import.meta.url));
@@ -24,6 +24,22 @@ test('new scores preserve explicit looping=false even when Rate is present', () 
   assert.deepEqual(normalizeScore(value), value);
   assert.ok(compareMetric('looping', value, score()) > 0);
   assert.equal(compareMetric('looping', value, score({looping: false, rate: null})), 0);
+});
+
+test('upload reuse requires a matching hash, the corrected score version, and a known L value', () => {
+  assert.equal(USER_SCORE_VERSION, 3);
+  const cached = {hash: 'same-file', scoreVersion: USER_SCORE_VERSION, score: score()};
+  assert.equal(canReuseUserScore(cached, 'same-file'), true);
+  assert.equal(canReuseUserScore({...cached, score: score({looping: false})}, 'same-file'), true);
+  for (const looping of [null, undefined]) {
+    assert.equal(canReuseUserScore({...cached, score: score({looping})}, 'same-file'), false);
+  }
+  for (const scoreVersion of [undefined, 1, 2]) {
+    assert.equal(canReuseUserScore({...cached, scoreVersion}, 'same-file'), false);
+  }
+  assert.equal(canReuseUserScore(cached, 'changed-file'), false);
+  assert.equal(canReuseUserScore(cached, null), false);
+  assert.equal(canReuseUserScore(undefined, 'same-file'), false);
 });
 
 test('legacy scores migrate finite dimensions without inventing Looping or infinite growth rates', () => {

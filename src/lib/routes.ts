@@ -1,7 +1,8 @@
 import type { OmRecordDTO } from '../types'
+import type { UserSolutionRecord } from '../state/userSolutions'
 
 export interface PlaybackTarget {
-  kind: 'record' | 'solution' | 'gif'
+  kind: 'record' | 'solution' | 'gif' | 'user'
   value: string
 }
 
@@ -22,7 +23,7 @@ export function parseHash(hash: string): Route {
   if (!match) return empty
   let puzzleId: string
   try { puzzleId = decodeURIComponent(match[1]) } catch { return empty }
-  for (const kind of ['record', 'solution', 'gif'] as const) {
+  for (const kind of ['record', 'solution', 'gif', 'user'] as const) {
     const value = params.get(kind)
     if (value) return { validator: false, puzzleId, playback: { kind, value } }
   }
@@ -44,7 +45,13 @@ export function recordPlaybackTarget(record: OmRecordDTO): PlaybackTarget | null
 }
 
 export function findPlaybackRecord(records: OmRecordDTO[], puzzleId: string, target: PlaybackTarget): OmRecordDTO | undefined {
+  if (target.kind === 'user') return undefined
   const field = target.kind === 'record' ? 'id' : target.kind
   // Resolve only against this puzzle's API data, not arbitrary URLs from the hash.
   return records.find((record) => record.puzzle.id === puzzleId && record[field] === target.value)
+}
+
+export function findUserPlaybackRecord(records: UserSolutionRecord[], puzzleId: string, target: PlaybackTarget): UserSolutionRecord | undefined {
+  if (target.kind !== 'user') return undefined
+  return records.find((record) => record.puzzleId === puzzleId && record.id === target.value)
 }

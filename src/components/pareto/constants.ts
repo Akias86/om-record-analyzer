@@ -6,11 +6,12 @@ export interface ParetoPoint {
   id: string
   score: string | null
   categories: string | null
-  recordIndex: number
+  recordIndex?: number
   overlap: boolean
   trackless: boolean
   looping: boolean
-  gif?: string | null
+  canPlay?: boolean
+  userRecordId?: string
   isUser?: boolean
   name?: string | null
   fullScore?: string | null

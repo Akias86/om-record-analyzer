@@ -20,7 +20,7 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
   const [loading, setLoading] = useState(true)
   const [frontierExpanded, setFrontierExpanded] = useState(false)
   const [search, setSearch] = useState('')
-  const { records, uploading, progress, skipped, duplicated, lastUploadTotal, frontierSummary, frontierLoading, frontierProgress, addFiles, clear } = useUserSolutions()
+  const { records, uploading, progress, skipped, duplicated, lastUploadTotal, storageWarning, frontierSummary, frontierLoading, frontierProgress, addFiles, clear } = useUserSolutions()
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -244,6 +244,7 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
             {!uploading && <button type="button" className="sidebar-clear-btn" onClick={clear}>Clear</button>}
           </div>
         )}
+        {storageWarning && <div className="sidebar-upload-info" role="status">{storageWarning}</div>}
         {frontierSummary && frontierSummary.greenCount > 0 && (
           <div className="sidebar-frontier">
             <button

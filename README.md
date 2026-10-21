@@ -18,7 +18,7 @@ A web tool for analyzing **Opus Magnum** (a Zachtronics puzzle game) records. It
 
 The current leaderboard schema uses `{ level, value }` for `areaINF`, `heightINF`, `widthINF`, and `boundingHexINF`. Growth rates are displayed with prime marks. Pareto axes keep the existing `value × 100000^level` numeric projection for all four `@∞` fields, with decimal ticks and sub-unit log domains. `looping` is independent of `rate`: steady-state solutions can have @∞ scores without being Looping.
 
-Old saved scores retain finite measurements, but their new Looping status and previously unmeasured growth rates are unknown. Re-upload those `.solution` files to recalculate them; identical files from the old score version are not skipped as duplicates.
+Old saved scores retain finite measurements, but their new Looping status and previously unmeasured growth rates are unknown. Re-upload those `.solution` files to recalculate them; identical files from the old score version are not skipped as duplicates. Score version 3 also fixes post-win collisions incorrectly leaving L unknown when progress callbacks drain the verifier error. Confirmed post-win collisions mean `looping: false`; a genuine cycle-limit stop can still leave L unknown. Unknown L values are never reused by upload deduplication.
 
 The bundled verifier is built from the [Akias86/omsim fork](https://github.com/Akias86/omsim), using the checkout with incremental simulation and collision controls (currently the `extension` branch). Those interfaces are already provided by the fork; no additional patch is needed in this project.
 
@@ -77,6 +77,14 @@ The simulator origin defaults to `https://omsim-web.pages.dev`; the embedded pla
 The playback area follows the native GIF's 826:647 aspect ratio (up to 826×647 CSS pixels), and the dialog fits the available viewport without padding around the image. The player draws into a fixed 826×647 canvas; browser zoom is left to the browser, without DPR compensation.
 
 For local development, copy `.dev.vars.example` to `.dev.vars`; use `PLAYER_ORIGIN=http://127.0.0.1:4173` for a locally running `om-web-simulator`, then restart `pnpm dev`. In production, update the Worker binding through Wrangler configuration or secrets and refresh the page; **no frontend rebuild is required**. The frontend reads `/api/config` whenever a viewer opens, without caching it. This endpoint exposes only the public player origin, not other bindings or secrets. WebGPU requires HTTPS or localhost and a supported browser; remote solution downloads require CORS.
+
+### Local solution playback
+
+Click an uploaded solution's table row, chart point, or name in the chart's local-solution list to play it. Overlapping chart points include both leaderboard and local solutions in the selection dialog. Local playback uses the same controls, Download (original filename), and Preview buttons; no GitHub author lookup is made. If the simulator is unavailable, local solutions have no recorded GIF/video fallback, so the dialog shows the error while keeping Download and Preview available.
+
+Verified uploads now retain their original files in **this browser's IndexedDB**, separately from score metadata in localStorage. Old score-only records need to be re-uploaded once; unchanged duplicates also restore missing files without re-verification. If browser storage fails, a warning explains that playback is available only in the current session. Clear removes both scores and saved solution files.
+
+Local playback uses `#/puzzle/:id?user=:localRecordId` and restores after reload in the same browser. The URL contains no file bytes or storage keys and does **not** share the solution with another browser/device. Opening it without the matching local data asks for a re-upload. Files are not uploaded to the leaderboard or Worker; playback transfers them to the configured simulator iframe, and Preview sends them to the selected preview window.
 
 ### Record author attribution
 

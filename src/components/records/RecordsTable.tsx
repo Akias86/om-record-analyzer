@@ -17,6 +17,7 @@ import type { CustomCategoryBadge } from '../../lib/customCategories'
 import { useCustomCategories } from '../../state/useCustomCategories'
 import { CLASS_COLOR, USER_GREEN, USER_RED } from '../pareto/constants'
 import type { PuzzleRecordsData } from '../../state/usePuzzleRecords'
+import type { UserSolutionRecord } from '../../state/userSolutions'
 import CategoryManager from './CategoryManager'
 import './RecordsTable.css'
 
@@ -70,6 +71,7 @@ interface TableRow {
   categories: string | null
   customCategories: CustomCategoryBadge[]
   record: OmRecordDTO | null
+  userRecord: UserSolutionRecord | null
 }
 
 type ChainMap = Record<TableMode, string[]>
@@ -103,6 +105,7 @@ function loadFlags(): Flags {
 interface RecordsTableProps {
   shared: PuzzleRecordsData
   onPlayRecord: (record: OmRecordDTO) => void
+  onPlayUserSolution: (record: UserSolutionRecord) => void
 }
 
 // @∞ metrics show the raw value plus the apostrophe-level suffix, not the
@@ -116,7 +119,7 @@ function metricCellText(score: OmScoreDTO | null, key: string): string {
   return v === null ? '–' : formatScoreNumber(v)
 }
 
-export default function RecordsTable({ shared, onPlayRecord }: RecordsTableProps) {
+export default function RecordsTable({ shared, onPlayRecord, onPlayUserSolution }: RecordsTableProps) {
   const [mode, setMode] = useState<TableMode>(() => (loadSetting('om-table:mode', 'v') === 'inf' ? 'inf' : 'v'))
   const [chains, setChains] = useState<ChainMap>(loadChainMap)
   const [flags, setFlags] = useState<Flags>(loadFlags)
@@ -213,6 +216,7 @@ export default function RecordsTable({ shared, onPlayRecord }: RecordsTableProps
         categories: r.smartFormattedCategories,
         customCategories: customHolders.get(key) ?? [],
         record: r,
+        userRecord: null,
       })
     })
     for (const r of shared.puzzleUserRecords) {
@@ -229,6 +233,7 @@ export default function RecordsTable({ shared, onPlayRecord }: RecordsTableProps
         categories: null,
         customCategories: customHolders.get(key) ?? [],
         record: null,
+        userRecord: r,
       })
     }
     return out
@@ -462,13 +467,16 @@ export default function RecordsTable({ shared, onPlayRecord }: RecordsTableProps
             {table.getRowModel().rows.map((row) => {
               const rank = row.original.isUser ? null : ++leaderboardRank
               const record = row.original.record
-              const clickable = !!record?.gif
+              const userRecord = row.original.userRecord
+              const play = userRecord
+                ? () => onPlayUserSolution(userRecord)
+                : record && (record.gif || record.solution) ? () => onPlayRecord(record) : undefined
               const customNames = row.original.customCategories.map((c) => c.name).join(', ')
               const title = [
                 row.original.smart ?? row.original.full,
                 row.original.categories,
                 customNames ? `Custom: ${customNames}` : null,
-                clickable ? 'Click to view solution replay' : null,
+                play ? 'Click to view solution replay' : null,
               ].filter(Boolean).join('\n')
               return (
                 <tr
@@ -476,10 +484,14 @@ export default function RecordsTable({ shared, onPlayRecord }: RecordsTableProps
                   className={[
                     'records-table-row',
                     row.original.isUser ? 'records-table-row-user' : '',
-                    clickable ? 'records-table-row-clickable' : '',
+                    play ? 'records-table-row-clickable' : '',
                   ].filter(Boolean).join(' ')}
                   title={title || undefined}
-                  onClick={clickable && record ? () => onPlayRecord(record) : undefined}
+                  tabIndex={play ? 0 : undefined}
+                  onClick={play}
+                  onKeyDown={play ? (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); play() }
+                  } : undefined}
                 >
                   <td className="records-table-td records-table-td-rank">
                     {row.original.isUser ? (

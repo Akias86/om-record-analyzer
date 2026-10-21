@@ -172,7 +172,7 @@ export function useParetoChartState({
         overlap: !!r.score.overlap,
         trackless: !!r.score.trackless,
         looping: r.score.looping === true,
-        gif: r.gif,
+        canPlay: !!(r.gif || r.solution),
       })
     })
     return points
@@ -196,11 +196,12 @@ export function useParetoChartState({
         id: `user-${r.id}`,
         score: null,
         categories: null,
-        recordIndex: -1,
         overlap: !!r.score.overlap,
         trackless: !!r.score.trackless,
         looping: r.score.looping === true,
         isUser: true,
+        userRecordId: r.id,
+        canPlay: true,
         name: r.solutionName,
         fullScore: r.fullScore,
         green,

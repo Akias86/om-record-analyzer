@@ -324,16 +324,25 @@ export async function runVerification(
     destroy()
     return result
   }
-  if (isCollision && completed) {
+  // Progress measurements can drain the WASM error slot. The captured stop
+  // reason must survive that drain, so workers and non-streaming verification
+  // take the same terminal path (rather than mistaking a collision for a limit).
+  const capturedLateCollision = lateCollision as { cycle: number; reason: string } | null
+  const postWinCollision = capturedLateCollision ?? (isCollision && completed
+    ? { cycle: finalInfo!.cycle, reason: finalError! } : null)
+  if (postWinCollision) {
     // Official semantics: the verifier's run ends the moment the winning
     // delivery completes (the complete flag is sticky, and a collision freezes
     // the advance sim), so a completed board can only harbor a POST-WIN
     // collision — unobservable in the game, must not invalidate the pass.
     const { lastProductCycle } = readIntervals()
+    // Snapshot the collision above, then clear it before reading metrics; an
+    // old simulation error would otherwise turn the first metric into NaN.
+    verifier.clearError(ptr)
     const score = { ...computeScore(verifier, ptr, puzzleType || undefined, true), looping: false }
     const analysis = buildAnalysis({
-      collisionCycle: finalInfo!.cycle,
-      collisionReason: finalError,
+      collisionCycle: postWinCollision.cycle,
+      collisionReason: postWinCollision.reason,
       steadyState: false,
       infiniteOutputs: null,
       lastProductCycle,
@@ -429,20 +438,10 @@ export async function runVerification(
     return result
   }
 
-  // completed but never converged (cycle limit, or the advance sim frozen by a
-  // post-win collision): victory metrics are exact and cheap (completion sim
-  // stops at complete); throughput (@∞) metrics are skipped.  A post-win
-  // collision is carried into the analysis for display only — verdict stands.
+  // Completed but reached the cycle limit without convergence. Unlike a
+  // captured post-win collision, this does not prove whether the solution loops.
   const score = computeScore(verifier, ptr, puzzleType || undefined, true)
-  // captured-variable note (see above): cast re-widens past the outer-flow
-  // narrowing to `null` (the only write TS sees outside emitPartial is the init).
-  const late = lateCollision as { cycle: number; reason: string } | null
-  const analysis = buildAnalysis({
-    steadyState: false,
-    lastProductCycle,
-    collisionCycle: late?.cycle ?? null,
-    collisionReason: late?.reason ?? null,
-  })
+  const analysis = buildAnalysis({ steadyState: false, lastProductCycle })
   destroy()
   return { puzzleId, puzzleType: puzzleType || null, passed: true, score, error: null, analysis }
 }

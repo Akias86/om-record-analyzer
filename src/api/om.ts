@@ -85,7 +85,9 @@ async function getWithStatus<T>(url: string, options?: RequestOptions): Promise<
   })()
 
   inflight.set(url, p as Promise<FetchResult<unknown>>)
-  p.finally(() => { inflight.delete(url) })
+  // A detached finally() would create an unhandled rejected promise on API
+  // failure, even when the caller handles it (including during local playback).
+  void p.then(() => { inflight.delete(url) }, () => { inflight.delete(url) })
   return p as Promise<FetchResult<T>>
 }
 

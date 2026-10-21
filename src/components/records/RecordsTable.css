@@ -113,7 +113,7 @@
   text-overflow: ellipsis;
 }
 
-/* Rows with a replay gif open it on click anywhere in the row. */
+/* Rows with a leaderboard or local replay open it on click anywhere in the row. */
 .records-table-row-clickable {
   cursor: pointer;
 }

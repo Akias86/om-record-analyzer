@@ -1,5 +1,16 @@
 import type { InfinityScoreKey, LevelValue, OmScoreDTO } from '../types'
 
+// v3 fixes L for post-win collisions captured by streaming verification.
+export const USER_SCORE_VERSION = 3
+
+export function canReuseUserScore(
+  record: { hash?: string; scoreVersion?: number; score: Pick<OmScoreDTO, 'looping'> } | undefined,
+  hash: string | null,
+): boolean {
+  return !!hash && record?.hash === hash && record.scoreVersion === USER_SCORE_VERSION
+    && typeof record.score.looping === 'boolean'
+}
+
 type LegacyScore = Omit<OmScoreDTO, InfinityScoreKey | 'looping'> & {
   looping?: boolean | null
   areaINFLevel: number | null

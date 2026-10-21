@@ -534,11 +534,22 @@
 }
 
 .pareto-chart-user-name {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
   font-weight: 600;
   color: var(--text-h);
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.pareto-chart-user-name:hover {
+  color: var(--accent);
+  text-decoration: underline;
 }
 
 .pareto-chart-user-score {

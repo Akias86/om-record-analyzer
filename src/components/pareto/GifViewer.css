@@ -98,6 +98,12 @@
   font-size: 13px;
 }
 
+.gif-viewer-error {
+  padding: 16px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
 .gif-viewer-loading {
   flex-direction: column;
   gap: 10px;

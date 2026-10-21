@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {importTs} from './helpers/import-ts.mjs';
 
-const {parseHash, puzzleHash, recordPlaybackTarget, findPlaybackRecord} = await importTs(new URL('../src/lib/routes.ts', import.meta.url));
+const {parseHash, puzzleHash, recordPlaybackTarget, findPlaybackRecord, findUserPlaybackRecord} = await importTs(new URL('../src/lib/routes.ts', import.meta.url));
 const empty = {validator: false, puzzleId: null, playback: null};
 const record = (overrides = {}) => ({
   id: 'record-1', puzzle: {id: 'P007'}, solution: 'https://example.com/one.solution',
@@ -63,6 +63,31 @@ test('record targets take precedence and missing or stale puzzle data cannot pla
   assert.equal(findPlaybackRecord([record()], 'P008', recordPlaybackTarget(record())), undefined);
   assert.equal(findPlaybackRecord([], 'P007', recordPlaybackTarget(record())), undefined);
   assert.equal(findPlaybackRecord([record()], 'P007', {kind: 'gif', value: 'https://untrusted.example/arbitrary.gif'}), undefined);
+});
+
+test('local playback routes round-trip stable user IDs without exposing files or storage keys', () => {
+  const local = {id: 'local /?#+', puzzleId: 'P007', solutionKey: 'private-content-key'};
+  const target = {kind: 'user', value: local.id};
+  const hash = puzzleHash(local.puzzleId, target);
+  assert.deepEqual(parseHash(hash), {...empty, puzzleId: 'P007', playback: target});
+  assert.ok(!hash.includes(local.solutionKey));
+  assert.equal(findUserPlaybackRecord([{...local, id: 'other'}, local], 'P007', target), local);
+  assert.equal(findUserPlaybackRecord([local], 'P008', target), undefined);
+  assert.equal(findUserPlaybackRecord([], 'P007', target), undefined);
+});
+
+test('local and leaderboard namespaces never resolve each other or use a hash-supplied storage key', () => {
+  const local = {id: 'record-1', puzzleId: 'P007', solutionKey: 'stored-key'};
+  assert.equal(findPlaybackRecord([record()], 'P007', {kind: 'user', value: 'record-1'}), undefined);
+  assert.equal(findUserPlaybackRecord([local], 'P007', {kind: 'record', value: 'record-1'}), undefined);
+  assert.equal(findUserPlaybackRecord([local], 'P007', {kind: 'user', value: 'stored-key'}), undefined);
+  assert.deepEqual(parseHash('#/puzzle/P007?record=abc&user=def').playback, {kind: 'record', value: 'abc'});
+  assert.deepEqual(parseHash('#/puzzle/P007?user='), {...empty, puzzleId: 'P007'});
+});
+
+test('old user records still resolve so the UI can request a re-upload', () => {
+  const local = {id: 'legacy', puzzleId: 'P007'};
+  assert.equal(findUserPlaybackRecord([local], 'P007', {kind: 'user', value: 'legacy'}), local);
 });
 
 test('clearing playback returns to a plain puzzle route', () => {

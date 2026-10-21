@@ -8,6 +8,7 @@ const {loadVerifier} = await importTs(new URL('../src/lib/verify/verifier.ts', i
 const {computeScore} = await importTs(new URL('../src/lib/verify/metrics.ts', import.meta.url));
 const wasm = await WebAssembly.compile(await readFile(new URL('../src/lib/verify/libverify.wasm', import.meta.url)));
 const verifier = await loadVerifier(wasm);
+const {runVerification} = await importTs(new URL('../src/lib/verify/run.ts', import.meta.url));
 const fixture = (name) => readFile(new URL(`./fixtures/verify/${name}`, import.meta.url));
 
 test('bundled fork verifier matches the TypeScript WASM export contract', async () => {
@@ -37,6 +38,36 @@ for (const name of ['looping', 'non-looping']) {
       assert.equal(verifier.converged(ptr), true);
       assert.deepEqual(computeScore(verifier, ptr, 'NORMAL'), expected);
     } finally { verifier.destroy(ptr); }
+  });
+}
+
+for (const stream of [false, true]) {
+  test(`post-win collision preserves victory metrics and L=false with partials=${stream}`, async () => {
+    const expected = JSON.parse((await fixture('post-win-collision.json')).toString());
+    const puzzle = await readFile(new URL('../public/puzzles/P296.puzzle', import.meta.url));
+    const partials = [];
+    const result = await runVerification(await fixture('post-win-collision.solution'), puzzle, expected.puzzleType, expected.puzzleId,
+      stream ? partial => partials.push(partial) : undefined);
+    assert.equal(result.passed, true);
+    assert.equal(result.error, null);
+    assert.equal(result.score.looping, false, 'A captured post-win collision proves non-looping, not unknown');
+    assert.deepEqual(result.score, expected.score, 'A stale collision error must not erase the first metric (cost)');
+    assert.equal(result.analysis.collisionCycle, expected.collisionCycle);
+    assert.equal(result.analysis.lastProductCycle, 29);
+    if (stream) {
+      assert.equal(partials.at(-1).limitReached, false);
+      assert.equal(partials.at(-1).collisionIgnorable, true);
+    }
+  });
+}
+
+for (const name of ['looping', 'non-looping']) {
+  test(`full verification retains the converged ${name} score with progress callbacks`, async () => {
+    const expected = JSON.parse((await fixture(`${name}.json`)).toString().replace(/^\uFEFF/, '')).score;
+    const puzzle = await readFile(new URL('../public/puzzles/P007.puzzle', import.meta.url));
+    const result = await runVerification(await fixture(`${name}.solution`), puzzle, 'NORMAL', 'P007', () => {});
+    assert.equal(result.passed, true);
+    assert.deepEqual(result.score, expected);
   });
 }
 
