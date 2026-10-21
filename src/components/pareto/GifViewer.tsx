@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { createPlayerClient, type PlayerClient, type PlayerState } from '../../lib/player/client.js'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPlayerClient, type PlayerClient, type PlayerError, type PlayerState } from '../../lib/player/client.js'
 import { fetchPlayerUrl } from '../../api/config'
 import { fetchRecordAuthor } from '../../api/recordAuthor'
 import type { RecordAuthor } from '../../lib/recordAuthor'
@@ -9,6 +9,7 @@ import { usePlayerLayout } from './usePlayerLayout'
 import './GifViewer.css'
 
 interface GifViewerProps {
+  open: boolean
   url: string | null
   title: string
   solutionUrl: string | null
@@ -39,13 +40,12 @@ async function fetchBytes(url: string, signal: AbortSignal): Promise<ArrayBuffer
   return res.arrayBuffer()
 }
 
-export function GifViewer(props: GifViewerProps) {
-  // Remount for a new record so old downloads, state and iframe resources cannot leak.
-  const key = JSON.stringify([props.puzzleId, props.solutionUrl, props.url, props.title, props.puzzleName, props.playerUrl, props.solutionKey, props.fileName])
-  return <RecordViewer key={key} {...props} />
+function isPlayerAbort(error: unknown): boolean {
+  const code = (error as Partial<PlayerError> | null)?.code
+  return code === 'ABORTED' || code === 'DISPOSED' || (error as Error | null)?.name === 'AbortError'
 }
 
-function RecordViewer({ url, title, solutionUrl, solutionKey, fileName, puzzleId, puzzleName, onClose, playerUrl }: GifViewerProps) {
+export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName, puzzleId, puzzleName, onClose, playerUrl }: GifViewerProps) {
   const hasSolution = !!(solutionKey || solutionUrl)
   const filename = fileName ?? solutionFilename(puzzleName, title)
   const backdropRef = useRef<HTMLDivElement>(null)
@@ -62,69 +62,201 @@ function RecordViewer({ url, title, solutionUrl, solutionKey, fileName, puzzleId
   const [previewPending, setPreviewPending] = useState(false)
   const [actionError, setActionError] = useState('')
   const [author, setAuthor] = useState<RecordAuthor | null>(null)
-  useEscapeKey(backdropRef, onClose)
-  usePlayerLayout(backdropRef, panelRef)
+  const stateRef = useRef<PlayerState | null>(null)
+  const loadAbort = useRef<AbortController | null>(null)
+  const loadedSource = useRef<string | null>(null)
+  const loadedTitle = useRef('')
+  const playerLoadedRef = useRef(false)
+  const filenameRef = useRef(filename)
+  const puzzleNameRef = useRef(puzzleName)
+  const authorCache = useRef(new Map<string, RecordAuthor | null>())
+  const bytesCache = useRef(new Map<string, ArrayBuffer>())
+  const bytesCacheSize = useRef(0)
+  filenameRef.current = filename
+  puzzleNameRef.current = puzzleName
+  useEscapeKey(backdropRef, onClose, open)
+  usePlayerLayout(backdropRef, panelRef, open)
+
+  const rememberBytes = useCallback((key: string, bytes: ArrayBuffer) => {
+    if (bytes.byteLength > 8 * 1024 * 1024) return
+    const cache = bytesCache.current
+    if (cache.has(key)) return
+    while (cache.size && bytesCacheSize.current + bytes.byteLength > 32 * 1024 * 1024) {
+      const oldest = cache.keys().next().value
+      if (oldest === undefined) break
+      const previous = cache.get(oldest)
+      cache.delete(oldest)
+      bytesCacheSize.current -= previous?.byteLength ?? 0
+    }
+    cache.set(key, bytes)
+    bytesCacheSize.current += bytes.byteLength
+  }, [])
+
+  const readPuzzle = useCallback(async (signal: AbortSignal) => {
+    signal.throwIfAborted()
+    if (!puzzleId) throw new Error('No puzzle is available')
+    const key = `puzzle:${puzzleId}`
+    const cached = bytesCache.current.get(key)
+    if (cached) return cached
+    const bytes = await fetchBytes(`/puzzles/${encodeURIComponent(puzzleId)}.puzzle`, signal)
+    signal.throwIfAborted()
+    rememberBytes(key, bytes)
+    return bytes
+  }, [puzzleId, rememberBytes])
+
+  const readSolution = useCallback(async (signal: AbortSignal) => {
+    signal.throwIfAborted()
+    const key = solutionKey ? `local:${solutionKey}` : `url:${solutionUrl}`
+    const cached = bytesCache.current.get(key)
+    if (cached) return cached
+    const bytes = await loadSolutionBytes(solutionUrl, solutionKey, signal)
+    signal.throwIfAborted()
+    rememberBytes(key, bytes)
+    return bytes
+  }, [solutionUrl, solutionKey, rememberBytes])
+
+  const failClient = useCallback((error: Error) => {
+    if (isPlayerAbort(error)) return
+    setReason(`Real-time player unavailable: ${error.message}`)
+    setFallback(true)
+    setPlayerLoaded(false)
+    playerLoadedRef.current = false
+    loadedSource.current = null
+    loadAbort.current?.abort()
+    const client = clientRef.current
+    clientRef.current = null
+    client?.dispose()
+  }, [])
 
   useEffect(() => {
+    const solution = solutionKey ? null : solutionUrl
+    if (!solution) { setAuthor(null); return }
+    const cached = authorCache.current
+    if (cached.has(solution)) { setAuthor(cached.get(solution) ?? null); return }
+    setAuthor(null)
     const controller = new AbortController()
-    fetchRecordAuthor(solutionKey ? null : solutionUrl, controller.signal).then((value) => {
-      if (!controller.signal.aborted) setAuthor(value)
+    fetchRecordAuthor(solution, controller.signal).then((value) => {
+      if (controller.signal.aborted) return
+      if (cached.size >= 256 && !cached.has(solution)) {
+        const oldest = cached.keys().next().value
+        if (oldest !== undefined) cached.delete(oldest)
+      }
+      cached.set(solution, value)
+      setAuthor(value)
     }).catch(() => { /* Optional attribution must never interrupt playback. */ })
     return () => { controller.abort() }
   }, [solutionUrl, solutionKey])
 
   useEffect(() => {
-    const iframe = iframeRef.current
-    if (!iframe || !hasSolution || !puzzleId) return
-    const controller = new AbortController()
-    let active = true
-    let client: PlayerClient | null = null
-    const failed = (error: Error) => {
-      if (!active || controller.signal.aborted || error.name === 'AbortError') return
-      setReason(`Real-time player unavailable: ${error.message}`)
+    if (!open) return
+    if (!hasSolution || !puzzleId) {
+      if (stateRef.current?.ready) void clientRef.current?.pause().catch(() => {})
       setFallback(true)
-      controller.abort()
-      client?.dispose()
-      clientRef.current = null
+      setReason('')
+      setState(null)
+      stateRef.current = null
+      setPlayerLoaded(false)
+      playerLoadedRef.current = false
+      loadedSource.current = null
+      return
     }
+    const controller = new AbortController()
+    loadAbort.current = controller
+    let active = true
+    const sourceKey = `${puzzleId}\u0000${solutionKey ?? solutionUrl ?? ''}`
     const loadPlayer = async () => {
-      const configuredUrl = playerUrl ?? await fetchPlayerUrl(controller.signal)
+      setActionError('')
+      setReason('')
+      setFallback(false)
+      let client = clientRef.current
+      if (!client) {
+        const configuredUrl = playerUrl ?? await fetchPlayerUrl(controller.signal)
+        controller.signal.throwIfAborted()
+        if (!active) return
+        const iframe = iframeRef.current
+        if (!iframe) throw new Error('Player iframe is unavailable.')
+        let created: PlayerClient | null = null
+        created = createPlayerClient(iframe, {
+          url: configuredUrl,
+          onState: (value) => {
+            stateRef.current = value
+            setState(value)
+          },
+          onError: (error) => {
+            if (clientRef.current === created) failClient(error)
+          },
+        })
+        clientRef.current = created
+        client = created
+      }
       if (!active || controller.signal.aborted) return
-      client = createPlayerClient(iframe, {
-        url: configuredUrl,
-        onState: (value) => {
-          if (active && !controller.signal.aborted) setState(value)
-        },
-        onError: failed,
-      })
-      clientRef.current = client
-      const connection = client
+      if (loadedSource.current === sourceKey && playerLoadedRef.current) {
+        await client.seek(0)
+        if (!active || controller.signal.aborted) return
+        await client.play()
+        return
+      }
+      setPlayerLoaded(false)
+      playerLoadedRef.current = false
+      setState(null)
+      stateRef.current = null
       const [puzzle, solution] = await Promise.all([
-        fetchBytes(`/puzzles/${encodeURIComponent(puzzleId)}.puzzle`, controller.signal),
-        loadSolutionBytes(solutionUrl, solutionKey, controller.signal),
+        readPuzzle(controller.signal),
+        readSolution(controller.signal),
       ])
       if (!active || controller.signal.aborted) return
-      await connection.load({
+      await client.load({
         puzzle: { name: `${puzzleId}.puzzle`, bytes: puzzle },
-        solution: { name: filename, bytes: solution },
-        title: puzzleName || undefined,
+        solution: { name: filenameRef.current, bytes: solution },
+        title: puzzleNameRef.current || undefined,
         autoplay: true,
         signal: controller.signal,
       })
-      if (active && !controller.signal.aborted) setPlayerLoaded(true)
+      if (!active || controller.signal.aborted) return
+      loadedSource.current = sourceKey
+      loadedTitle.current = puzzleNameRef.current || ''
+      playerLoadedRef.current = true
+      setPlayerLoaded(true)
     }
-    loadPlayer().catch((error) => failed(error instanceof Error ? error : new Error(String(error))))
+    loadPlayer().catch((error) => {
+      if (!active || controller.signal.aborted || isPlayerAbort(error)) return
+      failClient(error instanceof Error ? error : new Error(String(error)))
+    })
     return () => {
       active = false
       controller.abort()
-      client?.dispose()
-      clientRef.current = null
+      if (loadAbort.current === controller) loadAbort.current = null
     }
-  }, [playerUrl, solutionUrl, solutionKey, hasSolution, filename, puzzleId, puzzleName])
+  }, [open, playerUrl, solutionUrl, solutionKey, hasSolution, puzzleId, readPuzzle, readSolution, failClient])
 
-  useEffect(() => () => {
+  useEffect(() => {
+    if (!open) return
+    const client = clientRef.current
+    const next = puzzleName || ''
+    if (!client || !playerLoadedRef.current || loadedTitle.current === next) return
+    loadedTitle.current = next
+    void client.setTitle(next).catch((error: Error) => {
+      if (!isPlayerAbort(error)) setActionError(error.message)
+    })
+  }, [open, puzzleName])
+
+  useEffect(() => {
+    if (open) return
+    loadAbort.current?.abort()
     downloadAbort.current?.abort()
     previewAbort.current?.abort()
+    setDownloadPending(false)
+    setPreviewPending(false)
+    setActionError('')
+    if (stateRef.current?.ready) void clientRef.current?.pause().catch(() => {})
+  }, [open])
+
+  useEffect(() => () => {
+    loadAbort.current?.abort()
+    downloadAbort.current?.abort()
+    previewAbort.current?.abort()
+    clientRef.current?.dispose()
+    clientRef.current = null
   }, [])
 
   const command = (action: (client: PlayerClient) => Promise<unknown>) => {
@@ -132,7 +264,7 @@ function RecordViewer({ url, title, solutionUrl, solutionKey, fileName, puzzleId
     if (!client) return
     setActionError('')
     action(client).catch((error: Error) => {
-      if (clientRef.current === client && error.name !== 'AbortError') setActionError(error.message)
+      if (clientRef.current === client && !isPlayerAbort(error)) setActionError(error.message)
     })
   }
 
@@ -143,7 +275,7 @@ function RecordViewer({ url, title, solutionUrl, solutionKey, fileName, puzzleId
     setActionError('')
     setDownloadPending(true)
     try {
-      const bytes = await loadSolutionBytes(solutionUrl, solutionKey, controller.signal)
+      const bytes = await readSolution(controller.signal)
       if (controller.signal.aborted) return
       const objectUrl = URL.createObjectURL(new Blob([bytes]))
       const anchor = document.createElement('a')
@@ -188,8 +320,8 @@ function RecordViewer({ url, title, solutionUrl, solutionKey, fileName, puzzleId
     try {
       const [, puzzle, solution] = await Promise.all([
         hello,
-        fetchBytes(`/puzzles/${encodeURIComponent(puzzleId)}.puzzle`, controller.signal),
-        loadSolutionBytes(solutionUrl, solutionKey, controller.signal),
+        readPuzzle(controller.signal),
+        readSolution(controller.signal),
       ])
       if (child.closed) throw new Error('The replay viewer window was closed.')
       child.postMessage({ command: 'load', puzzle: new Uint8Array(puzzle), solution: new Uint8Array(solution) }, REPLAY_VIEWER_ORIGIN)
@@ -216,7 +348,7 @@ function RecordViewer({ url, title, solutionUrl, solutionKey, fileName, puzzleId
     : `Completed at cycle ${state.victoryCycle}`
 
   return (
-    <div ref={backdropRef} className="gif-viewer-backdrop solution-player-backdrop" onClick={onClose}>
+    <div ref={backdropRef} className="gif-viewer-backdrop solution-player-backdrop" hidden={!open} onClick={onClose}>
       <div ref={panelRef} className="gif-viewer-panel solution-player-panel" role="dialog" aria-modal="true" aria-label={title} onClick={(event) => event.stopPropagation()}>
         <div className="gif-viewer-header">
           <div className="gif-viewer-heading">

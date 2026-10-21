@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Sidebar from './components/Sidebar'
 import ParetoChart from './components/ParetoChart'
 import RecordsTable from './components/records/RecordsTable'
@@ -67,6 +67,16 @@ function App() {
 
 type MainView = 'table' | 'chart'
 
+interface PlaybackView {
+  url: string | null
+  title: string
+  solutionUrl: string | null
+  solutionKey?: string
+  fileName?: string
+  puzzleId: string
+  puzzleName: string
+}
+
 interface MainAppProps {
   puzzleId: string | null
   playback: PlaybackTarget | null
@@ -91,6 +101,36 @@ function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onPlayUserS
     ? findPlaybackRecord(shared.records, puzzleId, playback) : undefined
   const playingUser = puzzleId && playback ? findUserPlaybackRecord(userRecords, puzzleId, playback) : undefined
   const playbackOpen = !!(playingUser?.solutionKey || playingRecord?.gif || playingRecord?.solution)
+  const activePlayback = useMemo<PlaybackView | null>(() => {
+    if (playingUser?.solutionKey) {
+      return {
+        url: null,
+        title: `${playingUser.solutionName ?? playingUser.fileName ?? '(unnamed)'} — ${playingUser.fullScore}`,
+        solutionUrl: null,
+        solutionKey: playingUser.solutionKey,
+        fileName: playingUser.fileName,
+        puzzleId: playingUser.puzzleId,
+        puzzleName: detail?.id === playingUser.puzzleId ? detail.displayName : playingUser.puzzleId,
+      }
+    }
+    if (playingRecord && (playingRecord.gif || playingRecord.solution)) {
+      return {
+        url: playingRecord.gif,
+        title: playingRecord.fullFormattedScore ?? playingRecord.smartFormattedScore ?? '',
+        solutionUrl: playingRecord.solution,
+        puzzleId: playingRecord.puzzle.id,
+        puzzleName: playingRecord.puzzle.displayName,
+      }
+    }
+    return null
+  }, [detail, playingRecord, playingUser])
+  // Keep the player mounted across close/reopen so its WebGPU context, atlas
+  // and WASM instance survive. The route only controls visibility.
+  const [lastPlayback, setLastPlayback] = useState<PlaybackView | null>(null)
+  useEffect(() => {
+    if (activePlayback) setLastPlayback(activePlayback)
+  }, [activePlayback])
+  const playbackView = activePlayback ?? lastPlayback
 
   useEffect(() => {
     saveSetting('om-app:view', view)
@@ -163,27 +203,13 @@ function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onPlayUserS
           </div>
         )}
       </main>
-      {playingUser?.solutionKey ? (
+      {playbackView && (
         <GifViewer
-          url={null}
-          title={`${playingUser.solutionName ?? playingUser.fileName ?? '(unnamed)'} — ${playingUser.fullScore}`}
-          solutionUrl={null}
-          solutionKey={playingUser.solutionKey}
-          fileName={playingUser.fileName}
-          puzzleId={playingUser.puzzleId}
-          puzzleName={detail?.id === playingUser.puzzleId ? detail.displayName : playingUser.puzzleId}
+          {...playbackView}
+          open={playbackOpen}
           onClose={onClosePlayback}
         />
-      ) : playingRecord && (playingRecord.gif || playingRecord.solution) ? (
-        <GifViewer
-          url={playingRecord.gif}
-          title={playingRecord.fullFormattedScore ?? playingRecord.smartFormattedScore ?? ''}
-          solutionUrl={playingRecord.solution}
-          puzzleId={playingRecord.puzzle.id}
-          puzzleName={playingRecord.puzzle.displayName}
-          onClose={onClosePlayback}
-        />
-      ) : null}
+      )}
     </div>
   )
 }

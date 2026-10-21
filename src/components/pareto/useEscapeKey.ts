@@ -1,7 +1,8 @@
 import { useEffect, type RefObject } from 'react'
 
-export function useEscapeKey(ref: RefObject<HTMLElement | null>, onClose: () => void) {
+export function useEscapeKey(ref: RefObject<HTMLElement | null>, onClose: () => void, active = true) {
   useEffect(() => {
+    if (!active) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       const layers = document.querySelectorAll('.gif-viewer-backdrop')
@@ -11,5 +12,5 @@ export function useEscapeKey(ref: RefObject<HTMLElement | null>, onClose: () => 
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [ref, onClose])
+  }, [ref, onClose, active])
 }

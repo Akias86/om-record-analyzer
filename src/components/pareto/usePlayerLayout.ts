@@ -1,8 +1,9 @@
 import { useLayoutEffect, type RefObject } from 'react'
 
 /** Fit the native GIF-sized playback area, with no padding/letterboxing around it. */
-export function usePlayerLayout(backdropRef: RefObject<HTMLDivElement | null>, panelRef: RefObject<HTMLDivElement | null>) {
+export function usePlayerLayout(backdropRef: RefObject<HTMLDivElement | null>, panelRef: RefObject<HTMLDivElement | null>, active = true) {
   useLayoutEffect(() => {
+    if (!active) return
     const backdrop = backdropRef.current
     const panel = panelRef.current
     const header = panel?.querySelector<HTMLElement>('.gif-viewer-header')
@@ -34,5 +35,5 @@ export function usePlayerLayout(backdropRef: RefObject<HTMLDivElement | null>, p
       cancelAnimationFrame(frame)
       observer.disconnect()
     }
-  }, [backdropRef, panelRef])
+  }, [backdropRef, panelRef, active])
 }

@@ -11,7 +11,7 @@ A web tool for analyzing **Opus Magnum** (a Zachtronics puzzle game) records. It
 - **Local Solution Verification** — upload `.solution` files (exported Opus Magnum saves) and verify them entirely in the browser via a compiled WebAssembly engine. Scores are computed locally — no server-side simulation.
 - **Frontier Detection** — your verified solutions are overlaid on the leaderboard chart and classified as "on frontier" (green) or "off frontier" (red). After upload, the sidebar lists exactly which of your solutions reached the Pareto frontier, across which manifolds.
 - **Batch Verification Page** — a dedicated `#/validator` route for dropping a folder of `.solution` files and verifying them all at once with a pass/fail/skip table.
-- **Solution Playback** — embedded [om-web-simulator](https://omsim-web.pages.dev/player/) player with play/pause, cycle stepping, speed controls and solution downloads, while retaining the independent omclone **Preview** button. Falls back to the recorded GIF/video when solution files or WebGPU are unavailable.
+- **Solution Playback** — embedded [om-web-simulator](https://omsim-web.pages.dev/player/) player, initialized once per page and kept warm across records, with play/pause, cycle stepping, speed controls and solution downloads, while retaining the independent omclone **Preview** button. Falls back to the recorded GIF/video when solution files or WebGPU are unavailable.
 - **API Proxy** — a Cloudflare Worker proxies requests to the leaderboard API (`zlbb.faendir.com`), avoiding CORS and keeping the API base configurable.
 
 ### Score compatibility
@@ -76,7 +76,7 @@ The simulator origin defaults to `https://omsim-web.pages.dev`; the embedded pla
 
 The playback area follows the native GIF's 826:647 aspect ratio (up to 826×647 CSS pixels), and the dialog fits the available viewport without padding around the image. The player draws into a fixed 826×647 canvas; browser zoom is left to the browser, without DPR compensation.
 
-For local development, copy `.dev.vars.example` to `.dev.vars`; use `PLAYER_ORIGIN=http://127.0.0.1:4173` for a locally running `om-web-simulator`, then restart `pnpm dev`. In production, update the Worker binding through Wrangler configuration or secrets and refresh the page; **no frontend rebuild is required**. The frontend reads `/api/config` whenever a viewer opens, without caching it. This endpoint exposes only the public player origin, not other bindings or secrets. WebGPU requires HTTPS or localhost and a supported browser; remote solution downloads require CORS.
+For local development, copy `.dev.vars.example` to `.dev.vars`; use `PLAYER_ORIGIN=http://127.0.0.1:4173` for a locally running `om-web-simulator`, then restart `pnpm dev`. In production, update the Worker binding through Wrangler configuration or secrets and refresh the page; **no frontend rebuild is required**. The first playback reads `/api/config` without caching it; the persistent player keeps that origin for the page session. This endpoint exposes only the public player origin, not other bindings or secrets. WebGPU requires HTTPS or localhost and a supported browser; remote solution downloads require CORS.
 
 ### Local solution playback
 

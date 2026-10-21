@@ -2,6 +2,11 @@
   box-sizing: border-box;
 }
 
+/* Keep the iframe alive while the dialog is closed. */
+.gif-viewer-backdrop.solution-player-backdrop[hidden] {
+  display: none;
+}
+
 .gif-viewer-panel.solution-player-panel {
   box-sizing: border-box;
   width: min(828px, 100%);
