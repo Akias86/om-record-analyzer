@@ -5,7 +5,7 @@ export function useEscapeKey(ref: RefObject<HTMLElement | null>, onClose: () => 
     if (!active) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
-      const layers = document.querySelectorAll('.gif-viewer-backdrop')
+      const layers = document.querySelectorAll('.gif-viewer-backdrop:not([hidden])')
       if (layers.length === 0) return
       if (layers[layers.length - 1] !== ref.current) return
       onClose()

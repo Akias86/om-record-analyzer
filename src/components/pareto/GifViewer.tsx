@@ -130,7 +130,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
 
   useEffect(() => {
     const solution = solutionKey ? null : solutionUrl
-    if (!solution) { setAuthor(null); return }
+    if (!open || !solution) { setAuthor(null); return }
     const cached = authorCache.current
     if (cached.has(solution)) { setAuthor(cached.get(solution) ?? null); return }
     setAuthor(null)
@@ -145,7 +145,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
       setAuthor(value)
     }).catch(() => { /* Optional attribution must never interrupt playback. */ })
     return () => { controller.abort() }
-  }, [solutionUrl, solutionKey])
+  }, [open, solutionUrl, solutionKey])
 
   useEffect(() => {
     if (!open) return
@@ -240,21 +240,28 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
     })
   }, [open, puzzleName])
 
+  // Keep the player alive, but scope downloads/popups to the open record.
+  // Aborted completions must not overwrite the next record's action state.
   useEffect(() => {
-    if (open) return
-    loadAbort.current?.abort()
-    downloadAbort.current?.abort()
-    previewAbort.current?.abort()
     setDownloadPending(false)
     setPreviewPending(false)
     setActionError('')
+    return () => {
+      downloadAbort.current?.abort()
+      previewAbort.current?.abort()
+      downloadAbort.current = null
+      previewAbort.current = null
+    }
+  }, [open, puzzleId, solutionUrl, solutionKey])
+
+  useEffect(() => {
+    if (open) return
+    loadAbort.current?.abort()
     if (stateRef.current?.ready) void clientRef.current?.pause().catch(() => {})
   }, [open])
 
   useEffect(() => () => {
     loadAbort.current?.abort()
-    downloadAbort.current?.abort()
-    previewAbort.current?.abort()
     clientRef.current?.dispose()
     clientRef.current = null
   }, [])
@@ -269,7 +276,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
   }
 
   const downloadSolution = async () => {
-    if (!hasSolution || downloadPending || previewPending) return
+    if (!open || !hasSolution || downloadPending || previewPending) return
     const controller = new AbortController()
     downloadAbort.current = controller
     setActionError('')
@@ -294,7 +301,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
   }
 
   const openReplay = async () => {
-    if (!hasSolution || !puzzleId || downloadPending || previewPending) return
+    if (!open || !hasSolution || !puzzleId || downloadPending || previewPending) return
     setActionError('')
     const child = window.open(REPLAY_VIEWER_URL, '_blank')
     if (!child) {
@@ -323,6 +330,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
         readPuzzle(controller.signal),
         readSolution(controller.signal),
       ])
+      controller.signal.throwIfAborted()
       if (child.closed) throw new Error('The replay viewer window was closed.')
       child.postMessage({ command: 'load', puzzle: new Uint8Array(puzzle), solution: new Uint8Array(solution) }, REPLAY_VIEWER_ORIGIN)
     } catch (error) {
