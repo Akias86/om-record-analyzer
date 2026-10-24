@@ -70,6 +70,12 @@
   border-radius: 8px;
 }
 
+/* Size against the available scrollport, not the outer scrollbar gutter. */
+.records-table-sizing {
+  container-type: inline-size;
+  width: 100%;
+}
+
 /* Fixed layout: column widths come only from the header row, so every
    metric column is exactly the specified width — auto layout's excess
    distribution made them differ by a couple of pixels. */
@@ -99,15 +105,14 @@
 }
 
 .records-table-th-rank {
-  width: 56px;
+  box-sizing: border-box;
+  width: 76px;
 }
 
 .records-table-th-cat {
-  /* Auto width, as before: it absorbs the leftover space so the metric
-     columns keep their fixed widths. The table gets a matching min-width
-     inline (see RecordsTable.tsx) so the column never collapses to zero —
-     the fixed table layout would otherwise give it nothing once rank +
-     metrics + flags exceed the viewport, hiding the gear button. */
+  /* Absorb the space left after the bounded name column and fixed metrics.
+     The matching table min-width reserves room for this label and its gear,
+     even when a narrow viewport requires horizontal scrolling. */
   border-left: 1px solid var(--border);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -224,9 +229,8 @@
 
 .records-table-td-rank {
   font-variant-numeric: tabular-nums;
-  opacity: 0.65;
-  /* Fixed layout keeps this column narrow; user solution names ellipsize
-     instead of overflowing into the metric columns. */
+  /* The name column has a bounded width; long saves ellipsize instead of
+     overflowing into the metric columns. */
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -250,6 +254,10 @@
   text-overflow: ellipsis;
 }
 
+.records-table-row:not(.records-table-row-user) .records-table-td-rank {
+  color: color-mix(in srgb, var(--text) 65%, var(--bg));
+}
+
 .records-table-user {
   display: inline-flex;
   align-items: center;
@@ -266,10 +274,10 @@
   font-weight: 600;
 }
 
-.records-table-user-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.records-table-user-marker {
+  width: 12px;
+  height: 12px;
+  display: block;
   flex-shrink: 0;
 }
 

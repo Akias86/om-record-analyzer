@@ -10,16 +10,22 @@ import type { BoolScoreKey, OmRecordDTO, OmScoreDTO } from '../../types'
 import { formatAreaINF, formatLevelValue, formatScoreNumber, getMetricValue, isInfinityScoreKey } from '../../lib/metrics'
 import { FLAG_ORDER, FLAG_STATE_KEYS, activeFlagSorting, nextFlagState, parseFlags } from './flags'
 import type { Flags, FlagState } from './flags'
+import { getRecordsTableLayout } from './layout'
+import { useRecordsNameWidth } from './useRecordsNameWidth'
 import { loadSetting, saveSetting } from '../../lib/settings'
 import { compareMetric } from '../../lib/manifold'
 import { evaluateCategoryHolders, parseCategoryCached } from '../../lib/customCategories'
 import type { CustomCategoryBadge } from '../../lib/customCategories'
 import { useCustomCategories } from '../../state/useCustomCategories'
 import { CLASS_COLOR, USER_GREEN, USER_RED } from '../pareto/constants'
+import { makeDiamondShape } from '../pareto/shapes'
 import type { PuzzleRecordsData } from '../../state/usePuzzleRecords'
 import type { UserSolutionRecord } from '../../state/userSolutions'
 import CategoryManager from './CategoryManager'
 import './RecordsTable.css'
+
+const GreenUserMarker = makeDiamondShape(USER_GREEN)
+const RedUserMarker = makeDiamondShape(USER_RED)
 
 type TableMode = 'v' | 'inf'
 
@@ -360,12 +366,11 @@ export default function RecordsTable({ shared, onPlayRecord, onPlayUserSolution 
     return parts
   }, [visibleChain])
 
-  // Border-box column widths from RecordsTable.css: rank 76px, each metric
-  // 100px, three flag columns 64px each (+ O's border), and a usable minimum for
-  // the auto-width Category column. Without this the fixed table layout gives
-  // Category only the leftover space, which is zero on narrow viewports and
-  // would hide the gear button and the chips.
-  const minTableWidth = 76 + visibleChain.length * 100 + FLAG_ORDER.length * 64 + 1 + 200
+  const userNames = useMemo(() => rows.filter((row) => row.isUser).map((row) => row.name ?? ''), [rows])
+  const { tableRef, longestNameWidth } = useRecordsNameWidth(
+    userNames, !shared.loading && !shared.error && shared.recordsReady,
+  )
+  const { minTableWidth, rankWidth } = getRecordsTableLayout(visibleChain.length, longestNameWidth)
 
   const sortTitle = sortParts.length > 0
     ? `Sorted by ${sortParts.join(', then ')} — metrics ascend (best first). Drag a metric header to reorder the chain.`
@@ -395,160 +400,169 @@ export default function RecordsTable({ shared, onPlayRecord, onPlayUserSolution 
         </span>
       </div>
       <div className="records-table-wrap">
-        <table className="records-table-table" style={{ minWidth: minTableWidth }}>
-          <thead>
-            <tr>
-              <th className="records-table-th records-table-th-rank" title="Leaderboard rank">#</th>
-              {visibleChain.map((key, i) => {
-                const { letter, inf } = METRIC_LETTERS[key] ?? { letter: key }
+        <div className="records-table-sizing" style={{ minWidth: minTableWidth }}>
+          <table ref={tableRef} className="records-table-table" style={{ minWidth: minTableWidth }}>
+            <thead>
+              <tr>
+                <th className="records-table-th records-table-th-rank" style={{ width: rankWidth }} title="Leaderboard rank">#</th>
+                {visibleChain.map((key, i) => {
+                  const { letter, inf } = METRIC_LETTERS[key] ?? { letter: key }
+                  return (
+                    <th
+                      key={key}
+                      className={`records-table-th records-table-th-metric ${dragOverKey === key ? 'is-drop-target' : ''}`}
+                      draggable
+                      onDragStart={(e) => {
+                        dragKeyRef.current = key
+                        e.dataTransfer.setData('text/plain', key)
+                        e.dataTransfer.effectAllowed = 'move'
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault()
+                        e.dataTransfer.dropEffect = 'move'
+                      }}
+                      onDragEnter={() => setDragOverKey(key)}
+                      onDrop={() => {
+                        dropOn(key)
+                        setDragOverKey(null)
+                      }}
+                      onDragEnd={() => {
+                        dragKeyRef.current = null
+                        setDragOverKey(null)
+                      }}
+                      title={`${METRIC_LABELS[key] ?? key} — drag to reorder sort priority`}
+                    >
+                      {i > 0 && <span className="records-table-chain-arrow" aria-hidden="true">›</span>}
+                      <span className="records-table-letter">{letter}{inf && <span className="records-table-inf">∞</span>}</span>
+                    </th>
+                  )
+                })}
+                {FLAG_ORDER.map((flag) => {
+                  const state = flags[FLAG_STATE_KEYS[flag]]
+                  return (
+                    <th
+                      key={flag}
+                      className={`records-table-th records-table-th-flag records-table-flag-${flag} ${state ? 'is-active' : ''}`}
+                      onClick={() => cycleFlag(flag)}
+                      title={FLAG_TITLES[flag]}
+                    >
+                      <span className="records-table-letter">{FLAG_LABELS[flag][0]}</span>
+                      <span className="records-table-flag-glyph">{state ? FLAG_GLYPHS[state] : '−'}</span>
+                    </th>
+                  )
+                })}
+                <th className="records-table-th records-table-th-cat" title="Solution categories">
+                  <span className="records-table-cat-head">
+                    <span>Category</span>
+                    <button
+                      ref={gearRef}
+                      type="button"
+                      data-cat-toggle
+                      className={`records-table-cat-gear${managerPos !== null ? ' is-open' : ''}`}
+                      title="Custom categories"
+                      aria-label="Custom categories"
+                      onClick={toggleManager}
+                    >
+                      {'\u2699'}
+                    </button>
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map((row) => {
+                const rank = row.original.isUser ? null : ++leaderboardRank
+                const UserMarker = row.original.green ? GreenUserMarker : RedUserMarker
+                const record = row.original.record
+                const userRecord = row.original.userRecord
+                const play = userRecord
+                  ? () => onPlayUserSolution(userRecord)
+                  : record && (record.gif || record.solution) ? () => onPlayRecord(record) : undefined
+                const customNames = row.original.customCategories.map((c) => c.name).join(', ')
+                const title = [
+                  row.original.smart ?? row.original.full,
+                  row.original.categories,
+                  customNames ? `Custom: ${customNames}` : null,
+                  play ? 'Click to view solution replay' : null,
+                ].filter(Boolean).join('\n')
                 return (
-                  <th
-                    key={key}
-                    className={`records-table-th records-table-th-metric ${dragOverKey === key ? 'is-drop-target' : ''}`}
-                    draggable
-                    onDragStart={(e) => {
-                      dragKeyRef.current = key
-                      e.dataTransfer.setData('text/plain', key)
-                      e.dataTransfer.effectAllowed = 'move'
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault()
-                      e.dataTransfer.dropEffect = 'move'
-                    }}
-                    onDragEnter={() => setDragOverKey(key)}
-                    onDrop={() => {
-                      dropOn(key)
-                      setDragOverKey(null)
-                    }}
-                    onDragEnd={() => {
-                      dragKeyRef.current = null
-                      setDragOverKey(null)
-                    }}
-                    title={`${METRIC_LABELS[key] ?? key} — drag to reorder sort priority`}
+                  <tr
+                    key={row.original.key}
+                    className={[
+                      'records-table-row',
+                      row.original.isUser ? 'records-table-row-user' : '',
+                      play ? 'records-table-row-clickable' : '',
+                    ].filter(Boolean).join(' ')}
+                    title={title || undefined}
+                    tabIndex={play ? 0 : undefined}
+                    onClick={play}
+                    onKeyDown={play ? (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); play() }
+                    } : undefined}
                   >
-                    {i > 0 && <span className="records-table-chain-arrow" aria-hidden="true">›</span>}
-                    <span className="records-table-letter">{letter}{inf && <span className="records-table-inf">∞</span>}</span>
-                  </th>
-                )
-              })}
-              {FLAG_ORDER.map((flag) => {
-                const state = flags[FLAG_STATE_KEYS[flag]]
-                return (
-                  <th
-                    key={flag}
-                    className={`records-table-th records-table-th-flag records-table-flag-${flag} ${state ? 'is-active' : ''}`}
-                    onClick={() => cycleFlag(flag)}
-                    title={FLAG_TITLES[flag]}
-                  >
-                    <span className="records-table-letter">{FLAG_LABELS[flag][0]}</span>
-                    <span className="records-table-flag-glyph">{state ? FLAG_GLYPHS[state] : '−'}</span>
-                  </th>
-                )
-              })}
-              <th className="records-table-th records-table-th-cat" title="Solution categories">
-                <span className="records-table-cat-head">
-                  <span>Category</span>
-                  <button
-                    ref={gearRef}
-                    type="button"
-                    data-cat-toggle
-                    className={`records-table-cat-gear${managerPos !== null ? ' is-open' : ''}`}
-                    title="Custom categories"
-                    aria-label="Custom categories"
-                    onClick={toggleManager}
-                  >
-                    {'\u2699'}
-                  </button>
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row) => {
-              const rank = row.original.isUser ? null : ++leaderboardRank
-              const record = row.original.record
-              const userRecord = row.original.userRecord
-              const play = userRecord
-                ? () => onPlayUserSolution(userRecord)
-                : record && (record.gif || record.solution) ? () => onPlayRecord(record) : undefined
-              const customNames = row.original.customCategories.map((c) => c.name).join(', ')
-              const title = [
-                row.original.smart ?? row.original.full,
-                row.original.categories,
-                customNames ? `Custom: ${customNames}` : null,
-                play ? 'Click to view solution replay' : null,
-              ].filter(Boolean).join('\n')
-              return (
-                <tr
-                  key={row.original.key}
-                  className={[
-                    'records-table-row',
-                    row.original.isUser ? 'records-table-row-user' : '',
-                    play ? 'records-table-row-clickable' : '',
-                  ].filter(Boolean).join(' ')}
-                  title={title || undefined}
-                  tabIndex={play ? 0 : undefined}
-                  onClick={play}
-                  onKeyDown={play ? (event) => {
-                    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); play() }
-                  } : undefined}
-                >
-                  <td className="records-table-td records-table-td-rank">
-                    {row.original.isUser ? (
-                      <span
-                        className="records-table-user"
-                        title={row.original.green ? 'On the Pareto frontier' : 'Dominated'}
-                      >
+                    <td className="records-table-td records-table-td-rank">
+                      {row.original.isUser ? (
                         <span
-                          className="records-table-user-dot"
-                          style={{ background: row.original.green ? USER_GREEN : USER_RED }}
-                        />
-                        <span className="records-table-user-name" title={row.original.name ?? undefined}>{row.original.name}</span>
-                      </span>
-                    ) : rank}
-                  </td>
-                  {visibleChain.map((key) => (
-                    <td key={key} className="records-table-td records-table-td-num">
-                      {metricCellText(row.original.score, key)}
+                          className="records-table-user"
+                          title={row.original.green ? 'On the Pareto frontier' : 'Dominated'}
+                        >
+                          <svg
+                            className="records-table-user-marker"
+                            width={12}
+                            height={12}
+                            viewBox="-6 -6 12 12"
+                            aria-hidden="true"
+                            focusable="false"
+                          >
+                            <UserMarker cx={0} cy={0} />
+                          </svg>
+                          <span className="records-table-user-name" title={row.original.name ?? undefined}>{row.original.name}</span>
+                        </span>
+                      ) : rank}
                     </td>
-                  ))}
-                  {FLAG_ORDER.map((flag) => (
-                    <td key={flag} className={`records-table-td records-table-td-flag records-table-flag-${flag}`}>
-                      {row.original.score?.[flag] == null ? (
-                        <span title={flag === 'looping' ? 'Looping unknown (legacy score or unfinished steady-state analysis)' : `${FLAG_LABELS[flag]} unavailable`}>–</span>
-                      ) : row.original.score[flag] && (
-                        <span
-                          className="records-table-flag-dot"
-                          style={{ background: FLAG_COLORS[flag] }}
-                          title={FLAG_LABELS[flag]}
-                        />
+                    {visibleChain.map((key) => (
+                      <td key={key} className="records-table-td records-table-td-num">
+                        {metricCellText(row.original.score, key)}
+                      </td>
+                    ))}
+                    {FLAG_ORDER.map((flag) => (
+                      <td key={flag} className={`records-table-td records-table-td-flag records-table-flag-${flag}`}>
+                        {row.original.score?.[flag] == null ? (
+                          <span title={flag === 'looping' ? 'Looping unknown (legacy score or unfinished steady-state analysis)' : `${FLAG_LABELS[flag]} unavailable`}>–</span>
+                        ) : row.original.score[flag] && (
+                          <span
+                            className="records-table-flag-dot"
+                            style={{ background: FLAG_COLORS[flag] }}
+                            title={FLAG_LABELS[flag]}
+                          />
+                        )}
+                      </td>
+                    ))}
+                    <td className="records-table-td records-table-td-cat">
+                      {row.original.categories ?? ''}
+                      {row.original.customCategories.length > 0 && (
+                        <span className="records-table-cat-chips">
+                          {row.original.customCategories.map((badge) => (
+                            <span
+                              key={badge.id}
+                              className="records-table-cat-chip"
+                              title={`Custom category ${badge.name}\n${badge.expression}`}
+                            >
+                              {badge.name}
+                            </span>
+                          ))}
+                        </span>
                       )}
                     </td>
-                  ))}
-                  <td className="records-table-td records-table-td-cat">
-                    {row.original.categories ?? ''}
-                    {row.original.customCategories.length > 0 && (
-                      <span className="records-table-cat-chips">
-                        {row.original.customCategories.map((badge) => (
-                          <span
-                            key={badge.id}
-                            className="records-table-cat-chip"
-                            title={`Custom category ${badge.name}\n${badge.expression}`}
-                          >
-                            {badge.name}
-                          </span>
-                        ))}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-            {rows.length === 0 && (
-              <tr><td className="records-table-empty" colSpan={visibleChain.length + FLAG_ORDER.length + 2}>No records</td></tr>
-            )}
-          </tbody>
-        </table>
+                  </tr>
+                )
+              })}
+              {rows.length === 0 && (
+                <tr><td className="records-table-empty" colSpan={visibleChain.length + FLAG_ORDER.length + 2}>No records</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
       {managerPos !== null && (
         <CategoryManager

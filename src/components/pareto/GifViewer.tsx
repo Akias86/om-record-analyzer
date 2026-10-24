@@ -6,6 +6,8 @@ import type { RecordAuthor } from '../../lib/recordAuthor'
 import { loadSolutionBytes } from '../../lib/player/solution'
 import { useEscapeKey } from './useEscapeKey'
 import { usePlayerLayout } from './usePlayerLayout'
+import { PlaybackSpeedControl } from './PlaybackSpeedControl'
+import { DEFAULT_PLAYBACK_SPEED } from './playbackSpeed'
 import './GifViewer.css'
 
 interface GifViewerProps {
@@ -56,6 +58,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
   const previewAbort = useRef<AbortController | null>(null)
   const [state, setState] = useState<PlayerState | null>(null)
   const [playerLoaded, setPlayerLoaded] = useState(false)
+  const [speed, setSpeed] = useState(DEFAULT_PLAYBACK_SPEED)
   const [fallback, setFallback] = useState(!hasSolution || !puzzleId)
   const [reason, setReason] = useState('')
   const [downloadPending, setDownloadPending] = useState(false)
@@ -148,6 +151,9 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
   }, [open, solutionUrl, solutionKey])
 
   useEffect(() => {
+    // The iframe stays alive, but speed is never remembered across openings
+    // or records (and is never read from or written to browser storage).
+    setSpeed(DEFAULT_PLAYBACK_SPEED)
     if (!open) return
     if (!hasSolution || !puzzleId) {
       if (stateRef.current?.ready) void clientRef.current?.pause().catch(() => {})
@@ -168,6 +174,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
       setActionError('')
       setReason('')
       setFallback(false)
+      setPlayerLoaded(false)
       let client = clientRef.current
       if (!client) {
         const configuredUrl = playerUrl ?? await fetchPlayerUrl(controller.signal)
@@ -193,7 +200,11 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
       if (loadedSource.current === sourceKey && playerLoadedRef.current) {
         await client.seek(0)
         if (!active || controller.signal.aborted) return
+        await client.setSpeed(DEFAULT_PLAYBACK_SPEED)
+        if (!active || controller.signal.aborted) return
         await client.play()
+        if (!active || controller.signal.aborted) return
+        setPlayerLoaded(true)
         return
       }
       setPlayerLoaded(false)
@@ -209,9 +220,13 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
         puzzle: { name: `${puzzleId}.puzzle`, bytes: puzzle },
         solution: { name: filenameRef.current, bytes: solution },
         title: puzzleNameRef.current || undefined,
-        autoplay: true,
+        autoplay: false,
         signal: controller.signal,
       })
+      if (!active || controller.signal.aborted) return
+      await client.setSpeed(DEFAULT_PLAYBACK_SPEED)
+      if (!active || controller.signal.aborted) return
+      await client.play()
       if (!active || controller.signal.aborted) return
       loadedSource.current = sourceKey
       loadedTitle.current = puzzleNameRef.current || ''
@@ -349,7 +364,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
 
   // Rewinds/seeks are busy too; keep the last frame visible after the initial load.
   const loading = !fallback && !playerLoaded
-  const controlsDisabled = !state?.ready || state.busy || !!state.stepping
+  const controlsDisabled = !open || !playerLoaded || !state?.ready || state.busy || !!state.stepping
   const stateText = state?.collision ? 'Collision — playback stopped'
     : state?.analysisStatus === 'pending' ? 'Analyzing playback loop…'
     : state?.victoryCycle == null ? `${state?.playing ? 'Playing' : 'Paused'} — completion not reached`
@@ -387,13 +402,15 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
             <button type="button" className="gif-viewer-btn" disabled={controlsDisabled || !!state?.collision} onClick={() => command((client) => state?.playing ? client.pause() : client.play())}>{state?.playing ? 'Pause' : 'Play'}</button>
             <button type="button" className="gif-viewer-btn" disabled={controlsDisabled || !!state?.collision} onClick={() => command((client) => client.step(1))} aria-label="Next cycle">→</button>
             <span className="solution-player-cycle">Cycle {state?.cycle ?? 0}</span>
-            <select className="gif-viewer-btn" aria-label="Playback speed" disabled={controlsDisabled} value={state?.speed ?? 5} onChange={(event) => command((client) => client.setSpeed(Number(event.target.value)))}>
-              <option value="5">Game speed (5 cycles/s)</option>
-              <option value="2">2 cycles/s</option>
-              <option value="4">4 cycles/s</option>
-              <option value="8">8 cycles/s</option>
-              <option value="16">16 cycles/s</option>
-            </select>
+            <PlaybackSpeedControl
+              key={`${open}:${puzzleId}:${solutionKey ?? solutionUrl}`}
+              value={speed}
+              disabled={controlsDisabled}
+              onChange={(next) => {
+                setSpeed(next)
+                command((client) => client.setSpeed(next))
+              }}
+            />
           </>}
           {hasSolution && <>
             <button type="button" className="gif-viewer-btn" onClick={downloadSolution} disabled={downloadPending || previewPending}>

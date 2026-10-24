@@ -105,7 +105,7 @@ function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onPlayUserS
     if (playingUser?.solutionKey) {
       return {
         url: null,
-        title: `${playingUser.solutionName ?? playingUser.fileName ?? '(unnamed)'} — ${playingUser.fullScore}`,
+        title: playingUser.solutionName ?? playingUser.fileName ?? '(unnamed)',
         solutionUrl: null,
         solutionKey: playingUser.solutionKey,
         fileName: playingUser.fileName,
