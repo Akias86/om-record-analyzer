@@ -60,6 +60,13 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
   const [playerLoaded, setPlayerLoaded] = useState(false)
   const [speed, setSpeed] = useState(DEFAULT_PLAYBACK_SPEED)
   const [fallback, setFallback] = useState(!hasSolution || !puzzleId)
+  const playbackSource = JSON.stringify([puzzleId, solutionKey ?? solutionUrl, url])
+  const [recordingSource, setRecordingSource] = useState<string | null>(null)
+  const recording = recordingSource === playbackSource
+  const showRecording = fallback || recording
+  const recordingRef = useRef(false)
+  const resumeAfterRecording = useRef(false)
+  recordingRef.current = open && recording
   const [reason, setReason] = useState('')
   const [downloadPending, setDownloadPending] = useState(false)
   const [previewPending, setPreviewPending] = useState(false)
@@ -154,6 +161,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
     // The iframe stays alive, but speed is never remembered across openings
     // or records (and is never read from or written to browser storage).
     setSpeed(DEFAULT_PLAYBACK_SPEED)
+    setRecordingSource(null)
     if (!open) return
     if (!hasSolution || !puzzleId) {
       if (stateRef.current?.ready) void clientRef.current?.pause().catch(() => {})
@@ -202,7 +210,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
         if (!active || controller.signal.aborted) return
         await client.setSpeed(DEFAULT_PLAYBACK_SPEED)
         if (!active || controller.signal.aborted) return
-        await client.play()
+        if (!recordingRef.current) await client.play()
         if (!active || controller.signal.aborted) return
         setPlayerLoaded(true)
         return
@@ -226,7 +234,8 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
       if (!active || controller.signal.aborted) return
       await client.setSpeed(DEFAULT_PLAYBACK_SPEED)
       if (!active || controller.signal.aborted) return
-      await client.play()
+      // A mode switch during loading must not start hidden simulator playback.
+      if (!recordingRef.current) await client.play()
       if (!active || controller.signal.aborted) return
       loadedSource.current = sourceKey
       loadedTitle.current = puzzleNameRef.current || ''
@@ -242,7 +251,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
       controller.abort()
       if (loadAbort.current === controller) loadAbort.current = null
     }
-  }, [open, playerUrl, solutionUrl, solutionKey, hasSolution, puzzleId, readPuzzle, readSolution, failClient])
+  }, [open, playerUrl, solutionUrl, solutionKey, hasSolution, puzzleId, readPuzzle, readSolution, failClient, url])
 
   useEffect(() => {
     if (!open) return
@@ -288,6 +297,17 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
     action(client).catch((error: Error) => {
       if (clientRef.current === client && !isPlayerAbort(error)) setActionError(error.message)
     })
+  }
+
+  const toggleRecording = () => {
+    recordingRef.current = !recording
+    setRecordingSource(recording ? null : playbackSource)
+    if (recording) {
+      if (playerLoaded && resumeAfterRecording.current) command((client) => client.play())
+    } else {
+      resumeAfterRecording.current = !playerLoaded || !!stateRef.current?.playing
+      if (stateRef.current?.ready) command((client) => client.pause())
+    }
   }
 
   const downloadSolution = async () => {
@@ -363,12 +383,29 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
   }
 
   // Rewinds/seeks are busy too; keep the last frame visible after the initial load.
-  const loading = !fallback && !playerLoaded
-  const controlsDisabled = !open || !playerLoaded || !state?.ready || state.busy || !!state.stepping
+  const loading = !showRecording && !playerLoaded
+  const switchLabel = recording ? 'Switch to real-time playback' : 'Switch to GIF / video'
+  const controlsDisabled = !open || showRecording || !playerLoaded || !state?.ready || state.busy || !!state.stepping
   const stateText = state?.collision ? 'Collision — playback stopped'
     : state?.analysisStatus === 'pending' ? 'Analyzing playback loop…'
     : state?.victoryCycle == null ? `${state?.playing ? 'Playing' : 'Paused'} — completion not reached`
     : `Completed at cycle ${state.victoryCycle}`
+  const statusText = actionError || (showRecording
+    ? reason || (url ? 'Showing recorded GIF / video' : 'No recorded replay available')
+    : loading ? 'Loading solution…' : stateText)
+  const renderSolutionActions = (inactive: boolean) => hasSolution && <>
+    <button type="button" className="gif-viewer-btn" onClick={downloadSolution} disabled={inactive || downloadPending || previewPending}>
+      {downloadPending ? 'Downloading…' : 'Download'}
+    </button>
+    <button type="button" className="gif-viewer-btn" onClick={openReplay} disabled={inactive || downloadPending || previewPending || !puzzleId} title="Open the solution replay in the omclone viewer">
+      {previewPending ? 'Loading viewer…' : 'Preview'}
+    </button>
+  </>
+  const footerStatus = (
+    <span className={`solution-player-status${actionError ? ' solution-player-status--error' : ''}`} role="status" title={statusText}>
+      {statusText}
+    </span>
+  )
 
   return (
     <div ref={backdropRef} className="gif-viewer-backdrop solution-player-backdrop" hidden={!open} onClick={onClose}>
@@ -385,44 +422,66 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
           <button type="button" className="gif-viewer-close" onClick={onClose} aria-label="Close">{'\u00D7'}</button>
         </div>
         <div className="solution-player-body">
-          <iframe ref={iframeRef} title={`${title} — real-time solution`} className="solution-player-iframe" hidden={fallback} />
+          <iframe ref={iframeRef} title={`${title} — real-time solution`} className="solution-player-iframe" hidden={showRecording} />
           {loading && (
             <div className="gif-viewer-loading" role="status">
               <div className="gif-viewer-spinner" aria-hidden="true" />
               <span>Loading real-time player…</span>
             </div>
           )}
-          {fallback && (url ? <RecordedMedia url={url} title={title} /> : (
+          {open && showRecording && (url ? <RecordedMedia key={url} url={url} title={title} /> : (
             <div className="gif-viewer-error" role="alert">{reason || 'No recorded replay is available for this solution.'}</div>
           ))}
+          {url && hasSolution && puzzleId && !fallback && (
+            <button
+              type="button"
+              className="solution-player-mode-toggle"
+              aria-label={switchLabel}
+              title={switchLabel}
+              aria-pressed={recording}
+              onClick={(event) => {
+                if (event.detail > 0) event.currentTarget.blur()
+                toggleRecording()
+              }}
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                {recording ? <>
+                  <rect x="5" y="5" width="14" height="14" rx="2" />
+                  <path d="M9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3M19 9h3m-3 6h3" />
+                </> : <>
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M7 3v18M17 3v18M3 8h4m10 0h4M3 16h4m10 0h4" />
+                </>}
+                <path d="m10 9 4 3-4 3Z" fill="currentColor" stroke="none" />
+              </svg>
+            </button>
+          )}
         </div>
         <div className="gif-viewer-footer solution-player-footer">
-          {!fallback && <>
-            <button type="button" className="gif-viewer-btn" disabled={controlsDisabled} onClick={() => command((client) => client.step(-1))} aria-label="Previous cycle">←</button>
-            <button type="button" className="gif-viewer-btn" disabled={controlsDisabled || !!state?.collision} onClick={() => command((client) => state?.playing ? client.pause() : client.play())}>{state?.playing ? 'Pause' : 'Play'}</button>
-            <button type="button" className="gif-viewer-btn" disabled={controlsDisabled || !!state?.collision} onClick={() => command((client) => client.step(1))} aria-label="Next cycle">→</button>
-            <span className="solution-player-cycle">Cycle {state?.cycle ?? 0}</span>
-            <PlaybackSpeedControl
-              key={`${open}:${puzzleId}:${solutionKey ?? solutionUrl}`}
-              value={speed}
-              disabled={controlsDisabled}
-              onChange={(next) => {
-                setSpeed(next)
-                command((client) => client.setSpeed(next))
-              }}
-            />
-          </>}
-          {hasSolution && <>
-            <button type="button" className="gif-viewer-btn" onClick={downloadSolution} disabled={downloadPending || previewPending}>
-              {downloadPending ? 'Downloading…' : 'Download'}
-            </button>
-            <button type="button" className="gif-viewer-btn" onClick={openReplay} disabled={downloadPending || previewPending || !puzzleId} title="Open the solution replay in the omclone viewer">
-              {previewPending ? 'Loading viewer…' : 'Preview'}
-            </button>
-          </>}
-          <span className={`solution-player-status${actionError ? ' solution-player-status--error' : ''}`} role="status">
-            {actionError || (fallback ? reason || (url ? 'Showing recorded GIF / video' : 'No recorded replay available') : loading ? 'Loading solution…' : stateText)}
-          </span>
+          {!fallback && (
+            <div className="solution-player-footer-layout solution-player-footer-layout--live" aria-hidden={showRecording} inert={showRecording}>
+              <button type="button" className="gif-viewer-btn" disabled={controlsDisabled} onClick={() => command((client) => client.step(-1))} aria-label="Previous cycle">←</button>
+              <button type="button" className="gif-viewer-btn solution-player-play" disabled={controlsDisabled || !!state?.collision} onClick={() => command((client) => state?.playing ? client.pause() : client.play())}>
+                <span>{state?.playing ? 'Pause' : 'Play'}</span>
+              </button>
+              <button type="button" className="gif-viewer-btn" disabled={controlsDisabled || !!state?.collision} onClick={() => command((client) => client.step(1))} aria-label="Next cycle">→</button>
+              <span className="solution-player-cycle">Cycle {state?.cycle ?? 0}</span>
+              <PlaybackSpeedControl
+                key={`${open}:${puzzleId}:${solutionKey ?? solutionUrl}`}
+                value={speed}
+                disabled={controlsDisabled}
+                onChange={(next) => {
+                  setSpeed(next)
+                  command((client) => client.setSpeed(next))
+                }}
+              />
+              {renderSolutionActions(showRecording)}
+            </div>
+          )}
+          <div className="solution-player-footer-layout solution-player-footer-layout--recorded" aria-hidden={!showRecording} inert={!showRecording}>
+            {renderSolutionActions(!showRecording)}
+          </div>
+          {footerStatus}
         </div>
       </div>
     </div>
@@ -466,9 +525,9 @@ function RecordedMedia({ url, title }: { url: string; title: string }) {
     )}
     {status === 'error' && <div className="gif-viewer-error" role="alert">Failed to load recording</div>}
     {isVideo ? (
-      <video ref={attachMediaRef} className={mediaClassName} src={url} autoPlay loop muted playsInline onLoadedData={() => setStatus('loaded')} onError={() => setStatus('error')} />
+      <video ref={attachMediaRef} className={mediaClassName} width={826} height={647} src={url} autoPlay loop muted playsInline onLoadedData={() => setStatus('loaded')} onError={() => setStatus('error')} />
     ) : (
-      <img ref={(node) => { imgRef.current = node; attachMediaRef(node) }} className={mediaClassName} src={url} alt={title} onLoad={() => setStatus('loaded')} onError={() => setStatus('error')} />
+      <img ref={(node) => { imgRef.current = node; attachMediaRef(node) }} className={mediaClassName} width={826} height={647} src={url} alt={title} onLoad={() => setStatus('loaded')} onError={() => setStatus('error')} />
     )}
   </>
 }

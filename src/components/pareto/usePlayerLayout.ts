@@ -1,6 +1,6 @@
 import { useLayoutEffect, type RefObject } from 'react'
 
-/** Fit the native GIF-sized playback area, with no padding/letterboxing around it. */
+/** Fit both playback modes to the viewport using the same 826 × 647 reference frame. */
 export function usePlayerLayout(backdropRef: RefObject<HTMLDivElement | null>, panelRef: RefObject<HTMLDivElement | null>, active = true) {
   useLayoutEffect(() => {
     if (!active) return
