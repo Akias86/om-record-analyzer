@@ -157,7 +157,6 @@ om-record-analyzer/
 
 ## Thanks
 
-- [**omsim — Akias86 fork**](https://github.com/Akias86/omsim) — source of the bundled WebAssembly verifier, including incremental simulation and collision controls.
-- [**omsim — original project**](https://github.com/ianh/omsim) — the original C simulation and scoring engine on which the fork is based.
+- [**omsim**](https://github.com/ianh/omsim) — the original C simulation and scoring engine.
 - [**zachtronics-leaderboard-bot**](https://github.com/zachtronics-leaderboards/zachtronics-leaderboard-bot) — the Pareto frontier computation rules (manifold definitions, metric partial ordering, dominance detection) were derived from analyzing this project.
 

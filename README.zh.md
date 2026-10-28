@@ -157,7 +157,6 @@ om-record-analyzer/
 
 ## 感谢
 
-- [**omsim — Akias86 fork**](https://github.com/Akias86/omsim) — 内置 WebAssembly 验证器的源码来源,提供增量模拟和碰撞控制接口。
-- [**omsim — 原始项目**](https://github.com/ianh/omsim) — fork 所基于的原始 C 模拟与评分引擎。
+- [**omsim**](https://github.com/ianh/omsim) — 原始 C 模拟与评分引擎。
 - [**zachtronics-leaderboard-bot**](https://github.com/zachtronics-leaderboards/zachtronics-leaderboard-bot) — 帕累托前沿的计算规则(manifold 定义、指标偏序关系、支配判定)通过分析该项目得出。
 
