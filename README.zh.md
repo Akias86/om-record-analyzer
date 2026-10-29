@@ -11,7 +11,7 @@
 - **本地解答验证** — 上传 `.solution` 文件(Opus Magnum 导出的存档),由编译为 WebAssembly 的引擎在浏览器内完成验证与评分,全程本地计算,无需服务端模拟。
 - **前沿检测** — 验证后的解答会叠加在排行榜图上,自动判定「在前沿上」(绿钻)或「不在前沿」(红钻)。上传后,侧边栏会列出具体哪些解答登上了帕累托前沿,以及属于哪些 manifold。
 - **批量验证页** — 独立的 `#/validator` 路由,可拖入一整个 `.solution` 文件夹,一次性验证全部,并以表格展示通过/失败/跳过结果。
-- **解答播放** — 内嵌 [om-web-simulator](https://omsim-web.pages.dev/player/) 播放器,每页仅初始化一次并在记录间复用,支持播放/暂停、逐周期前后步进、调速及下载解答,同时保留原 omclone 独立 **Preview** 预览按钮。缺少解答文件或 WebGPU 不可用时回退原 GIF/视频。
+- **解答播放** — 内嵌 [Opus Magnum Web Player](https://om-player.pages.dev/) 播放器,每页仅初始化一次并在记录间复用,支持播放/暂停、逐周期前后步进、调速及下载解答,同时保留原 omclone 独立 **Preview** 预览按钮。缺少解答文件或 WebGPU 不可用时回退原 GIF/视频。
 - **API 代理** — Cloudflare Worker 将请求代理到排行榜 API(`zlbb.faendir.com`),规避 CORS 并使 API 基址可配置。
 
 ### 成绩兼容性
@@ -65,18 +65,18 @@ pnpm dev
 
 ## 播放器配置
 
-模拟器域名默认使用 `https://omsim-web.pages.dev`,内嵌播放器访问其 `/player/` 路径。与 `LEADERBOARD_API` 相同,通过 `wrangler.jsonc` 中的 **Worker 运行时变量** `PLAYER_ORIGIN` 配置:
+独立播放器 `om-render/web-player` 的域名默认使用 `https://om-player.pages.dev`,内嵌播放器访问站点根路径 `/`,不再使用旧模拟器的 `/player/` 路径。与 `LEADERBOARD_API` 相同,通过 `wrangler.jsonc` 中的 **Worker 运行时变量** `PLAYER_ORIGIN` 配置:
 
 ```jsonc
 "vars": {
   "LEADERBOARD_API": "https://zlbb.faendir.com",
-  "PLAYER_ORIGIN": "https://omsim-web.pages.dev"
+  "PLAYER_ORIGIN": "https://om-player.pages.dev"
 }
 ```
 
 播放区域保持原版 GIF 的 826:647 比例（最大 826×647 CSS 像素）,弹窗按可用视口收紧,不在画面周围额外留白。播放器直接绘制固定 826×647 画布,浏览器自然处理缩放,不补偿 DPR。
 
-本地开发时将 `.dev.vars.example` 复制为 `.dev.vars`;本地运行 `om-web-simulator` 时可设置 `PLAYER_ORIGIN=http://127.0.0.1:4173`,然后重启 `pnpm dev`。线上通过 Wrangler 配置或 secret 更新 Worker 变量并刷新页面即可,**无需重新构建前端**。首次播放会读取 `/api/config` 且不缓存响应,常驻播放器在本页面会话内继续使用该域名;该接口仅公开播放器域名,不会暴露其他变量或 secret。WebGPU 需要 HTTPS 或 localhost 及兼容浏览器,远程解答文件下载需支持 CORS。
+本地开发时将 `.dev.vars.example` 复制为 `.dev.vars`;本地运行 `om-render/web-player` 时可设置 `PLAYER_ORIGIN=http://127.0.0.1:4174`,然后重启 `pnpm dev`。线上通过 Wrangler 配置或 secret 更新 Worker 变量并刷新页面即可,**无需重新构建前端**。首次播放会读取 `/api/config` 且不缓存响应,常驻播放器在本页面会话内继续使用该域名;该接口仅公开播放器域名,不会暴露其他变量或 secret。WebGPU 需要 HTTPS 或 localhost 及兼容浏览器,远程解答文件下载需支持 CORS。
 
 ### 本地解法播放
 

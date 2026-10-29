@@ -21,7 +21,7 @@ export interface PlayerState {
 }
 export interface PlayerError extends Error { code: string }
 export interface PlayerOptions {
-  /** HTTP(S) URL or host-relative player path, normally /player/. */
+  /** HTTP(S) URL or host-relative player path; the player lives at its site root (/). */
   url: string;
   onState?: (state: PlayerState) => void;
   onError?: (error: PlayerError) => void;

@@ -97,7 +97,7 @@ export default {
         return new Response(null, { status: 405, headers: { Allow: 'GET', 'Cache-Control': 'no-store' } })
       }
       return Response.json({
-        playerOrigin: env.PLAYER_ORIGIN?.trim().replace(/\/+$/, '') || 'https://omsim-web.pages.dev',
+        playerOrigin: env.PLAYER_ORIGIN?.trim().replace(/\/+$/, '') || 'https://om-player.pages.dev',
       }, { headers: { 'Cache-Control': 'no-store' } })
     }
 

@@ -50,7 +50,7 @@
 	 */
 	"vars": {
 		"LEADERBOARD_API": "https://zlbb.faendir.com",
-		"PLAYER_ORIGIN": "https://omsim-web.pages.dev"
+		"PLAYER_ORIGIN": "https://om-player.pages.dev"
 	}
 	/**
 	 * Service Bindings (communicate between multiple Workers)

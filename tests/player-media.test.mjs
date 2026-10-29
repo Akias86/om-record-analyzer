@@ -41,7 +41,7 @@ async function viewer(t, {solutionResponse, ...initial} = {}) {
   let state = {ready: true, busy: false, playing: false, cycle: 0, fraction: 0, stepping: 0,
     speed: 5, gpu: 'ready', victoryCycle: 100, analysisStatus: 'complete', collision: null, error: null};
   const frameWindow = {
-    location: {href: 'https://player.test/player/'},
+    location: {href: 'https://player.test/'},
     postMessage(message) {
       posts.push(message);
       if (message.type === 'load') state = {...state, cycle: 0, playing: message.payload.autoplay};
@@ -60,7 +60,7 @@ async function viewer(t, {solutionResponse, ...initial} = {}) {
   t.mock.method(globalThis, 'fetch', async url => url === '/a.solution' && solutionResponse
     ? solutionResponse : new Response(String(url)));
   let props = {open: true, url: '/record.gif', title: 'A', solutionUrl: '/a.solution', puzzleId: 'P1',
-    puzzleName: 'Puzzle', playerUrl: 'https://player.test/player/', onClose() {}, ...initial};
+    puzzleName: 'Puzzle', playerUrl: 'https://player.test/', onClose() {}, ...initial};
   const render = async changes => {
     props = {...props, ...changes};
     await dom.render(h(GifViewer, props));

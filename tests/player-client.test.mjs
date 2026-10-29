@@ -18,7 +18,7 @@ function fixture(options = {}) {
   const iframe = new Surface(), posts = [], errors = [], states = [];
   iframe.contentWindow = {postMessage: (...args) => posts.push(args)};
   iframe.removeAttribute = name => { delete iframe[name]; };
-  const client = createPlayerClient(iframe, {url: 'https://player.example/viewer/index.html', onError: error => errors.push(error), onState: state => states.push(state), ...options});
+  const client = createPlayerClient(iframe, {url: 'https://player.example/', onError: error => errors.push(error), onState: state => states.push(state), ...options});
   const session = new URLSearchParams(new URL(iframe.src).hash.slice(1)).get('session');
   const receive = (type, requestId, payload = {}, extra = {}) => host.emit('message', {source: iframe.contentWindow, origin: 'https://player.example', data: packet(type, requestId, session, payload), ...extra});
   async function connect() {
@@ -47,9 +47,10 @@ test('copyBytes copies only the view range and leaves caller buffers intact', ()
   assert.notEqual(copied.buffer, original.buffer);
 });
 
-test('handshake checks origin, source, request ID and uses an exact target origin', async () => {
+test('site-root player handshake checks origin, source, request ID and uses an exact target origin', async () => {
   const f = fixture();
   try {
+    assert.equal(new URL(f.iframe.src).pathname, '/');
     assert.equal(new URLSearchParams(new URL(f.iframe.src).hash.slice(1)).get('parentOrigin'), 'https://host.example');
     f.iframe.emit('load'); const init = f.posts.at(-1)[0]; let resolved = false;
     f.client.ready.then(() => { resolved = true; });

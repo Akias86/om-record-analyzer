@@ -1,4 +1,4 @@
-// Vendored from om-web-simulator/embed/client.js (protocol v1).
+// Vendored from om-render/web-player/src/embed/client.js (protocol v1).
 import {copyBytes, exactOrigin, isPacket, packet, playerError} from './protocol.js';
 
 const uniqueId = () => globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;

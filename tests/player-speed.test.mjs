@@ -156,7 +156,7 @@ async function liveViewer(t) {
   let state = {ready: true, busy: false, playing: false, cycle: 0, fraction: 0, stepping: 0, speed: 19,
     gpu: 'ready', victoryCycle: 100, analysisStatus: 'complete', collision: null, error: null};
   const frameWindow = {
-    location: {href: 'https://player.test/player/'},
+    location: {href: 'https://player.test/'},
     postMessage(message) {
       posts.push(message);
       if (message.type === 'speed') state = {...state, speed: message.payload.speed};
@@ -173,7 +173,7 @@ async function liveViewer(t) {
   };
   t.mock.getter(dom.window.HTMLIFrameElement.prototype, 'contentWindow', () => frameWindow);
   t.mock.method(globalThis, 'fetch', async url => new Response(String(url)));
-  let props = {open: true, url: null, title: 'A', solutionUrl: '/a.solution', puzzleId: 'P1', puzzleName: 'Puzzle', playerUrl: 'https://player.test/player/', onClose() {}};
+  let props = {open: true, url: null, title: 'A', solutionUrl: '/a.solution', puzzleId: 'P1', puzzleName: 'Puzzle', playerUrl: 'https://player.test/', onClose() {}};
   const render = async changes => { props = {...props, ...changes}; await dom.render(h(GifViewer, props)); };
   await render({});
   const frame = dom.container.querySelector('iframe');

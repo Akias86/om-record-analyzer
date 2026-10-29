@@ -209,7 +209,7 @@ test('invalid methods/links never contact GitHub, and the Worker routes author r
     assert.equal((await worker.fetch(request('https://evil.example/a'), env)).status, 400);
     assert.equal(env.AUTHOR_CACHE.writes.length, 0);
     const config = await worker.fetch(new Request('https://analyzer.example/api/config'), {...env, GITHUB_TOKEN: 'secret'});
-    assert.deepEqual(await config.json(), {playerOrigin: 'https://omsim-web.pages.dev'});
+    assert.deepEqual(await config.json(), {playerOrigin: 'https://om-player.pages.dev'});
   } finally { restore(); }
 });
 

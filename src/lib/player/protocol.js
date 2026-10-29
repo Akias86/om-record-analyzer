@@ -1,4 +1,4 @@
-// Vendored from om-web-simulator/src/embed/protocol.js (protocol v1).
+// Vendored from om-render/web-player/src/embed/protocol.js (protocol v1).
 export const CHANNEL = 'om-player';
 export const VERSION = 1;
 

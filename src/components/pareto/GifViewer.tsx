@@ -20,7 +20,7 @@ interface GifViewerProps {
   puzzleId: string | null
   puzzleName: string | null
   onClose: () => void
-  /** Override the complete om-web-simulator player URL for this viewer. */
+  /** Override the complete om-render/web-player URL for this viewer. */
   playerUrl?: string
 }
 

@@ -1,4 +1,4 @@
-/** Read the Worker binding on each viewer open so configuration is never baked into the bundle. */
+/** Read the Worker binding when connecting the player, rather than baking it into the bundle. */
 export async function fetchPlayerUrl(signal: AbortSignal): Promise<string> {
   const response = await fetch('/api/config', { signal, cache: 'no-store' })
   if (!response.ok) throw new Error(`Player configuration failed: HTTP ${response.status}`)
@@ -8,5 +8,5 @@ export async function fetchPlayerUrl(signal: AbortSignal): Promise<string> {
   if (!['http:', 'https:'].includes(origin.protocol) || origin.origin !== config.playerOrigin) {
     throw new Error('Player origin must be an HTTP(S) origin without a path')
   }
-  return `${origin.origin}/player/`
+  return `${origin.origin}/`
 }

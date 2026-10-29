@@ -22,10 +22,10 @@ test('runtime config exposes only the player origin and is never cached', async 
   assert.deepEqual(await response.json(), {playerOrigin: 'https://player.example'});
 });
 
-test('runtime config defaults to omsim-web and changes immediately with Worker bindings', async () => {
-  assert.deepEqual(await (await worker.fetch(request(), {})).json(), {playerOrigin: 'https://omsim-web.pages.dev'});
-  assert.deepEqual(await (await worker.fetch(request(), {PLAYER_ORIGIN: '  '})).json(), {playerOrigin: 'https://omsim-web.pages.dev'});
-  for (const playerOrigin of ['http://127.0.0.1:4173', 'https://updated.example']) {
+test('runtime config defaults to om-player and changes immediately with Worker bindings', async () => {
+  assert.deepEqual(await (await worker.fetch(request(), {})).json(), {playerOrigin: 'https://om-player.pages.dev'});
+  assert.deepEqual(await (await worker.fetch(request(), {PLAYER_ORIGIN: '  '})).json(), {playerOrigin: 'https://om-player.pages.dev'});
+  for (const playerOrigin of ['http://127.0.0.1:4174', 'https://updated.example']) {
     assert.deepEqual(await (await worker.fetch(request(), {PLAYER_ORIGIN: playerOrigin})).json(), {playerOrigin});
   }
 });
@@ -53,9 +53,9 @@ test('the leaderboard proxy still uses LEADERBOARD_API independently', async () 
   } finally { restore(); }
 });
 
-test('each viewer reads fresh runtime config and forwards its AbortSignal', async () => {
+test('player connections read fresh runtime config at the site root and forward their AbortSignal', async () => {
   const controller = new AbortController();
-  let playerOrigin = 'http://127.0.0.1:4173', calls = 0;
+  let playerOrigin = 'http://127.0.0.1:4174', calls = 0;
   const restore = mockFetch(async (url, options) => {
     calls++;
     assert.equal(url, '/api/config');
@@ -64,10 +64,17 @@ test('each viewer reads fresh runtime config and forwards its AbortSignal', asyn
     return Response.json({playerOrigin});
   });
   try {
-    assert.equal(await fetchPlayerUrl(controller.signal), 'http://127.0.0.1:4173/player/');
+    assert.equal(await fetchPlayerUrl(controller.signal), 'http://127.0.0.1:4174/');
     playerOrigin = 'https://updated.example';
-    assert.equal(await fetchPlayerUrl(controller.signal), 'https://updated.example/player/');
+    assert.equal(await fetchPlayerUrl(controller.signal), 'https://updated.example/');
     assert.equal(calls, 2);
+  } finally { restore(); }
+});
+
+test('default Worker config resolves to the deployed standalone player root', async () => {
+  const restore = mockFetch(async () => worker.fetch(request(), {}));
+  try {
+    assert.equal(await fetchPlayerUrl(new AbortController().signal), 'https://om-player.pages.dev/');
   } finally { restore(); }
 });
 
