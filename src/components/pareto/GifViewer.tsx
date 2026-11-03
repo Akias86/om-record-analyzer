@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPlayerClient, type PlayerClient, type PlayerError, type PlayerState } from '../../lib/player/client.js'
 import { fetchPlayerUrl } from '../../api/config'
 import { fetchRecordAuthor } from '../../api/recordAuthor'
-import type { RecordAuthor } from '../../lib/recordAuthor'
+import { formatCommitTime, type RecordAuthor } from '../../lib/recordAuthor'
 import { loadSolutionBytes } from '../../lib/player/solution'
 import { useEscapeKey } from './useEscapeKey'
 import { usePlayerLayout } from './usePlayerLayout'
@@ -407,6 +407,8 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
     </span>
   )
 
+  const commitTime = formatCommitTime(author?.committedAt)
+
   return (
     <div ref={backdropRef} className="gif-viewer-backdrop solution-player-backdrop" hidden={!open} onClick={onClose}>
       <div ref={panelRef} className="gif-viewer-panel solution-player-panel" role="dialog" aria-modal="true" aria-label={title} onClick={(event) => event.stopPropagation()}>
@@ -414,8 +416,11 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
           <div className="gif-viewer-heading">
             <div className="gif-viewer-title">{title}</div>
             {author && (
-              <div className="gif-viewer-author" title={`by ${author.name}`}>
+              <div className="gif-viewer-author" title={`by ${author.name}${commitTime ? ` at ${commitTime}` : ''}`}>
                 by <a href={author.url} target="_blank" rel="noopener noreferrer">{author.name}</a>
+                {commitTime && (
+                  <span className="gif-viewer-author-time"> at <time dateTime={author.committedAt ?? undefined}>{commitTime}</time></span>
+                )}
               </div>
             )}
           </div>

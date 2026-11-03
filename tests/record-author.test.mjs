@@ -1,19 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
 import {importTs} from './helpers/import-ts.mjs';
 
 const {createAuthorHandler} = await importTs(new URL('../worker/recordAuthor.ts', import.meta.url));
 const {default: worker} = await importTs(new URL('../worker/index.ts', import.meta.url));
 const {fetchRecordAuthor} = await importTs(new URL('../src/api/recordAuthor.ts', import.meta.url));
-const {solutionReference, AUTHOR_COMMIT_URL} = await importTs(new URL('../src/lib/recordAuthor.ts', import.meta.url));
+const {solutionReference, normalizeCommitTime, AUTHOR_COMMIT_URL} = await importTs(new URL('../src/lib/recordAuthor.ts', import.meta.url));
 const SHA = 'b01e618e46fb9721c467d7979a74ed82328abd71';
 const ID = '110g-20i-204c-41a-8h-5.5w-6b-33r-41a-8h-5.5w-6b-TL';
 const solution = (sha = SHA.slice(0, 8), id = ID) => `https://zlbb.faendir.com/l/om/${sha}/P253/${id}`;
 const request = (url = solution(), method = 'GET') => new Request(`https://analyzer.example/api/record-author?${new URLSearchParams({solution: url})}`, {method});
-const author = {name: 'andytampan', url: `${AUTHOR_COMMIT_URL}${SHA}`};
+const author = {name: 'andytampan', url: `${AUTHOR_COMMIT_URL}${SHA}`, committedAt: '2026-10-20T07:48:50.000Z'};
 const commit = () => ({
   sha: SHA,
-  commit: {message: '[BOT] Cuprite 110g/204c/41a [Solution] by andytampan', author: {name: 'zachtronics-leaderboard-bot'}},
+  commit: {
+    message: '[BOT] Cuprite 110g/204c/41a [Solution] by andytampan',
+    author: {name: 'zachtronics-leaderboard-bot', date: '2026-10-19T12:34:56Z'},
+    committer: {date: '2026-10-20T07:48:50Z'},
+  },
   files: [{filename: `JOURNAL_XII/CUPRITE/CUPRITE_${ID}.solution`, status: 'added'}],
 });
 
@@ -67,8 +72,9 @@ test('Worker fetches only the fixed GitHub repo and permanently caches canonical
     assert.deepEqual(await response.json(), {author});
     assert.equal(kv.writes.length, 2);
     assert.ok(kv.writes.every(write => write.options === undefined));
-    assert.ok(kv.writes[0].key.endsWith(`commit:${SHA}`));
-    assert.ok(kv.writes[1].key.endsWith(`ref:${SHA.slice(0, 8)}`));
+    assert.equal(kv.writes[0].key, `author:v2:zachtronics-leaderboards/om-leaderboard:commit:${SHA}`);
+    assert.equal(kv.writes[1].key, `author:v2:zachtronics-leaderboards/om-leaderboard:ref:${SHA.slice(0, 8)}`);
+    assert.equal(JSON.parse(kv.writes[0].value).committedAt, author.committedAt);
     // A new isolate must reuse durable KV, not just the first handler's memory.
     const fresh = createAuthorHandler();
     assert.deepEqual(await (await fresh(request(), env)).json(), {author});
@@ -78,12 +84,74 @@ test('Worker fetches only the fixed GitHub repo and permanently caches canonical
   } finally { restore(); }
 });
 
+test('commit times require a valid calendar date and explicit timezone, and normalize to UTC', () => {
+  assert.equal(normalizeCommitTime('2026-10-20T15:48:50+08:00'), author.committedAt);
+  assert.equal(normalizeCommitTime('2026-10-20T07:48:50.12Z'), '2026-10-20T07:48:50.120Z');
+  assert.equal(normalizeCommitTime('2024-02-29T00:00:00Z'), '2024-02-29T00:00:00.000Z');
+  for (const value of [undefined, null, 0, {}, '', 'invalid', '2026-10-20', '2026-10-20T07:48:50',
+    '2026-02-29T00:00:00Z', '2026-02-30T00:00:00+08:00', '2026-13-01T00:00:00Z',
+    '2026-10-20T24:00:00Z', '2026-10-20T07:48:50+25:00']) {
+    assert.equal(normalizeCommitTime(value), null, String(value));
+  }
+});
+
+test('commit time formatting uses local timezone, fixed widths and 24-hour time across year boundaries and DST', () => {
+  const dates = ['2026-01-01T00:04:05.000Z', '2026-01-01T20:04:05.000Z', '2026-07-01T20:04:05.000Z'];
+  const source = `
+    import {importTs} from ${JSON.stringify(new URL('./helpers/import-ts.mjs', import.meta.url).href)};
+    const {formatCommitTime} = await importTs(new URL(${JSON.stringify(new URL('../src/lib/recordAuthor.ts', import.meta.url).href)}));
+    console.log(JSON.stringify([...${JSON.stringify(dates)}, null, undefined, 'invalid'].map(formatCommitTime)));
+  `;
+  for (const [timezone, expected] of [
+    ['UTC', ['2026-01-01 00:04:05', '2026-01-01 20:04:05', '2026-07-01 20:04:05']],
+    ['Asia/Shanghai', ['2026-01-01 08:04:05', '2026-01-02 04:04:05', '2026-07-02 04:04:05']],
+    ['America/New_York', ['2025-12-31 19:04:05', '2026-01-01 15:04:05', '2026-07-01 16:04:05']],
+  ]) {
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e', source], {
+      env: {...process.env, TZ: timezone}, encoding: 'utf8', timeout: 15000,
+    });
+    assert.equal(result.status, 0, result.stderr || String(result.error));
+    assert.deepEqual(JSON.parse(result.stdout), [...expected, null, null, null], timezone);
+  }
+});
+
+test('Worker preserves verified authors when the committer time is missing or invalid', async () => {
+  for (const committer of [undefined, null, {}, {date: null}, {date: 'invalid'}, {date: '2026-10-20T07:48:50'}]) {
+    const data = commit();
+    data.commit.committer = committer;
+    const restore = mockFetch(async () => Response.json(data));
+    try {
+      const kv = new MemoryKV();
+      const env = {AUTHOR_CACHE: kv};
+      assert.deepEqual(await (await createAuthorHandler()(request(), env)).json(), {author: {...author, committedAt: null}});
+      assert.deepEqual(await (await createAuthorHandler()(request(), env)).json(), {author: {...author, committedAt: null}});
+      assert.equal(kv.writes.length, 2);
+    } finally { restore(); }
+  }
+});
+
+test('old v1 summaries and malformed v2 timestamps are refreshed from GitHub', async () => {
+  for (const [version, committedAt] of [['v1', undefined], ['v2', undefined], ['v2', 'invalid']]) {
+    const kv = new MemoryKV();
+    const prefix = `author:${version}:zachtronics-leaderboards/om-leaderboard:`;
+    kv.values.set(`${prefix}ref:${SHA.slice(0, 8)}`, SHA);
+    kv.values.set(`${prefix}commit:${SHA}`, JSON.stringify({sha: SHA, name: author.name, recordId: ID, committedAt}));
+    let calls = 0;
+    const restore = mockFetch(async () => { calls++; return Response.json(commit()); });
+    try {
+      assert.deepEqual(await (await createAuthorHandler()(request(), {AUTHOR_CACHE: kv})).json(), {author});
+      assert.equal(calls, 1);
+      assert.equal(kv.writes.length, 2);
+    } finally { restore(); }
+  }
+});
+
 test('history imports are permanently unknown, never attributed to the Git maintainer', async () => {
   const kv = new MemoryKV();
   let calls = 0;
   const restore = mockFetch(async () => {
     calls++;
-    return Response.json({sha: SHA, commit: {message: '[HUMAN] Restart history', author: {name: 'Maintainer'}}}, {
+    return Response.json({sha: SHA, commit: {message: '[HUMAN] Restart history', author: {name: 'Maintainer'}, committer: {date: '2026-10-18T21:51:01Z'}}}, {
       headers: {link: '<https://api.github.com/next>; rel="next"'},
     });
   });
@@ -93,6 +161,7 @@ test('history imports are permanently unknown, never attributed to the Git maint
     }
     assert.equal(calls, 1);
     assert.equal(JSON.parse(kv.writes[0].value).name, null);
+    assert.equal(JSON.parse(kv.writes[0].value).committedAt, null);
     assert.ok(kv.writes.every(write => write.options === undefined));
   } finally { restore(); }
 });
@@ -242,6 +311,18 @@ test('frontend calls only the Worker with cancellation and validates the attribu
     const restore = mockFetch(async () => Response.json({author: invalid}));
     try { await assert.rejects(fetchRecordAuthor(solution(), controller.signal)); }
     finally { restore(); }
+  }
+});
+
+test('frontend normalizes timestamps and preserves attribution from old or invalid timestamp responses', async () => {
+  for (const [committedAt, expected] of [
+    [undefined, null], [null, null], [0, null], [{}, null], ['invalid', null],
+    ['2026-10-20T07:48:50', null], ['2026-10-20T15:48:50+08:00', author.committedAt],
+  ]) {
+    const restore = mockFetch(async () => Response.json({author: {...author, committedAt}}));
+    try {
+      assert.deepEqual(await fetchRecordAuthor(solution(), new AbortController().signal), {...author, committedAt: expected});
+    } finally { restore(); }
   }
 });
 

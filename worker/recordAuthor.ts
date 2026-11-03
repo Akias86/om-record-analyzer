@@ -1,4 +1,4 @@
-import { AUTHOR_COMMIT_URL, AUTHOR_REPOSITORY, solutionReference } from '../src/lib/recordAuthor.ts'
+import { AUTHOR_COMMIT_URL, AUTHOR_REPOSITORY, normalizeCommitTime, solutionReference } from '../src/lib/recordAuthor.ts'
 
 export interface AuthorBindings {
   AUTHOR_CACHE: KVNamespace
@@ -9,23 +9,24 @@ interface CommitSummary {
   sha: string
   name: string | null
   recordId: string | null
+  committedAt: string | null
 }
 
 interface GitHubCommit {
   sha?: unknown
-  commit?: { message?: unknown }
+  commit?: { message?: unknown; committer?: { date?: unknown } }
   files?: { filename?: unknown; status?: unknown }[]
 }
 
-// Bump the version when changing parsing rules to re-evaluate old unknowns.
-const CACHE_PREFIX = `author:v1:${AUTHOR_REPOSITORY}:`
+// Bump the version when changing parsing rules or the cached summary shape.
+const CACHE_PREFIX = `author:v2:${AUTHOR_REPOSITORY}:`
 const FULL_SHA = /^[a-f0-9]{40}$/
 const RETRY_MS = 30_000
 
 function summarize(data: GitHubCommit, ref: string, paginated: boolean): CommitSummary {
   if (typeof data.sha !== 'string' || !FULL_SHA.test(data.sha) || !data.sha.startsWith(ref)
     || typeof data.commit?.message !== 'string') throw new Error('Invalid GitHub commit')
-  const summary: CommitSummary = { sha: data.sha, name: null, recordId: null }
+  const summary: CommitSummary = { sha: data.sha, name: null, recordId: null, committedAt: null }
   const subject = data.commit.message.split(/\r?\n/, 1)[0]
   const name = /^\[BOT\] .+ \[Solution\] by (.+)$/.exec(subject)?.[1].trim()
   // In particular, never attribute imported history to its maintainer, or use
@@ -43,11 +44,12 @@ function summarize(data: GitHubCommit, ref: string, paginated: boolean): CommitS
   if (!puzzle || !filename.startsWith(`${puzzle}_`) || !filename.endsWith('.solution')) return summary
   const recordId = filename.slice(puzzle.length + 1, -'.solution'.length)
   if (!/^[A-Za-z0-9][A-Za-z0-9.'()+_-]{0,511}$/.test(recordId)) return summary
-  return { sha: data.sha, name, recordId }
+  return { sha: data.sha, name, recordId, committedAt: normalizeCommitTime(data.commit.committer?.date) }
 }
 
 function validSummary(value: CommitSummary | null, sha: string): value is CommitSummary {
-  return !!value && value.sha === sha && (
+  return !!value && value.sha === sha
+    && (value.committedAt === null || (typeof value.committedAt === 'string' && normalizeCommitTime(value.committedAt) === value.committedAt)) && (
     (value.name === null && value.recordId === null)
     || (typeof value.name === 'string' && value.name.length > 0 && value.name.length <= 256 && typeof value.recordId === 'string')
   )
@@ -121,7 +123,7 @@ export function createAuthorHandler(now: () => number = Date.now) {
     try {
       const value = await lookup(ref.sha, env)
       const author = value.name && value.recordId === ref.recordId
-        ? { name: value.name, url: `${AUTHOR_COMMIT_URL}${value.sha}` } : null
+        ? { name: value.name, url: `${AUTHOR_COMMIT_URL}${value.sha}`, committedAt: value.committedAt } : null
       return Response.json({ author }, { headers })
     } catch {
       // Attribution is optional: never leak upstream errors, bindings or tokens.

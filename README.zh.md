@@ -88,11 +88,13 @@ pnpm dev
 
 ### 记录作者署名
 
-仅在播放器标题下显示小字 `by Author`,作者名链接到署名提交。加载中、查询失败或无法可靠确认作者时整行隐藏;记录表和图表提示不变。
+仅在播放器标题下显示小字 `by Author at yyyy-MM-dd HH:mm:ss`,只有作者名链接到署名提交。时间为浅色、不可点击的文本,使用当前提交的 `commit.committer.date`,按浏览器当前时区以 24 小时制显示,不是排行榜的 `lastModified` 或追溯得到的原始提交时间。时间缺失或无效时仅显示 `by Author`。加载中、查询失败或无法可靠确认作者时整行隐藏;记录表和图表提示不变。
 
-浏览器异步请求 `/api/record-author?solution=…`。Worker 仅接受 zlbb 不可变解答链接,提取提交 SHA,并查询固定的 `zachtronics-leaderboards/om-leaderboard` 仓库。仅采信明确的 `[BOT] … [Solution] by …` 信息及唯一对应的解答文件,不使用 Git 作者字段。历史重建/导入提交无法恢复原作者。
+浏览器异步请求 `/api/record-author?solution=…`。Worker 仅接受 zlbb 不可变解答链接,提取提交 SHA,并查询固定的 `zachtronics-leaderboards/om-leaderboard` 仓库。仅采信明确的 `[BOT] … [Solution] by …` 信息及唯一对应的解答文件,不使用 Git 作者字段。当前查询不会追溯旧历史来恢复历史重建/导入记录的原作者。
 
 `wrangler.jsonc` 已声明 Workers KV 绑定 `AUTHOR_CACHE`。开发环境使用本地持久化 KV;未填写命名空间 ID 时,当前 Wrangler 会在部署时创建或复用线上命名空间,也可显式填写已有命名空间的 `id`。完整 SHA 的结果与短 SHA 别名均**不设置过期时间**,确认无署名的结果也永久保存;缓存键包含解析版本,方便未来修正规则后重建。KV 是最终一致的,不同地区同时首次查询仍可能发生重复请求。临时失败不会保存为永久未知,Worker 短暂退避后,再次打开播放器可重试。
+
+当前使用 `author:v2` 缓存键保存提交时间。已有 `author:v1` 数据仍保留在 KV 中但不再读取;每个 SHA 首次进行 v2 查询时会重新请求 GitHub。已打开的页面需要刷新,以加载新版界面并清除页面会话内的作者缓存。
 
 GitHub 无需认证也可查询,但限额较低。可选运行 `pnpm exec wrangler secret put GITHUB_TOKEN` 配置服务端 Token;本地放在 `.dev.vars` 中。不要使用 `VITE_` 变量或提交 Token。作者查询不会阻塞播放。
 

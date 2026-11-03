@@ -88,11 +88,13 @@ Local playback uses `#/puzzle/:id?user=:localRecordId` and restores after reload
 
 ### Record author attribution
 
-Only the playback dialog shows a small `by Author` line below its title; the name links to the attribution commit. It is hidden while loading, on lookup failure, or when no reliable attribution exists. Tables and chart tooltips are unchanged.
+Only the playback dialog shows a small `by Author at yyyy-MM-dd HH:mm:ss` line below its title; only the name links to the attribution commit. The time is muted, non-clickable text, using that commit's `commit.committer.date` in the browser's current timezone (24-hour clock), not the leaderboard's `lastModified` or a recovered original submission date. Missing or invalid timestamps leave just `by Author`. The line is hidden while loading, on lookup failure, or when no reliable attribution exists. Tables and chart tooltips are unchanged.
 
-The browser asynchronously calls `/api/record-author?solution=…`. The Worker accepts only immutable zlbb solution links, extracts the commit SHA, and queries the fixed `zachtronics-leaderboards/om-leaderboard` repository. It accepts explicit `[BOT] … [Solution] by …` messages with a single corresponding solution file, not Git's author field. History-reset/import commits cannot recover the original authors.
+The browser asynchronously calls `/api/record-author?solution=…`. The Worker accepts only immutable zlbb solution links, extracts the commit SHA, and queries the fixed `zachtronics-leaderboards/om-leaderboard` repository. It accepts explicit `[BOT] … [Solution] by …` messages with a single corresponding solution file, not Git's author field. The current lookup does not follow old history to recover authors from history-reset/import commits.
 
 `AUTHOR_CACHE` is a Workers KV binding declared in `wrangler.jsonc`. Local development uses local persistent KV; current Wrangler provisions/reuses the production namespace during deployment when its ID is omitted. You can also set an existing namespace's `id` explicitly. Full-SHA results and short-SHA aliases have **no expiration**, including confirmed unknowns. Versioned keys allow future parser changes. KV is eventually consistent, so simultaneous misses in different regions can still issue duplicate requests. Transient failures are never stored as permanent unknowns; the Worker briefly backs off and a later viewer open can retry.
+
+Current keys use `author:v2` to cache commit timestamps. Existing `author:v1` entries remain in KV but are ignored; the first v2 lookup for a SHA fetches GitHub again. Refresh already-open pages to load the new UI and clear page-session author caches.
 
 GitHub works without authentication but has a lower rate limit. Optionally set a server-only token with `pnpm exec wrangler secret put GITHUB_TOKEN`; for local development add `GITHUB_TOKEN` to `.dev.vars`. Never use a `VITE_` variable or commit the token. Author lookup never blocks playback.
 

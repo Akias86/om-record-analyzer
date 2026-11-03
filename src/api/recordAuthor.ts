@@ -1,4 +1,4 @@
-import { AUTHOR_COMMIT_URL, solutionReference, type RecordAuthor } from '../lib/recordAuthor'
+import { AUTHOR_COMMIT_URL, normalizeCommitTime, solutionReference, type RecordAuthor } from '../lib/recordAuthor'
 
 export async function fetchRecordAuthor(solution: string | null, signal: AbortSignal): Promise<RecordAuthor | null> {
   const ref = solutionReference(solution)
@@ -11,5 +11,5 @@ export async function fetchRecordAuthor(solution: string | null, signal: AbortSi
     || typeof author.url !== 'string' || !author.url.startsWith(AUTHOR_COMMIT_URL)) throw new Error('Invalid author attribution')
   const sha = author.url.slice(AUTHOR_COMMIT_URL.length)
   if (!/^[a-f0-9]{40}$/.test(sha) || !sha.startsWith(ref.sha)) throw new Error('Invalid author commit')
-  return author
+  return { ...author, committedAt: normalizeCommitTime(author.committedAt) }
 }

@@ -45,6 +45,10 @@
   text-decoration: underline;
 }
 
+.gif-viewer-author-time {
+  color: var(--text);
+}
+
 .solution-player-panel .gif-viewer-title {
   overflow: hidden;
   text-overflow: ellipsis;

@@ -6,6 +6,7 @@ import {importTs} from './helpers/import-ts.mjs';
 
 const {useEscapeKey} = await importTs(new URL('../src/components/pareto/useEscapeKey.ts', import.meta.url));
 const {GifViewer} = await importTs(new URL('../src/components/pareto/GifViewer.tsx', import.meta.url));
+const {formatCommitTime} = await importTs(new URL('../src/lib/recordAuthor.ts', import.meta.url));
 
 function deferred() {
   let resolve, reject;
@@ -147,7 +148,59 @@ for (const boundary of ['puzzle', 'local file', 'close', 'unmount']) {
 
 const SHA = 'b01e618e46fb9721c467d7979a74ed82328abd71';
 const solutionUrl = `https://zlbb.faendir.com/l/om/${SHA}/P253/110g-20i-204c-41a-8h-TL`;
-const author = {name: 'Author', url: `https://github.com/zachtronics-leaderboards/om-leaderboard/commit/${SHA}`};
+const author = {name: 'Author', url: `https://github.com/zachtronics-leaderboards/om-leaderboard/commit/${SHA}`, committedAt: '2026-10-20T07:48:50.000Z'};
+
+test('attribution renders local commit time outside the author link with the full text in its title', async t => {
+  t.mock.method(globalThis, 'fetch', async () => Response.json({author}));
+  const dom = await viewer(t, {solutionUrl});
+  const row = dom.container.querySelector('.gif-viewer-author');
+  const expected = `by Author at ${formatCommitTime(author.committedAt)}`;
+  assert.equal(row.textContent, expected);
+  assert.equal(row.title, expected);
+  assert.equal(row.querySelectorAll('a').length, 1);
+  assert.equal(row.querySelector('a').textContent, 'Author');
+  assert.equal(row.querySelector('a').href, author.url);
+  const time = row.querySelector('time');
+  assert.equal(time.getAttribute('datetime'), author.committedAt);
+  assert.equal(time.closest('a'), null);
+  assert.equal(time.tabIndex, -1);
+  const label = row.querySelector('.gif-viewer-author-time');
+  assert.equal(label.textContent, ` at ${formatCommitTime(author.committedAt)}`);
+  assert.equal(label.closest('a'), null);
+  assert.equal(label.tabIndex, -1);
+});
+
+for (const committedAt of [undefined, null, 'invalid']) {
+  test(`attribution without a valid time (${committedAt}) preserves only the author link`, async t => {
+    t.mock.method(globalThis, 'fetch', async () => Response.json({author: {...author, committedAt}}));
+    const dom = await viewer(t, {solutionUrl});
+    const row = dom.container.querySelector('.gif-viewer-author');
+    assert.equal(row.textContent, 'by Author');
+    assert.equal(row.title, 'by Author');
+    assert.equal(row.querySelector('a').href, author.url);
+    assert.equal(row.querySelector('time'), null);
+    assert.equal(row.querySelector('.gif-viewer-author-time'), null);
+  });
+}
+
+test('switching records clears the old time and displays the new attribution together', async t => {
+  const requests = [];
+  t.mock.method(globalThis, 'fetch', () => {
+    const request = deferred();
+    requests.push(request);
+    return request.promise;
+  });
+  const dom = await viewer(t, {solutionUrl});
+  await act(async () => requests[0].resolve(Response.json({author})));
+  assert.equal(dom.container.querySelector('time').getAttribute('datetime'), author.committedAt);
+  const nextSha = 'a'.repeat(40);
+  await dom.render({solutionUrl: solutionUrl.replace(SHA, nextSha)});
+  assert.equal(dom.container.querySelector('.gif-viewer-author'), null);
+  const next = {...author, name: 'Next author', url: author.url.replace(SHA, nextSha), committedAt: '2026-11-03T08:34:26.000Z'};
+  await act(async () => requests[1].resolve(Response.json({author: next})));
+  assert.equal(dom.container.querySelector('.gif-viewer-author').textContent, `by Next author at ${formatCommitTime(next.committedAt)}`);
+  assert.equal(dom.container.querySelector('time').getAttribute('datetime'), next.committedAt);
+});
 
 test('reopening the same record retries a failed author request', async t => {
   let requests = 0;
@@ -169,6 +222,7 @@ for (const result of [author, null]) {
     await dom.render({open: true});
     assert.equal(fetch.mock.callCount(), 1);
     assert.equal(dom.container.querySelector('.gif-viewer-author a')?.textContent ?? null, result?.name ?? null);
+    assert.equal(dom.container.querySelector('.gif-viewer-author time')?.getAttribute('datetime') ?? null, result?.committedAt ?? null);
   });
 }
 
@@ -185,8 +239,9 @@ test('closing cancels pending attribution; its late response cannot replace the 
   await dom.render({open: true});
   assert.equal(requests.length, 2);
   await act(async () => requests[1].resolve(Response.json({author})));
-  await act(async () => requests[0].resolve(Response.json({author: {...author, name: 'Stale author'}})));
+  await act(async () => requests[0].resolve(Response.json({author: {...author, name: 'Stale author', committedAt: '2020-01-01T00:00:00.000Z'}})));
   assert.equal(dom.container.querySelector('.gif-viewer-author a')?.textContent, 'Author');
+  assert.equal(dom.container.querySelector('.gif-viewer-author time')?.getAttribute('datetime'), author.committedAt);
   await dom.render({open: false});
   await dom.render({open: true});
   assert.equal(requests.length, 2, 'the successful retry is cached');
