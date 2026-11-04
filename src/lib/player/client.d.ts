@@ -16,6 +16,8 @@ export interface PlayerState {
   readonly loopReason: string | null;
   readonly cachedCycles: number;
   readonly liveAtoms: number;
+  readonly collisionDetection: boolean;
+  readonly loopStatus: 'idle' | 'pending' | 'ready' | 'unavailable' | 'failed';
   collision: unknown | null;
   error: {code: string; message: string} | null;
 }
@@ -34,6 +36,8 @@ export interface PlayerRecord {
   solution: PlayerFile;
   title?: string;
   autoplay?: boolean;
+  /** Defaults to true on every load. false skips collision checks, not input validation. */
+  collisionDetection?: boolean;
   signal?: AbortSignal;
 }
 export interface PlayerResult { state: PlayerState }

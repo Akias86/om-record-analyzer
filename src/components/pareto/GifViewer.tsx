@@ -177,7 +177,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
     const controller = new AbortController()
     loadAbort.current = controller
     let active = true
-    const sourceKey = `${puzzleId}\u0000${solutionKey ?? solutionUrl ?? ''}`
+    const sourceKey = `${puzzleId}\u0000${solutionKey ? `local:${solutionKey}` : `url:${solutionUrl ?? ''}`}`
     const loadPlayer = async () => {
       setActionError('')
       setReason('')
@@ -229,6 +229,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
         solution: { name: filenameRef.current, bytes: solution },
         title: puzzleNameRef.current || undefined,
         autoplay: false,
+        collisionDetection: !!solutionKey,
         signal: controller.signal,
       })
       if (!active || controller.signal.aborted) return

@@ -70,9 +70,35 @@ test('load copies before transfer and correlates only the matching loaded result
     await flush(); const [message, , transfer] = f.posts.at(-1);
     assert.equal(message.type, 'load'); assert.notEqual(transfer[0], puzzle.buffer); assert.notEqual(transfer[1], solution.buffer);
     assert.deepEqual([...puzzle], [1, 2]); assert.equal(message.payload.title, 'Title');
+    assert.equal(message.payload.collisionDetection, true);
     f.receive('loaded', 'unknown', {state: {cycle: 8}}); assert.equal(f.states.length, 0);
     f.receive('loaded', message.requestId, {state: {cycle: 0}});
     assert.equal((await result).state.cycle, 0); assert.equal(f.client.state.cycle, 0);
+  } finally { f.cleanup(); }
+});
+
+test('load forwards collision mode, defaults anew and rejects invalid options without cancelling work', async () => {
+  const f = fixture();
+  const file = {name: 'input', bytes: new Uint8Array([1])};
+  try {
+    await f.connect();
+    for (const options of [{collisionDetection: false}, {collisionDetection: undefined}, {collisionDetection: true}, {collisionDetection: false}, {}]) {
+      const loading = f.client.load({puzzle: file, solution: file, ...options});
+      await flush();
+      const count = f.posts.length, message = f.posts.at(-1)[0];
+      const expected = options.collisionDetection ?? true;
+      assert.equal(message.type, 'load');
+      assert.equal(message.payload.collisionDetection, expected);
+      for (const invalid of [null, 0, 1, 'false', 'true', {}, []]) {
+        await assert.rejects(f.client.load({puzzle: file, solution: file, collisionDetection: invalid}),
+          {name: 'TypeError', message: 'collisionDetection must be a boolean.'});
+      }
+      assert.equal(f.posts.length, count, 'invalid modes must not cancel or replace the pending load');
+      f.receive('loaded', message.requestId, {state: {collisionDetection: expected}});
+      assert.equal((await loading).state.collisionDetection, expected);
+      assert.equal(f.client.state.collisionDetection, expected);
+    }
+    assert.equal(f.errors.length, 0);
   } finally { f.cleanup(); }
 });
 

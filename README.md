@@ -74,6 +74,8 @@ The standalone `om-render/web-player` origin defaults to `https://om-player.page
 }
 ```
 
+Real-time playback disables collision detection for leaderboard records and enables it for user records. This requires a player build supporting `collisionDetection`; older deployed players retain collision detection for all records. Solution verification is unchanged.
+
 The playback area follows the native GIF's 826:647 aspect ratio (up to 826×647 CSS pixels), and the dialog fits the available viewport without padding around the image. The player draws into a fixed 826×647 canvas; browser zoom is left to the browser, without DPR compensation.
 
 For local development, copy `.dev.vars.example` to `.dev.vars`; use `PLAYER_ORIGIN=http://127.0.0.1:4174` for a locally running `om-render/web-player`, then restart `pnpm dev`. In production, update the Worker binding through Wrangler configuration or secrets and refresh the page; **no frontend rebuild is required**. The first playback reads `/api/config` without caching it; the persistent player keeps that origin for the page session. This endpoint exposes only the public player origin, not other bindings or secrets. WebGPU requires HTTPS or localhost and a supported browser; remote solution downloads require CORS.

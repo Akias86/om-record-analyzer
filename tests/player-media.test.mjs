@@ -82,6 +82,31 @@ async function viewer(t, {solutionResponse, ...initial} = {}) {
   };
 }
 
+for (const localFirst of [false, true]) {
+  test(`collision mode follows record source across switching and reopening (local first: ${localFirst})`, async t => {
+    const {saveUserSolutionFile, clearUserSolutionFiles} = await importTs(new URL('../src/lib/userSolutionFiles.ts', import.meta.url));
+    // Match the remote URL deliberately: local and remote records must not share a loaded simulation.
+    const solutionKey = '/a.solution';
+    await saveUserSolutionFile(solutionKey, new Blob(['local solution']));
+    t.after(clearUserSolutionFiles);
+    const dom = await viewer(t, {solutionKey: localFirst ? solutionKey : undefined});
+    const loads = () => dom.posts.filter(message => message.type === 'load');
+    assert.deepEqual(loads().map(message => message.payload.collisionDetection), [localFirst]);
+    for (const local of [!localFirst, localFirst]) {
+      await dom.render({solutionKey: local ? solutionKey : undefined});
+      assert.equal(loads().at(-1).payload.collisionDetection, local);
+      assert.equal(new TextDecoder().decode(loads().at(-1).payload.solution.bytes), local ? 'local solution' : '/a.solution');
+      const count = loads().length;
+      await dom.render({open: false});
+      await dom.render({open: true});
+      assert.equal(loads().length, count, 'reopening keeps the same simulation and collision mode');
+      assert.deepEqual(dom.posts.slice(-3).map(message => message.type), ['seek', 'speed', 'play']);
+    }
+    assert.deepEqual(loads().map(message => message.payload.collisionDetection), [localFirst, !localFirst, localFirst]);
+    assert.equal(dom.container.querySelector('iframe'), dom.frame, 'both modes reuse the warm iframe');
+  });
+}
+
 for (const [url, tag] of [['/record.gif', 'IMG'], ['/record.webm?replay=1', 'VIDEO']]) {
   test(`${tag} switches through an icon-only button and fills the shared 826:647 frame`, async t => {
     const dom = await viewer(t, {url});
