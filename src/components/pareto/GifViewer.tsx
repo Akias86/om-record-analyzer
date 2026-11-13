@@ -229,7 +229,6 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
         solution: { name: filenameRef.current, bytes: solution },
         title: puzzleNameRef.current || undefined,
         autoplay: false,
-        collisionDetection: !!solutionKey,
         signal: controller.signal,
       })
       if (!active || controller.signal.aborted) return

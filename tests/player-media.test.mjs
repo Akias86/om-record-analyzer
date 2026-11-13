@@ -39,7 +39,9 @@ async function viewer(t, {solutionResponse, ...initial} = {}) {
   dom.window.document.head.append(style);
   const posts = [];
   let state = {ready: true, busy: false, playing: false, cycle: 0, fraction: 0, stepping: 0,
-    speed: 5, gpu: 'ready', victoryCycle: 100, analysisStatus: 'complete', collision: null, error: null};
+    speed: 5, gpu: 'ready', playbackMode: 'continuous', victoryCycle: 100, loopStart: null, loopEnd: null,
+    loopIteration: 0, analysisStatus: 'complete', loopReason: null, cachedCycles: 0, liveAtoms: 6,
+    loopStatus: 'idle', collision: null, error: null};
   const frameWindow = {
     location: {href: 'https://player.test/'},
     postMessage(message) {
@@ -70,6 +72,13 @@ async function viewer(t, {solutionResponse, ...initial} = {}) {
   await act(async () => frame.dispatchEvent(new dom.window.Event('load')));
   const toggle = () => dom.container.querySelector('.solution-player-mode-toggle');
   return {...dom, posts, frame, render, toggle, state: () => state,
+    publishState: changes => act(async () => {
+      state = {...state, ...changes};
+      const {session} = posts[0];
+      dom.window.dispatchEvent(new dom.window.MessageEvent('message', {
+        source: frameWindow, origin: 'https://player.test', data: packet('state', `${session}:state:1`, session, state),
+      }));
+    }),
     resize: changes => act(async () => {
       Object.assign(viewport, changes);
       for (const observer of observers) observer.callback();
@@ -83,7 +92,7 @@ async function viewer(t, {solutionResponse, ...initial} = {}) {
 }
 
 for (const localFirst of [false, true]) {
-  test(`collision mode follows record source across switching and reopening (local first: ${localFirst})`, async t => {
+  test(`local and remote loads omit retired fields and retain source identity (local first: ${localFirst})`, async t => {
     const {saveUserSolutionFile, clearUserSolutionFiles} = await importTs(new URL('../src/lib/userSolutionFiles.ts', import.meta.url));
     // Match the remote URL deliberately: local and remote records must not share a loaded simulation.
     const solutionKey = '/a.solution';
@@ -91,21 +100,45 @@ for (const localFirst of [false, true]) {
     t.after(clearUserSolutionFiles);
     const dom = await viewer(t, {solutionKey: localFirst ? solutionKey : undefined});
     const loads = () => dom.posts.filter(message => message.type === 'load');
-    assert.deepEqual(loads().map(message => message.payload.collisionDetection), [localFirst]);
+    assert.equal(loads().length, 1);
+    assert.equal(new TextDecoder().decode(loads()[0].payload.solution.bytes), localFirst ? 'local solution' : '/a.solution');
     for (const local of [!localFirst, localFirst]) {
       await dom.render({solutionKey: local ? solutionKey : undefined});
-      assert.equal(loads().at(-1).payload.collisionDetection, local);
       assert.equal(new TextDecoder().decode(loads().at(-1).payload.solution.bytes), local ? 'local solution' : '/a.solution');
       const count = loads().length;
       await dom.render({open: false});
       await dom.render({open: true});
-      assert.equal(loads().length, count, 'reopening keeps the same simulation and collision mode');
+      assert.equal(loads().length, count, 'reopening keeps the same loaded simulation');
       assert.deepEqual(dom.posts.slice(-3).map(message => message.type), ['seek', 'speed', 'play']);
     }
-    assert.deepEqual(loads().map(message => message.payload.collisionDetection), [localFirst, !localFirst, localFirst]);
-    assert.equal(dom.container.querySelector('iframe'), dom.frame, 'both modes reuse the warm iframe');
+    assert.equal(loads().length, 3, 'switching sources reloads even when their keys match');
+    for (const {payload} of loads()) {
+      assert.deepEqual(Object.keys(payload), ['puzzle', 'solution', 'title', 'autoplay']);
+      assert.equal(payload.autoplay, false, 'the host waits for speed initialization before playing');
+    }
+    assert.equal(dom.container.querySelector('iframe'), dom.frame, 'both sources reuse the warm iframe');
   });
 }
+
+test('automatic victory hold and safe-cache states keep host controls usable without selecting a policy', async t => {
+  const dom = await viewer(t);
+  const count = dom.posts.length;
+  for (const update of [
+    {playbackMode: 'victory-loop', cycle: 100, fraction: 0.5, loopStart: 0, loopEnd: 100,
+      loopIteration: 2, loopReason: 'halted', loopStatus: 'unavailable'},
+    {playbackMode: 'steady-loop', cycle: 91, fraction: 0, loopStart: 43, loopEnd: 91,
+      loopIteration: 3, loopReason: 'steady', loopStatus: 'ready', cachedCycles: 49},
+  ]) {
+    await dom.publishState(update);
+    assert.equal(dom.container.querySelector('.solution-player-status').textContent, 'Completed at cycle 100');
+    assert.equal(dom.container.querySelector('.solution-player-cycle').textContent, `Cycle ${update.cycle}`);
+    assert.equal(dom.container.querySelector('.solution-player-play').textContent, 'Pause');
+    assert.equal(dom.container.querySelector('.solution-player-play').disabled, false);
+    assert.equal(dom.container.querySelector('input[type=number]').disabled, false);
+    assert.equal(dom.frame.hidden, false);
+  }
+  assert.equal(dom.posts.length, count, 'state updates do not send host replay/collision commands');
+});
 
 for (const [url, tag] of [['/record.gif', 'IMG'], ['/record.webm?replay=1', 'VIDEO']]) {
   test(`${tag} switches through an icon-only button and fills the shared 826:647 frame`, async t => {

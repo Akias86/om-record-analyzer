@@ -125,8 +125,6 @@ export function createPlayerClient(iframe, options) {
     get ready() { return ready; },
     get state() { return lastState; },
     async load(record) {
-      const {collisionDetection = true} = record;
-      if (typeof collisionDetection !== 'boolean') throw new TypeError('collisionDetection must be a boolean.');
       loadAbort?.abort();
       const controller = new AbortController(); loadAbort = controller;
       const abort = () => controller.abort();
@@ -137,7 +135,7 @@ export function createPlayerClient(iframe, options) {
         return await request('load', {
           puzzle: {name: record.puzzle.name || 'input.puzzle', bytes: puzzle},
           solution: {name: record.solution.name || 'input.solution', bytes: solution},
-          title: String(record.title || ''), autoplay: record.autoplay !== false, collisionDetection,
+          title: String(record.title || ''), autoplay: record.autoplay !== false,
         }, {signal: controller.signal, transfer: [puzzle.buffer, solution.buffer]});
       } finally {
         record.signal?.removeEventListener('abort', abort);

@@ -74,7 +74,7 @@ The standalone `om-render/web-player` origin defaults to `https://om-player.page
 }
 ```
 
-Real-time playback disables collision detection for leaderboard records and enables it for user records. This requires a player build supporting `collisionDetection`; older deployed players retain collision detection for all records. Solution verification is unchanged.
+Real-time playback always uses collision detection for both leaderboard and local solutions. The player automatically chooses continuous playback (using a certified safe-loop cache when available) or `0..@V` victory replay based on background analysis. Solutions confirmed to stop/collide after completion, or completed solutions with no ongoing material activity, replay through victory and hold the final pose for one playback cycle before restarting (0.2 seconds at the default 5 cycles/second). Pause or zero speed freezes the hold; stepping can advance or rewind it. Failed or budget-limited analysis does not imply victory replay; a post-victory collision discovered during playback can still select it. Pre-victory collisions stop playback; unfinished solutions do not replay early. The host no longer sends `collisionDetection` or `replayAtVictory`, nor relies on their removed read-only state. Use the matching current player build for this automatic policy; older deployed builds remain connectable but retain their own playback behavior. The independent solution verifier is unchanged.
 
 The playback area follows the native GIF's 826:647 aspect ratio (up to 826×647 CSS pixels), and the dialog fits the available viewport without padding around the image. The player draws into a fixed 826×647 canvas; browser zoom is left to the browser, without DPR compensation.
 

@@ -70,34 +70,60 @@ test('load copies before transfer and correlates only the matching loaded result
     await flush(); const [message, , transfer] = f.posts.at(-1);
     assert.equal(message.type, 'load'); assert.notEqual(transfer[0], puzzle.buffer); assert.notEqual(transfer[1], solution.buffer);
     assert.deepEqual([...puzzle], [1, 2]); assert.equal(message.payload.title, 'Title');
-    assert.equal(message.payload.collisionDetection, true);
+    assert.deepEqual(Object.keys(message.payload), ['puzzle', 'solution', 'title', 'autoplay']);
     f.receive('loaded', 'unknown', {state: {cycle: 8}}); assert.equal(f.states.length, 0);
     f.receive('loaded', message.requestId, {state: {cycle: 0}});
     assert.equal((await result).state.cycle, 0); assert.equal(f.client.state.cycle, 0);
   } finally { f.cleanup(); }
 });
 
-test('load forwards collision mode, defaults anew and rejects invalid options without cancelling work', async () => {
+test('load omits retired options even when a stale JavaScript caller supplies them', async () => {
   const f = fixture();
   const file = {name: 'input', bytes: new Uint8Array([1])};
   try {
     await f.connect();
-    for (const options of [{collisionDetection: false}, {collisionDetection: undefined}, {collisionDetection: true}, {collisionDetection: false}, {}]) {
+    for (const options of [{collisionDetection: false, replayAtVictory: true}, {collisionDetection: null, replayAtVictory: 'false'}, {}]) {
       const loading = f.client.load({puzzle: file, solution: file, ...options});
       await flush();
-      const count = f.posts.length, message = f.posts.at(-1)[0];
-      const expected = options.collisionDetection ?? true;
+      const message = f.posts.at(-1)[0];
       assert.equal(message.type, 'load');
-      assert.equal(message.payload.collisionDetection, expected);
-      for (const invalid of [null, 0, 1, 'false', 'true', {}, []]) {
-        await assert.rejects(f.client.load({puzzle: file, solution: file, collisionDetection: invalid}),
-          {name: 'TypeError', message: 'collisionDetection must be a boolean.'});
-      }
-      assert.equal(f.posts.length, count, 'invalid modes must not cancel or replace the pending load');
-      f.receive('loaded', message.requestId, {state: {collisionDetection: expected}});
-      assert.equal((await loading).state.collisionDetection, expected);
-      assert.equal(f.client.state.collisionDetection, expected);
+      assert.deepEqual(Object.keys(message.payload), ['puzzle', 'solution', 'title', 'autoplay']);
+      assert.equal(message.payload.autoplay, true);
+      f.receive('loaded', message.requestId, {state: {cycle: 0, error: null}});
+      assert.equal((await loading).state.cycle, 0);
     }
+    assert.equal(f.errors.length, 0);
+  } finally { f.cleanup(); }
+});
+
+test('current automatic playback states pass through without retired state fields', async () => {
+  const f = fixture();
+  try {
+    await f.connect();
+    const state = {ready: true, busy: false, playing: true, cycle: 100, fraction: 0.5, stepping: 0,
+      speed: 5, gpu: 'ready', playbackMode: 'continuous', victoryCycle: 100, loopStart: null, loopEnd: null,
+      loopIteration: 0, analysisStatus: 'pending', loopReason: null, cachedCycles: 0, liveAtoms: 6,
+      loopStatus: 'idle', collision: null, error: null};
+    for (const update of [
+      {},
+      {playbackMode: 'victory-loop', loopStart: 0, loopEnd: 100, loopIteration: 2,
+        analysisStatus: 'complete', loopReason: 'halted', loopStatus: 'unavailable'},
+      {playbackMode: 'steady-loop', cycle: 91, loopStart: 43, loopEnd: 91, loopIteration: 3,
+        analysisStatus: 'complete', loopReason: 'steady', loopStatus: 'ready', cachedCycles: 49},
+    ]) {
+      const current = {...state, ...update};
+      f.receive('state', 'unrelated', current);
+      f.receive('state', `${f.session}:state:${current.loopIteration + 1}`, current);
+      assert.deepEqual(f.client.state, current);
+      assert.deepEqual(f.states.at(-1), current);
+    }
+    assert.equal(f.states.length, 3);
+    assert.equal(f.errors.length, 0);
+    assert.equal(f.posts.length, 1, 'the player, not the host, chooses the automatic strategy');
+    // Older deployed players may still include extra read-only state.
+    const legacy = {...state, collisionDetection: true, replayAtVictory: false};
+    f.receive('state', `${f.session}:state:5`, legacy);
+    assert.deepEqual(f.client.state, legacy);
     assert.equal(f.errors.length, 0);
   } finally { f.cleanup(); }
 });
@@ -108,9 +134,15 @@ test('new record and AbortSignal cancel previous loads without reporting fallbac
   try {
     await f.connect();
     const first = f.client.load(record); const firstRejected = assert.rejects(first, {name: 'AbortError'}); await flush();
+    const firstId = f.posts.at(-1)[0].requestId;
     const controller = new AbortController(); const second = f.client.load({...record, signal: controller.signal});
     const secondRejected = assert.rejects(second, {name: 'AbortError'}); await flush();
+    const secondId = f.posts.at(-1)[0].requestId;
+    f.receive('loaded', firstId, {state: {cycle: 500}});
+    assert.equal(f.states.length, 0, 'a replaced record cannot publish a late load result');
     controller.abort(); await Promise.all([firstRejected, secondRejected]);
+    f.receive('loaded', secondId, {state: {cycle: 600}});
+    assert.equal(f.states.length, 0, 'a cancelled record cannot publish a late load result');
     assert.ok(f.posts.some(([message]) => message.type === 'cancel')); assert.equal(f.errors.length, 0);
   } finally { f.cleanup(); }
 });
