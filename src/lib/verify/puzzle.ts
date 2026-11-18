@@ -42,7 +42,7 @@ export async function prefetchPuzzles(ids: Iterable<string>): Promise<{
   try {
     const puzzleMap = await getPuzzleMap()
     if (puzzleMap.size > 0) {
-      valid = unique.filter((id) => puzzleMap.has(id))
+      valid = unique.filter((id) => puzzleMap.get(id)?.id === id)
     }
   } catch {
     /* map unavailable → don't filter, fall back to per-id 404 */

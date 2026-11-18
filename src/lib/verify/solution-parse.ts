@@ -15,13 +15,16 @@ function readName(bytes: Uint8Array, idLen: number): string | null {
   return nul >= 0 ? raw.slice(0, nul) : raw
 }
 
-export function parseSolutionMeta(solutionBytes: Uint8Array): SolutionMeta {
+export function parseSolutionMeta(
+  solutionBytes: Uint8Array,
+  officialPuzzles?: ReadonlyMap<string, { id: string }> | null,
+): SolutionMeta {
   if (solutionBytes.length > 5) {
     const len = solutionBytes[4]
     if (len > 0 && len <= 64 && solutionBytes.length >= 5 + len) {
       const id = new TextDecoder('latin1').decode(solutionBytes.subarray(5, 5 + len))
       if (id.length > 0) {
-        return { puzzleId: id, solutionName: readName(solutionBytes, len) }
+        return { puzzleId: officialPuzzles?.get(id)?.id ?? id, solutionName: readName(solutionBytes, len) }
       }
     }
   }

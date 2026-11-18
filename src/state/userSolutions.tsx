@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { OmRecordDTO, OmScoreDTO } from '../types'
+import { getPuzzleMap } from '../api/om'
 import { parseSolutionMeta, formatFullScore, verifyBatch } from '../lib/verify'
 import type { BatchInput, SolutionMeta } from '../lib/verify'
 import { canReuseUserScore, normalizeScore, USER_SCORE_VERSION } from '../lib/scores'
@@ -193,10 +194,11 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const puzzleMap = await getPuzzleMap().catch(() => null)
       const parsed = await Promise.all(
         all.map(async (file) => {
           const bytes = new Uint8Array(await file.arrayBuffer())
-          return { file, bytes, meta: parseSolutionMeta(bytes), hash: await sha256(bytes) }
+          return { file, bytes, meta: parseSolutionMeta(bytes, puzzleMap), hash: await sha256(bytes) }
         }),
       )
 

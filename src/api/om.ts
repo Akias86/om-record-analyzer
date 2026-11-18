@@ -139,14 +139,17 @@ function fetchPuzzleList(options?: RequestOptions): Promise<OmPuzzleListDTO[]> {
 
 let puzzleMapPromise: Promise<Map<string, OmPuzzleListDTO>> | null = null
 
-// Cached map of puzzleId → puzzle meta. Shared by getPuzzleMeta and by
-// the verifier's prefetchPuzzles (which filters out ids not in the
-// official list to avoid guaranteed-404 .puzzle requests).
+// Index official puzzle IDs and the older IDs found in solution headers.
 export function getPuzzleMap(): Promise<Map<string, OmPuzzleListDTO>> {
   if (!puzzleMapPromise) {
     puzzleMapPromise = fetchPuzzleList().then((list) => {
       const map = new Map<string, OmPuzzleListDTO>()
       for (const p of list) map.set(p.id, p)
+      for (const p of list) {
+        for (const alias of p.altIds ?? []) {
+          if (!map.has(alias)) map.set(alias, p)
+        }
+      }
       return map
     })
     puzzleMapPromise.catch(() => {
@@ -157,7 +160,10 @@ export function getPuzzleMap(): Promise<Map<string, OmPuzzleListDTO>> {
 }
 
 export function getPuzzleMeta(id: string): Promise<OmPuzzleListDTO | undefined> {
-  return getPuzzleMap().then((map) => map.get(id))
+  return getPuzzleMap().then((map) => {
+    const meta = map.get(id)
+    return meta?.id === id ? meta : undefined
+  })
 }
 
 interface PuzzleTreeNode {

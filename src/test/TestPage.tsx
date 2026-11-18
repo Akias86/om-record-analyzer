@@ -128,15 +128,14 @@ export default function TestPage() {
     setRunning(true)
     setProgress({ done: 0, total: all.length })
 
+    const puzzleMap = await getPuzzleMap().catch(() => null)
     const parsed = await Promise.all(
       all.map(async (file) => {
         const bytes = new Uint8Array(await file.arrayBuffer())
-        return { bytes, meta: parseSolutionMeta(bytes) }
+        return { bytes, meta: parseSolutionMeta(bytes, puzzleMap) }
       }),
     )
     parsed.sort((a, b) => comparePuzzleId(a.meta.puzzleId, b.meta.puzzleId))
-
-    const puzzleMap = await getPuzzleMap().catch(() => new Map<string, { displayName: string }>())
 
     const inputs: BatchInput[] = []
     const initial: Row[] = []
@@ -145,7 +144,7 @@ export default function TestPage() {
       initial.push({
         solutionName: meta.solutionName,
         puzzleId: meta.puzzleId,
-        puzzleName: meta.puzzleId ? puzzleMap.get(meta.puzzleId)?.displayName ?? null : null,
+        puzzleName: meta.puzzleId ? puzzleMap?.get(meta.puzzleId)?.displayName ?? null : null,
         parts: null,
         status: meta.puzzleId ? 'pending' : 'skipped',
         result: null,
