@@ -8,15 +8,19 @@ type AxisScale = 'linear' | 'log'
 
 // Availability and plotting must use the same accessor, including its existing
 // value * 100000^level projection for all four @∞ fields.
-export function getAvailableAxisMetrics(scores: readonly (OmScoreDTO | null)[], manifold?: Manifold): NumericScoreKey[] {
+export function getAvailableAxisMetrics(
+  scores: readonly (OmScoreDTO | null)[],
+  manifold?: Manifold,
+  puzzleType?: string | null,
+): NumericScoreKey[] {
   return NUMERIC_SCORE_KEYS.filter((key) =>
     (!manifold || manifold.scoreParts.some((part) => part === key)) &&
-    scores.some((score) => score !== null && getMetricValue(score, key) !== null),
+    scores.some((score) => score !== null && getMetricValue(score, key, puzzleType) !== null),
   )
 }
 
-export function getAxisValue(score: OmScoreDTO, key: NumericScoreKey, scale: AxisScale): number | null {
-  const value = getMetricValue(score, key)
+export function getAxisValue(score: OmScoreDTO, key: NumericScoreKey, scale: AxisScale, puzzleType?: string | null): number | null {
+  const value = getMetricValue(score, key, puzzleType)
   return value !== null && (scale !== 'log' || value > 0) ? value : null
 }
 

@@ -9,11 +9,19 @@ function isNumeric(val: unknown): val is number {
   return typeof val === 'number' && Number.isFinite(val)
 }
 
+export function getSum(
+  score: Pick<OmScoreDTO, 'cost' | 'instructions'> & { cycles: number | null; area: number | null },
+  puzzleType?: string | null,
+): number | null {
+  const third = puzzleType === 'PRODUCTION' ? score.instructions : score.area
+  return score.cycles === null || third === null ? null : score.cost + score.cycles + third
+}
+
 // Unified numeric accessor for any metric key (NUMERIC_SCORE_KEYS), including
 // the computed 'sum'/'sum4' and all level/value-encoded @∞ metrics. Returns
 // null when the score has no usable value for the key.
-export function getMetricValue(score: OmScoreDTO, key: string): number | null {
-  if (key === 'sum') return score.cost + score.cycles + score.area
+export function getMetricValue(score: OmScoreDTO, key: string, puzzleType?: string | null): number | null {
+  if (key === 'sum') return getSum(score, puzzleType)
   if (key === 'sum4') return score.cost + score.cycles + score.area + score.instructions
   if (isInfinityScoreKey(key)) {
     const value = score[key]

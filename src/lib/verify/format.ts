@@ -2,20 +2,6 @@ import type { VerifiedScore } from './types'
 import { trackedGeometry } from './metrics'
 import { formatLevelValue } from '../metrics'
 
-function isProductionType(puzzleType?: string | null): boolean {
-  return puzzleType === 'PRODUCTION'
-}
-
-export function sumScores(score: VerifiedScore, puzzleType?: string | null): { sum: number | null; sum4: number | null } {
-  if (isProductionType(puzzleType)) {
-    return { sum: score.cost + score.cycles + score.instructions, sum4: null }
-  }
-  return {
-    sum: score.cost + score.cycles + score.area,
-    sum4: score.cost + score.cycles + score.area + score.instructions,
-  }
-}
-
 function fmt(n: number): string {
   if (n === Infinity) return '\u221E'
   if (!Number.isFinite(n)) return '\u2014'

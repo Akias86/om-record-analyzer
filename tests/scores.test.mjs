@@ -5,7 +5,7 @@ import {importTs} from './helpers/import-ts.mjs';
 const {normalizeScore, canReuseUserScore, USER_SCORE_VERSION} = await importTs(new URL('../src/lib/scores.ts', import.meta.url));
 const {getMetricValue, formatLevelValue, formatAreaINF} = await importTs(new URL('../src/lib/metrics.ts', import.meta.url));
 const {compareMetric, getManifold, supportsScore, computeFrontierIndices} = await importTs(new URL('../src/lib/manifold.ts', import.meta.url));
-const {parseCategoryCached, evaluateCategoryHolders} = await importTs(new URL('../src/lib/customCategories.ts', import.meta.url));
+const {parseCategoryCached, evaluateCategoryHolders, formatCategoryChain, OFFICIAL_CATEGORY_NAMES} = await importTs(new URL('../src/lib/customCategories.ts', import.meta.url));
 const {parseBoolFilters, matchesScoreFilters} = await importTs(new URL('../src/lib/scoreFilters.ts', import.meta.url));
 const {parseFlags, nextFlagState, activeFlagSorting} = await importTs(new URL('../src/components/records/flags.ts', import.meta.url));
 const {formatScoreParts} = await importTs(new URL('../src/lib/verify/format.ts', import.meta.url));
@@ -90,6 +90,45 @@ test('custom category L admission uses the explicit flag; bare h∞ uses level/v
   const heightCategory = parseCategoryCached('@h∞: true, h∞');
   assert.equal(heightCategory.ok, true);
   assert.deepEqual([...evaluateCategoryHolders(heightCategory.category, 'NORMAL', [score({heightINF: lv(1, 0.001)}), score({heightINF: lv(0, 1e9)})])], [1]);
+});
+
+test('finite-area categories require measured level 0 on normal puzzles and keep their official sort chains', () => {
+  const candidates = [
+    score({cost: 1, instructions: 1, areaINF: null, rate: 1}),
+    score({cost: 1, instructions: 1, areaINF: lv(1, 0.25), rate: 1}),
+    score({cost: 1, instructions: 1, areaINF: lv(2, 0.25), rate: 1}),
+    score({cost: 1, instructions: 1, rate: 1, overlap: true}),
+    score({cost: 40, instructions: 8, rate: 2, trackless: false, looping: false}),
+    score({cost: 30, instructions: 9, rate: 3}),
+    score({cost: 50, instructions: 6, rate: 4}),
+  ];
+  for (const [name, expression, winner] of [
+    ['FRA', '@a∞: !O&F, r, a∞, g', 4],
+    ['FTI', 'FTI @a∞: !O&F&T, i, r, g, a∞', 6],
+    ['FGR', '@a∞: !O&F, g, r, a∞', 5],
+  ]) {
+    const parsed = parseCategoryCached(expression);
+    assert.ok(parsed.ok, parsed.error);
+    assert.equal(parsed.category.name, name);
+    assert.deepEqual([...evaluateCategoryHolders(parsed.category, 'NORMAL', candidates)], [winner]);
+    assert.equal(evaluateCategoryHolders(parsed.category, 'POLYMER_WIDTH', candidates).size, 0);
+  }
+  const tiebreaker = parseCategoryCached('@a∞: true, F, g');
+  assert.ok(tiebreaker.ok, tiebreaker.error);
+  assert.deepEqual(formatCategoryChain(tiebreaker.category).entries, ['true', 'F', 'g']);
+  assert.ok(formatCategoryChain(tiebreaker.category).tiebreakers.includes('a∞'));
+  assert.deepEqual([...evaluateCategoryHolders(tiebreaker.category, 'NORMAL', candidates.slice(1, 3).concat(candidates[4]))], [2]);
+  assert.match(parseCategoryCached('@aV: F, g').error, /requires manifold @a∞/);
+  assert.match(parseCategoryCached('@i∞: F, g').error, /NORMAL only/);
+});
+
+test('category name warnings recognize the autumn poll changes', () => {
+  for (const name of ['OTI', 'TIR', 'TIR_P', 'FRA', 'FTI', 'FGR', 'CI_P']) {
+    assert.ok(OFFICIAL_CATEGORY_NAMES.includes(name), name);
+  }
+  for (const name of ['TIG', 'TIG_P', 'TIA']) {
+    assert.ok(!OFFICIAL_CATEGORY_NAMES.includes(name), name);
+  }
 });
 
 test('chart defaults and old saved filters include Looping=Any; Yes/No do not match unknown legacy flags', () => {

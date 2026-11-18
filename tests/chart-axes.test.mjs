@@ -4,7 +4,7 @@ import {importTs} from './helpers/import-ts.mjs';
 
 const {getAvailableAxisMetrics, getAxisValue, getAxisDomain} = await importTs(new URL('../src/components/pareto/axes.ts', import.meta.url));
 const {formatTick, generateTicks} = await importTs(new URL('../src/components/pareto/ticks.ts', import.meta.url));
-const {getMetricValue} = await importTs(new URL('../src/lib/metrics.ts', import.meta.url));
+const {getMetricValue, getSum} = await importTs(new URL('../src/lib/metrics.ts', import.meta.url));
 const {getManifold} = await importTs(new URL('../src/lib/manifold.ts', import.meta.url));
 const {INFINITY_SCORE_KEYS} = await importTs(new URL('../src/types.ts', import.meta.url));
 
@@ -26,6 +26,20 @@ test('Axes offers every new @∞ object field using the existing numeric convers
       }
     }
   }
+});
+
+test('Sum axes use instructions for production and area for other puzzles', () => {
+  // P076's Sum record: 160g / 291c / 75a / 48i.
+  const s = score({cost: 160, cycles: 291, area: 75, instructions: 48});
+  for (const [type, expected] of [['PRODUCTION', 499], ['NORMAL', 526], ['POLYMER_SKEW', 526]]) {
+    assert.ok(getAvailableAxisMetrics([s], undefined, type).includes('sum'));
+    assert.equal(getAxisValue(s, 'sum', 'linear', type), expected);
+    assert.equal(getAxisValue(s, 'sum', 'log', type), expected);
+  }
+  assert.equal(getMetricValue(s, 'sum4', 'PRODUCTION'), 574);
+  assert.equal(getSum({...s, area: null}, 'PRODUCTION'), 499);
+  assert.equal(getSum({...s, area: null}, 'NORMAL'), null);
+  assert.equal(getSum({...s, cycles: null}, 'PRODUCTION'), null);
 });
 
 test('Axes excludes unknown @∞ measurements but admits fields available only in local scores', () => {

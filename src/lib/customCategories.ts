@@ -8,7 +8,7 @@ import { getMetricValue, isInfinityScoreKey } from './metrics'
 //   category  := NAME? manifold ':' metric (',' metric)*
 //   manifold  := '@' geo ('V' | '∞')                 # the 10 manifold labels
 //   metric    := boolexpr | numexpr                  # first metric = admission
-//   boolexpr  := 'true' | 'O' | 'T' | 'L' | '!' boolexpr | boolexpr '&' boolexpr | '(' boolexpr ')'
+//   boolexpr  := 'true' | 'O' | 'T' | 'L' | 'F' | '!' boolexpr | boolexpr '&' boolexpr | '(' boolexpr ')'
 //   numexpr   := term (('+' | '-') term)*
 //   term      := factor (('*' | '/') factor)*
 //   factor    := atom | number | '-' factor | '(' numexpr ')'
@@ -37,7 +37,7 @@ export interface CustomCategoryBadge {
   expression: string
 }
 
-type BoolAtom = 'overlap' | 'trackless' | 'looping'
+type BoolAtom = 'overlap' | 'trackless' | 'looping' | 'finiteArea'
 
 type BoolExpr =
   | { kind: 'const'; value: boolean }
@@ -73,6 +73,7 @@ type ChainMetric =
 interface ParsedCategory {
   name: string
   manifold: Manifold
+  normalOnly: boolean
   admission: BoolExpr
   chain: ChainMetric[]
   // Manifold fields appended after the declared chain, matching the bot's
@@ -87,7 +88,7 @@ type ParseCategoryResult =
   | { ok: true; category: ParsedCategory }
   | { ok: false; error: string }
 
-const MOD_LETTER: Record<BoolAtom, string> = { overlap: 'O', trackless: 'T', looping: 'L' }
+const MOD_LETTER: Record<BoolAtom, string> = { overlap: 'O', trackless: 'T', looping: 'L', finiteArea: 'F' }
 
 const METRIC_ATOM_TEXT: Record<MetricId, string> = {
   overlap: 'O',
@@ -154,14 +155,14 @@ export const OFFICIAL_CATEGORY_NAMES: readonly string[] = [
   'GC', 'GC_P', 'GA', 'GI', 'GI_P', 'GX', 'GX_P',
   'CG', 'CG_P', 'CA', 'CI', 'CI_P', 'CX', 'CX_P',
   'AG', 'AC', 'AX', 'AI',
-  'IG', 'IG_P', 'IC', 'IC_P', 'IA', 'IX_P',
+  'IG', 'IG_P', 'IC', 'IC_P', 'IA', 'IX', 'IX_P',
   'SUM', 'SUM_P', 'SUM4', 'Sum', 'Sum4',
   'HG', 'HC', 'WG', 'WC', 'BG', 'BC',
-  'OGC', 'OCX', 'OAC', 'OIC', 'OGC_P', 'OCX_P', 'OIC_P',
+  'OGC', 'OCX', 'OAC', 'OIC', 'OTI', 'OGC_P', 'OCX_P', 'OIC_P',
   'OSUM', 'OSUM_P', 'OSUM4', 'OSum', 'OSum4',
-  'TIG', 'TIC', 'TIA', 'TIG_P', 'TIC_P', 'TG', 'TC', 'TG_P', 'TC_P', 'TI',
+  'TIC', 'TIR', 'TIC_P', 'TIR_P', 'TG', 'TC', 'TG_P', 'TC_P', 'TI',
   'RG', 'RG_P', 'RA', 'RI', 'RI_P', 'HR', 'WR', 'BR',
-  'ORG', 'ORX', 'ORG_P', 'ORX_P',
+  'ORG', 'ORX', 'ORG_P', 'ORX_P', 'FRA', 'FTI', 'FGR',
   'OG', 'OC', 'OA', 'OI', 'OR',
 ]
 
@@ -213,6 +214,7 @@ function evalBoolExpr(expr: BoolExpr, score: OmScoreDTO): boolean {
     case 'mod':
       if (expr.mod === 'overlap') return score.overlap
       if (expr.mod === 'trackless') return score.trackless
+      if (expr.mod === 'finiteArea') return score.areaINF?.level === 0
       return score.looping === true
     case 'not': return !evalBoolExpr(expr.expr, score)
     case 'and': return evalBoolExpr(expr.left, score) && evalBoolExpr(expr.right, score)
@@ -230,8 +232,9 @@ function singleModifier(expr: BoolExpr): BoolAtom | null {
 
 function compareBoolMetric(a: OmScoreDTO, b: OmScoreDTO, expr: BoolExpr): number {
   const mod = singleModifier(expr)
-  if (mod !== null) return compareMetric(mod, a, b)
-  return (evalBoolExpr(expr, a) ? 1 : 0) - (evalBoolExpr(expr, b) ? 1 : 0)
+  if (mod !== null && mod !== 'finiteArea') return compareMetric(mod, a, b)
+  const order = Number(evalBoolExpr(expr, a)) - Number(evalBoolExpr(expr, b))
+  return expr.kind === 'mod' && expr.mod === 'finiteArea' ? -order : order
 }
 
 function compareNumMetric(a: OmScoreDTO, b: OmScoreDTO, m: ChainMetric & { kind: 'num' }): number {
@@ -305,7 +308,7 @@ function compareScores(parsed: ParsedCategory, a: OmScoreDTO, b: OmScoreDTO): nu
 // leaderboard and user scores the table judges; ties share the hold.
 export function evaluateCategoryHolders(parsed: ParsedCategory, type: OmType, scores: OmScoreDTO[]): Set<number> {
   const holders = new Set<number>()
-  if (!parsed.manifold.supportedTypes.includes(type)) return holders
+  if (!parsed.manifold.supportedTypes.includes(type) || (parsed.normalOnly && type !== 'NORMAL')) return holders
   let best: number[] = []
   for (let i = 0; i < scores.length; i++) {
     const score = scores[i]
@@ -401,11 +404,11 @@ function parseBoolUnary(c: Cursor): BoolExpr {
     c.i += 4
     return { kind: 'const', value: true }
   }
-  if (word === 'o' || word === 't' || word === 'l') {
-    c.i += 1
-    return { kind: 'mod', mod: word === 'o' ? 'overlap' : word === 't' ? 'trackless' : 'looping' }
+  if (word === 'o' || word === 't' || word === 'l' || word === 'f') {
+    c.i++
+    return { kind: 'mod', mod: word === 'o' ? 'overlap' : word === 't' ? 'trackless' : word === 'l' ? 'looping' : 'finiteArea' }
   }
-  fail(`Expected a boolean (true, O, T, L, !expr, expr & expr)`)
+  fail(`Expected a boolean (true, O, T, L, F, !expr, expr & expr)`)
 }
 
 function parseNumAtom(c: Cursor): NumAtom {
@@ -517,7 +520,7 @@ function parseNumber(c: Cursor): NumExpr {
 }
 
 // Metrics starting with '-' or a digit can only be numeric; booleans start
-// with O/T/L, 'true' or '!'. A leading '(' is decided by the first meaningful
+// with O/T/L/F, 'true' or '!'. A leading '(' is decided by the first meaningful
 // token inside, so `(g+c)*a` parses as arithmetic while `(O&T)` stays boolean.
 function peekBoolStart(c: Cursor): boolean {
   let i = c.i
@@ -533,7 +536,7 @@ function peekBoolStart(c: Cursor): boolean {
     const m = /^[A-Za-z]+/.exec(c.s.slice(i))
     if (!m) return false
     const word = m[0].toLowerCase()
-    return word === 'true' || word === 'o' || word === 't' || word === 'l'
+    return word === 'true' || word === 'o' || word === 't' || word === 'l' || word === 'f'
   }
 }
 
@@ -544,7 +547,7 @@ function parseChainMetric(c: Cursor): ChainMetric {
   return { kind: 'num', expr: parseNumExpr(c) }
 }
 
-function collectBoolParts(expr: BoolExpr, parts: Set<MetricId>): void {
+function collectBoolParts(expr: BoolExpr, parts: Set<BoolAtom>): void {
   switch (expr.kind) {
     case 'const': return
     case 'mod': parts.add(expr.mod); return
@@ -564,18 +567,25 @@ function collectNumAtoms(expr: NumExpr, atoms: NumAtom[]): void {
 
 // Rule checks that need the parsed shape: every referenced metric part must
 // belong to the manifold, and one computed metric cannot mix @V and @∞ atoms.
-// Returns the manifold fields to append as tiebreakers (see ParsedCategory).
-function validateChain(manifold: Manifold, admission: BoolExpr, chain: ChainMetric[]): MetricId[] {
+function validateChain(manifold: Manifold, admission: BoolExpr, chain: ChainMetric[]): Pick<ParsedCategory, 'tiebreakers' | 'normalOnly'> {
   const requirePart = (metric: MetricId, text: string) => {
     if (!manifold.scoreParts.includes(metric)) {
       const available = manifold.scoreParts.map((p) => METRIC_ATOM_TEXT[p]).join(' ')
       fail(`Metric '${text}' is not part of manifold ${manifold.label} (available: ${available})`)
     }
   }
+  let normalOnly = false
   const checkBool = (expr: BoolExpr) => {
-    const parts = new Set<MetricId>()
+    const parts = new Set<BoolAtom>()
     collectBoolParts(expr, parts)
-    for (const p of parts) requirePart(p, METRIC_ATOM_TEXT[p])
+    for (const p of parts) {
+      if (p === 'finiteArea') {
+        if (manifold.id !== 'INFINITY_AREA') fail("Metric 'F' requires manifold @a∞ (NORMAL only)")
+        normalOnly = true
+      } else {
+        requirePart(p, METRIC_ATOM_TEXT[p])
+      }
+    }
   }
   checkBool(admission)
   for (const m of chain) {
@@ -596,16 +606,16 @@ function validateChain(manifold: Manifold, admission: BoolExpr, chain: ChainMetr
   // Only a bare value/modifier is a ScorePart in the bot's model; those are
   // the declared metrics that `manifold.scoreParts - metrics` removes.
   const covered = new Set<MetricId>()
-  if (admission.kind === 'mod') covered.add(admission.mod)
+  if (admission.kind === 'mod' && admission.mod !== 'finiteArea') covered.add(admission.mod)
   for (const m of chain) {
     if (m.kind === 'bool') {
-      if (m.expr.kind === 'mod') covered.add(m.expr.mod)
+      if (m.expr.kind === 'mod' && m.expr.mod !== 'finiteArea') covered.add(m.expr.mod)
     } else {
       const atom = m.expr.kind === 'atom' ? m.expr.atom : null
       if (atom !== null && atom.view === null) covered.add(atom.metric)
     }
   }
-  return manifold.scoreParts.filter((p) => !covered.has(p))
+  return { tiebreakers: manifold.scoreParts.filter((p) => !covered.has(p)), normalOnly }
 }
 
 function boolDisplayName(expr: BoolExpr): string {
@@ -669,11 +679,11 @@ function parseCategory(expression: string): ParseCategoryResult {
       chain.push(parseChainMetric(c))
     }
     if (chain.length === 0) fail('Add at least one metric after the admission boolean')
-    const tiebreakers = validateChain(manifold, admission, chain)
+    const restrictions = validateChain(manifold, admission, chain)
     const derived = boolDisplayName(admission) + chain.slice(0, 2).map(chainMetricName).join('')
     const name = nameToken ?? derived
     if (name === '') fail('Cannot derive a category name — write one before the manifold')
-    return { ok: true, category: { name, manifold, admission, chain, tiebreakers } }
+    return { ok: true, category: { name, manifold, admission, chain, ...restrictions } }
   } catch (err) {
     if (err instanceof ParseError) return { ok: false, error: err.message }
     throw err

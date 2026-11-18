@@ -1,7 +1,7 @@
 export { parseSolutionMeta } from './solution-parse'
 export type { SolutionMeta } from './solution-parse'
 export { parsePuzzleMeta } from './puzzle-parse'
-export { formatFullScore, formatScoreParts, sumScores } from './format'
+export { formatFullScore, formatScoreParts } from './format'
 export type { ScoreParts } from './format'
 export { trackedGeometry } from './metrics'
 export { verifyBatch } from './batch'

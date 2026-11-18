@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { sumScores, trackedGeometry } from '../lib/verify'
+import { trackedGeometry } from '../lib/verify'
+import { getMetricValue, getSum } from '../lib/metrics'
 import type { VerifyPartial, VerifySolutionResult } from '../lib/verify'
 import type { LevelValue } from '../types'
 
@@ -69,7 +70,6 @@ function buildFinalSections(result: VerifySolutionResult, partial: VerifyPartial
 
   const victory: DetailCell[] = []
   if (score) {
-    const sums = sumScores(score, type)
     victory.push(
       { label: 'Cycles', value: fmtNum(score.cycles) },
       { label: 'Area', value: fmtNum(score.area) },
@@ -78,8 +78,8 @@ function buildFinalSections(result: VerifySolutionResult, partial: VerifyPartial
     if (tracked.width) victory.push({ label: 'Width', value: fmtNum(score.width) })
     if (tracked.boundingHex) victory.push({ label: 'Bounding Hex', value: fmtNum(score.boundingHex) })
     victory.push({ label: 'Looping', value: fmtBool(score.looping) })
-    victory.push({ label: 'Sum', value: fmtNum(sums.sum) })
-    if (!production) victory.push({ label: 'Sum4', value: fmtNum(sums.sum4) })
+    victory.push({ label: 'Sum', value: fmtNum(getMetricValue(score, 'sum', type)) })
+    if (!production) victory.push({ label: 'Sum4', value: fmtNum(getMetricValue(score, 'sum4')) })
   } else {
     victory.push(
       { label: 'Cycles', value: '-' },
@@ -203,19 +203,9 @@ function buildLiveSections(partial: VerifyPartial, type: string | null): DetailS
   if (tracked.height) victoryCells.push({ label: 'Height', value: fmtNum(victory?.height ?? null) })
   if (tracked.width) victoryCells.push({ label: 'Width', value: fmtNum(victory?.width ?? null) })
   if (tracked.boundingHex) victoryCells.push({ label: 'Bounding Hex', value: fmtNum(victory?.boundingHex ?? null) })
-  if (production) {
-    victoryCells.push({
-      label: 'Sum',
-      value: basic && vCycles != null ? String(basic.cost + basic.instructions + vCycles) : '-',
-    })
-  } else if (basic && vCycles != null && vArea != null) {
-    const sum = basic.cost + vCycles + vArea
-    victoryCells.push({ label: 'Sum', value: String(sum) })
-    victoryCells.push({ label: 'Sum4', value: String(sum + basic.instructions) })
-  } else {
-    victoryCells.push({ label: 'Sum', value: '-' })
-    victoryCells.push({ label: 'Sum4', value: '-' })
-  }
+  const sum = basic ? getSum({ ...basic, cycles: vCycles, area: vArea }, type) : null
+  victoryCells.push({ label: 'Sum', value: fmtNum(sum) })
+  if (!production) victoryCells.push({ label: 'Sum4', value: fmtNum(sum !== null && basic ? sum + basic.instructions : null) })
 
   // estimates are only honest while the loop question is still open: once a
   // collision was observed (sim frozen -> steady state out of reach for good)

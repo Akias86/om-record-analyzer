@@ -15,7 +15,8 @@ interface CategoryManagerProps {
 
 const HELP_TEXT = `NAME? @manifold: admission, metric, metric, ...
 manifold   @aV @iV @hV @wV @bV @a∞ @i∞ @h∞ @w∞ @b∞
-admission  true | O | T | L | !expr | expr & expr | (expr)
+admission  true | O | T | L | F | !expr | expr & expr | (expr)
+           F = finite area at ∞ (only @a∞ on NORMAL puzzles)
 metric     g i c a h w b r          @V numbers
            a∞ h∞ w∞ b∞              @∞ numbers
            a0 a' a''                 area@∞ levels
@@ -25,7 +26,11 @@ separator  ',' or '>';  '&&' = '&'
 
 examples   @aV: !O, g, c, a         GC
            @aV: !O&T, i, c, g, a    TIC
-           @a∞: !O&T, i, a∞, g, r   TIA
+           @a∞: !O&T, i, r, g, a∞  TIR
+           @a∞: !O&F, r, a∞, g     FRA
+           FTI @a∞: !O&F&T, i, r, g, a∞
+           @a∞: !O&F, g, r, a∞     FGR
+           OTI @aV: T, i, c, g, a, !O
            @aV: true, g+c+a, !O     OSum
            @aV: !O, g, 2*c+a        cost, then cycles*2+area
 

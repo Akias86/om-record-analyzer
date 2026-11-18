@@ -135,7 +135,8 @@ export function useParetoChartState({
   const availableMetrics = useMemo(() => getAvailableAxisMetrics(
     [...records.map((r) => r.score), ...puzzleUserRecords.map((r) => r.score)],
     manifold,
-  ), [records, puzzleUserRecords, manifold])
+    puzzleType,
+  ), [records, puzzleUserRecords, manifold, puzzleType])
 
   const frontierRecordIndices = useMemo<Set<number> | null>(() => {
     if (!manifold) return null
@@ -158,8 +159,8 @@ export function useParetoChartState({
       if (r.score === null) return
       if (manifold && !supportsScore(manifold, r.score)) return
       if (manifold && frontierRecordIndices && !frontierRecordIndices.has(i)) return
-      const x = getAxisValue(r.score, xMetric, xScale)
-      const y = getAxisValue(r.score, yMetric, yScale)
+      const x = getAxisValue(r.score, xMetric, xScale, puzzleType)
+      const y = getAxisValue(r.score, yMetric, yScale, puzzleType)
       if (x === null || y === null) return
       if (!matchesScoreFilters(r.score, boolFilters)) return
       points.push({
@@ -176,15 +177,15 @@ export function useParetoChartState({
       })
     })
     return points
-  }, [records, xMetric, yMetric, xScale, yScale, boolFilters, manifold, frontierRecordIndices])
+  }, [records, puzzleType, xMetric, yMetric, xScale, yScale, boolFilters, manifold, frontierRecordIndices])
 
   const userPoints = useMemo<ParetoPoint[]>(() => {
     if (!xMetric || !yMetric || !puzzleType || puzzleUserRecords.length === 0) return []
     const points: ParetoPoint[] = []
     for (const r of puzzleUserRecords) {
       if (manifold && !supportsScore(manifold, r.score)) continue
-      const x = getAxisValue(r.score, xMetric, xScale)
-      const y = getAxisValue(r.score, yMetric, yScale)
+      const x = getAxisValue(r.score, xMetric, xScale, puzzleType)
+      const y = getAxisValue(r.score, yMetric, yScale, puzzleType)
       if (x === null || y === null) continue
       if (!matchesScoreFilters(r.score, boolFilters)) continue
       const green = manifold
