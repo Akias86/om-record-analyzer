@@ -1,5 +1,6 @@
 import type { OmRecordDTO, OmMetricDTO } from '../types'
 import { normalizeScore } from '../lib/scores'
+import { getDemoApi } from './demo'
 
 const BASE = '/api/om'
 const CACHE_PREFIX = 'om-cache:'
@@ -54,6 +55,12 @@ function writeCache(key: string, entry: CacheEntry): void {
 
 async function getWithStatus<T>(url: string, options?: RequestOptions): Promise<FetchResult<T>> {
   const { useCache = true, ttl = DEFAULT_TTL, localCache = true } = options ?? {}
+
+  // Development-only offline dataset (`?demo=1`); resolves to null in builds
+  // and sessions that do not ask for it, leaving the real path untouched.
+  const demo = await getDemoApi()
+  const demoData = demo?.get(url)
+  if (demoData !== undefined) return { data: demoData as T, cache: 'hit' }
 
   const pending = inflight.get(url)
   if (pending) return pending as Promise<FetchResult<T>>

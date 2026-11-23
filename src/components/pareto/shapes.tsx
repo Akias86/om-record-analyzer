@@ -64,7 +64,7 @@ export function makeDiamondShape(color: string, onSelectPoint?: (p: ParetoPoint)
     return (
       <g>
         {diamond}
-        <circle cx={cx} cy={cy} r={r + 4.5} fill="none" stroke="var(--text-h)" strokeWidth={1.5} pointerEvents="none" />
+        <circle cx={cx} cy={cy} r={r + 4.5} fill="none" stroke="var(--fg)" strokeWidth={1.5} pointerEvents="none" />
       </g>
     )
   }

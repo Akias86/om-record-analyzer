@@ -1,0 +1,6 @@
+/* Entry point for the global style layer: tokens first, then the base
+   document defaults, then the shared primitives. Component stylesheets are
+   imported by their components and layer on top of these. */
+@import './tokens.css';
+@import './base.css';
+@import './ui.css';

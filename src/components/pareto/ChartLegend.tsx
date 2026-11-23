@@ -32,7 +32,7 @@ export function ChartLegend({ hasUserPoints }: { hasUserPoints: boolean }) {
   return (
     <g style={{ pointerEvents: 'none' }}>
       <rect x={x} y={y} width={boxW} height={boxH} rx={4}
-        fill="var(--sidebar-bg)" fillOpacity={0.92} stroke="var(--border)" strokeWidth={1} />
+        fill="var(--surface-1)" fillOpacity={0.92} stroke="var(--line)" strokeWidth={1} />
       {items.map((it, i) => {
         const marker = it.shape === 'diamond'
           ? <path d="M 5,-4.5 L 9.5,0 L 5,4.5 L 0.5,0 Z" fill={it.color} fillOpacity={it.opacity} stroke={it.color} strokeWidth={0.5} />
@@ -40,7 +40,7 @@ export function ChartLegend({ hasUserPoints }: { hasUserPoints: boolean }) {
         return (
           <g key={it.key} transform={`translate(${x + padX}, ${y + padY + i * rowH + 9})`}>
             {marker}
-            <text x={14} y={3} fill="var(--text)" fontSize={11} style={{ textTransform: it.shape === 'diamond' ? 'none' : 'capitalize' }}>
+            <text x={14} y={3} fill="var(--fg-muted)" fontSize={11} style={{ textTransform: it.shape === 'diamond' ? 'none' : 'capitalize' }}>
               {it.label}
             </text>
           </g>

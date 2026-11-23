@@ -1,0 +1,3698 @@
+[
+{
+"id":"P007",
+"name":"Stabilized Water",
+"type":"NORMAL",
+"group":{
+"id":"chapter-1",
+"name":"Chapter 1",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_1/STABILIZED_WATER"
+},
+{
+"id":"P008",
+"name":"Airship Fuel",
+"type":"NORMAL",
+"group":{
+"id":"chapter-1",
+"name":"Chapter 1",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_1/AIRSHIP_FUEL"
+},
+{
+"id":"P009",
+"name":"Face Powder",
+"type":"NORMAL",
+"group":{
+"id":"chapter-1",
+"name":"Chapter 1",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_1/FACE_POWDER"
+},
+{
+"id":"P010",
+"name":"Refined Gold",
+"type":"NORMAL",
+"group":{
+"id":"chapter-1",
+"name":"Chapter 1",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_1/REFINED_GOLD"
+},
+{
+"id":"P011",
+"name":"Waterproof Sealant",
+"type":"NORMAL",
+"group":{
+"id":"chapter-1",
+"name":"Chapter 1",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_1/WATERPROOF_SEALANT"
+},
+{
+"id":"P012",
+"name":"Precision Machine Oil",
+"type":"NORMAL",
+"group":{
+"id":"chapter-1",
+"name":"Chapter 1",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_1/PRECISION_MACHINE_OIL"
+},
+{
+"id":"P013",
+"name":"Hangover Cure",
+"type":"NORMAL",
+"group":{
+"id":"chapter-1",
+"name":"Chapter 1",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_1/HANGOVER_CURE"
+},
+{
+"id":"P014",
+"name":"Health Tonic",
+"type":"NORMAL",
+"group":{
+"id":"chapter-1",
+"name":"Chapter 1",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_1/HEALTH_TONIC"
+},
+{
+"id":"P015",
+"name":"Stamina Potion",
+"type":"NORMAL",
+"group":{
+"id":"chapter-1",
+"name":"Chapter 1",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_1/STAMINA_POTION"
+},
+{
+"id":"P016",
+"name":"Hair Product",
+"type":"NORMAL",
+"group":{
+"id":"chapter-2",
+"name":"Chapter 2",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_2/HAIR_PRODUCT"
+},
+{
+"id":"P017",
+"name":"Explosive Phial",
+"type":"NORMAL",
+"group":{
+"id":"chapter-2",
+"name":"Chapter 2",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_2/EXPLOSIVE_PHIAL"
+},
+{
+"id":"P018",
+"name":"Mist of Incapacitation",
+"type":"NORMAL",
+"group":{
+"id":"chapter-2",
+"name":"Chapter 2",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_2/MIST_OF_INCAPACITATION"
+},
+{
+"id":"P019",
+"name":"Rocket Propellant",
+"type":"NORMAL",
+"group":{
+"id":"chapter-2",
+"name":"Chapter 2",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_2/ROCKET_PROPELLANT"
+},
+{
+"id":"P020",
+"name":"Armor Filament",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"chapter-2",
+"name":"Chapter 2",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_2/ARMOR_FILAMENT"
+},
+{
+"id":"P021",
+"name":"Courage Potion",
+"type":"NORMAL",
+"group":{
+"id":"chapter-2",
+"name":"Chapter 2",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_2/COURAGE_POTION"
+},
+{
+"id":"P022",
+"name":"Surrender Flare",
+"type":"NORMAL",
+"group":{
+"id":"chapter-2",
+"name":"Chapter 2",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_2/SURRENDER_FLARE"
+},
+{
+"id":"P024",
+"name":"Alcohol Separation",
+"type":"NORMAL",
+"group":{
+"id":"chapter-3",
+"name":"Chapter 3",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_3/ALCOHOL_SEPARATION"
+},
+{
+"id":"P025",
+"name":"Water Purifier",
+"type":"NORMAL",
+"group":{
+"id":"chapter-3",
+"name":"Chapter 3",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_3/WATER_PURIFIER"
+},
+{
+"id":"P026",
+"name":"Seal Solvent",
+"type":"NORMAL",
+"group":{
+"id":"chapter-3",
+"name":"Chapter 3",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_3/SEAL_SOLVENT"
+},
+{
+"id":"P027",
+"name":"Climbing Rope Fiber",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"chapter-3",
+"name":"Chapter 3",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_3/CLIMBING_ROPE_FIBER"
+},
+{
+"id":"P028",
+"name":"Warming Tonic",
+"type":"NORMAL",
+"group":{
+"id":"chapter-3",
+"name":"Chapter 3",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_3/WARMING_TONIC"
+},
+{
+"id":"P029",
+"name":"Very Dark Thread",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"chapter-3",
+"name":"Chapter 3",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_3/VERY_DARK_THREAD"
+},
+{
+"id":"P030b",
+"name":"Life-Sensing Potion",
+"type":"NORMAL",
+"group":{
+"id":"chapter-3",
+"name":"Chapter 3",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_3/LIFE_SENSING_POTION"
+},
+{
+"id":"P031b",
+"name":"Litharge Separation",
+"type":"NORMAL",
+"group":{
+"id":"chapter-4",
+"name":"Chapter 4",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_4/LITHARGE_SEPARATION"
+},
+{
+"id":"P032",
+"name":"Invisible Ink",
+"type":"NORMAL",
+"group":{
+"id":"chapter-4",
+"name":"Chapter 4",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_4/INVISIBLE_INK"
+},
+{
+"id":"P033",
+"name":"Sword Alloy",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"chapter-4",
+"name":"Chapter 4",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_4/SWORD_ALLOY"
+},
+{
+"id":"P034",
+"name":"Stain Remover",
+"type":"NORMAL",
+"group":{
+"id":"chapter-4",
+"name":"Chapter 4",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_4/STAIN_REMOVER"
+},
+{
+"id":"P035",
+"name":"Alchemical Jewel",
+"type":"NORMAL",
+"group":{
+"id":"chapter-4",
+"name":"Chapter 4",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_4/ALCHEMICAL_JEWEL"
+},
+{
+"id":"P036",
+"name":"Purified Gold",
+"type":"NORMAL",
+"group":{
+"id":"chapter-4",
+"name":"Chapter 4",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_4/PURIFIED_GOLD"
+},
+{
+"id":"P037",
+"name":"Golden Thread",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"chapter-4",
+"name":"Chapter 4",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_4/GOLDEN_THREAD"
+},
+{
+"id":"P038",
+"name":"Mist of Hallucination",
+"type":"NORMAL",
+"group":{
+"id":"chapter-5",
+"name":"Chapter 5",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_5/MIST_OF_HALLUCINATION"
+},
+{
+"id":"P039",
+"name":"Voltaic Coil",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"chapter-5",
+"name":"Chapter 5",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_5/VOLTAIC_COIL"
+},
+{
+"id":"P040",
+"name":"Unstable Compound",
+"type":"NORMAL",
+"group":{
+"id":"chapter-5",
+"name":"Chapter 5",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_5/UNSTABLE_COMPOUND"
+},
+{
+"id":"P041",
+"name":"Curious Lipstick",
+"type":"NORMAL",
+"group":{
+"id":"chapter-5",
+"name":"Chapter 5",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_5/CURIOUS_LIPSTICK"
+},
+{
+"id":"P042",
+"name":"Timing Crystal",
+"type":"NORMAL",
+"group":{
+"id":"chapter-5",
+"name":"Chapter 5",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_5/TIMING_CRYSTAL"
+},
+{
+"id":"P043",
+"name":"Universal Solvent",
+"type":"NORMAL",
+"group":{
+"id":"chapter-5",
+"name":"Chapter 5",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_5/UNIVERSAL_SOLVENT"
+},
+{
+"id":"P201",
+"name":"Saverio's Test",
+"type":"NORMAL",
+"group":{
+"id":"drm-1",
+"name":"Book I",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_1/SAVERIO_S_TEST"
+},
+{
+"id":"P202",
+"name":"Elemental Copper",
+"type":"NORMAL",
+"group":{
+"id":"drm-1",
+"name":"Book I",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_1/ELEMENTAL_COPPER"
+},
+{
+"id":"P203",
+"name":"Silver Dust",
+"type":"NORMAL",
+"group":{
+"id":"drm-1",
+"name":"Book I",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_1/SILVER_DUST"
+},
+{
+"id":"P204",
+"name":"Saverio's Transformer",
+"type":"PRODUCTION",
+"group":{
+"id":"drm-1",
+"name":"Book I",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_1/SAVERIO_S_TRANSFORMER"
+},
+{
+"id":"P205",
+"name":"Mixed-Use Lubricant",
+"type":"NORMAL",
+"group":{
+"id":"drm-1",
+"name":"Book I",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_1/MIXED_USE_LUBRICANT"
+},
+{
+"id":"P206",
+"name":"Metallic Tincture",
+"type":"NORMAL",
+"group":{
+"id":"drm-1",
+"name":"Book I",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_1/METALLIC_TINCTURE"
+},
+{
+"id":"P207",
+"name":"Galena Separation",
+"type":"NORMAL",
+"group":{
+"id":"drm-1",
+"name":"Book I",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_1/GALENA_SEPARATION"
+},
+{
+"id":"P208",
+"name":"Metal Division",
+"type":"NORMAL",
+"group":{
+"id":"drm-2",
+"name":"Book II",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_2/METAL_DIVISION"
+},
+{
+"id":"P209",
+"name":"Solder Wire",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"drm-2",
+"name":"Book II",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_2/SOLDER_WIRE"
+},
+{
+"id":"P210",
+"name":"Reactive Lead",
+"type":"NORMAL",
+"group":{
+"id":"drm-2",
+"name":"Book II",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_2/REACTIVE_LEAD"
+},
+{
+"id":"P211",
+"name":"Fireworks Powder",
+"type":"NORMAL",
+"group":{
+"id":"drm-2",
+"name":"Book II",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_2/FIREWORKS_POWDER"
+},
+{
+"id":"P213",
+"name":"Armor Polish",
+"type":"NORMAL",
+"group":{
+"id":"drm-2",
+"name":"Book II",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_2/ARMOR_POLISH"
+},
+{
+"id":"P215",
+"name":"Invariant Metal",
+"type":"NORMAL",
+"group":{
+"id":"drm-3",
+"name":"Book III",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_3/INVARIANT_METAL"
+},
+{
+"id":"P216",
+"name":"Via Quicksilver",
+"type":"NORMAL",
+"group":{
+"id":"drm-3",
+"name":"Book III",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_3/VIA_QUICKSILVER"
+},
+{
+"id":"P217",
+"name":"Ex Materia",
+"type":"PRODUCTION",
+"group":{
+"id":"drm-3",
+"name":"Book III",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_3/EX_MATERIA"
+},
+{
+"id":"P220",
+"name":"Experimental Catalyst",
+"type":"NORMAL",
+"group":{
+"id":"drm-3",
+"name":"Book III",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_3/EXPERIMENTAL_CATALYST"
+},
+{
+"id":"P221",
+"name":"Pattern Metal",
+"type":"NORMAL",
+"group":{
+"id":"drm-3",
+"name":"Book III",
+"collection":{
+"id":"drm",
+"name":"De Re Metallica"
+}
+},
+"path":"DRM_CHAPTER_3/PATTERN_METAL"
+},
+{
+"id":"P054",
+"name":"Van Berlo's Wheel",
+"type":"NORMAL",
+"group":{
+"id":"journal-I",
+"name":"Journal I",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_I/VAN_BERLO_S_WHEEL"
+},
+{
+"id":"P055",
+"name":"Van Berlo's Chain",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-I",
+"name":"Journal I",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_I/VAN_BERLO_S_CHAIN"
+},
+{
+"id":"P056",
+"name":"Reactive Cinnabar",
+"type":"NORMAL",
+"group":{
+"id":"journal-I",
+"name":"Journal I",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_I/REACTIVE_CINNABAR"
+},
+{
+"id":"P057",
+"name":"Silver Caustic",
+"type":"NORMAL",
+"group":{
+"id":"journal-I",
+"name":"Journal I",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_I/SILVER_CAUSTIC"
+},
+{
+"id":"P058",
+"name":"Lambent II/IX",
+"type":"NORMAL",
+"group":{
+"id":"journal-I",
+"name":"Journal I",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_I/LAMBENT_II_IX"
+},
+{
+"id":"P059",
+"name":"Explorer's Salve",
+"type":"NORMAL",
+"group":{
+"id":"journal-II",
+"name":"Journal II",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_II/EXPLORER_S_SALVE"
+},
+{
+"id":"P060",
+"name":"Preservative Salt",
+"type":"NORMAL",
+"group":{
+"id":"journal-II",
+"name":"Journal II",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_II/PRESERVATIVE_SALT"
+},
+{
+"id":"P061",
+"name":"Sailcloth Thread",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-II",
+"name":"Journal II",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_II/SAILCLOTH_THREAD"
+},
+{
+"id":"P062",
+"name":"Buoyant Cable",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-II",
+"name":"Journal II",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_II/BUOYANT_CABLE"
+},
+{
+"id":"P063",
+"name":"Spyglass Crystal",
+"type":"NORMAL",
+"group":{
+"id":"journal-II",
+"name":"Journal II",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_II/SPYGLASS_CRYSTAL"
+},
+{
+"id":"P064",
+"name":"Ravari's Wheel",
+"type":"NORMAL",
+"group":{
+"id":"journal-III",
+"name":"Journal III",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_III/RAVARI_S_WHEEL"
+},
+{
+"id":"P065",
+"name":"Lubricating Filament",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-III",
+"name":"Journal III",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_III/LUBRICATING_FILAMENT"
+},
+{
+"id":"P066",
+"name":"Resonant Crystal",
+"type":"NORMAL",
+"group":{
+"id":"journal-III",
+"name":"Journal III",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_III/RESONANT_CRYSTAL"
+},
+{
+"id":"P067",
+"name":"Refined Bronze",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-III",
+"name":"Journal III",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_III/REFINED_BRONZE"
+},
+{
+"id":"P068",
+"name":"Ablative Crystal",
+"type":"NORMAL",
+"group":{
+"id":"journal-III",
+"name":"Journal III",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_III/ABLATIVE_CRYSTAL"
+},
+{
+"id":"P069",
+"name":"Proof of Completeness",
+"type":"NORMAL",
+"group":{
+"id":"journal-IV",
+"name":"Journal IV",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_IV/PROOF_OF_COMPLETENESS"
+},
+{
+"id":"P070",
+"name":"Wheel Representation",
+"type":"NORMAL",
+"group":{
+"id":"journal-IV",
+"name":"Journal IV",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_IV/WHEEL_REPRESENTATION"
+},
+{
+"id":"P071",
+"name":"Synthesis Via Alcohol",
+"type":"NORMAL",
+"group":{
+"id":"journal-IV",
+"name":"Journal IV",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_IV/SYNTHESIS_VIA_ALCOHOL"
+},
+{
+"id":"P072",
+"name":"Universal Compound",
+"type":"NORMAL",
+"group":{
+"id":"journal-IV",
+"name":"Journal IV",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_IV/UNIVERSAL_COMPOUND"
+},
+{
+"id":"P105",
+"name":"Vanishing Material",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-IX",
+"name":"Journal IX",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_IX/VANISHING_MATERIAL"
+},
+{
+"id":"P106",
+"name":"Hyper-volatile Gas",
+"type":"NORMAL",
+"group":{
+"id":"journal-IX",
+"name":"Journal IX",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_IX/HYPER_VOLATILE_GAS"
+},
+{
+"id":"P107",
+"name":"Quintessential Medium",
+"type":"NORMAL",
+"group":{
+"id":"journal-IX",
+"name":"Journal IX",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_IX/QUINTESSENTIAL_MEDIUM"
+},
+{
+"id":"P108",
+"name":"Embalming Fluid",
+"type":"NORMAL",
+"group":{
+"id":"journal-IX",
+"name":"Journal IX",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_IX/EMBALMING_FLUID"
+},
+{
+"id":"P109",
+"name":"Synthetic Malachite",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-IX",
+"name":"Journal IX",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_IX/SYNTHETIC_MALACHITE"
+},
+{
+"id":"P085",
+"name":"Suture Thread",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-V",
+"name":"Journal V",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_V/SUTURE_THREAD"
+},
+{
+"id":"P086",
+"name":"General Anaesthetic",
+"type":"NORMAL",
+"group":{
+"id":"journal-V",
+"name":"Journal V",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_V/GENERAL_ANAESTHETIC"
+},
+{
+"id":"P087",
+"name":"Blood-Stanching Powder",
+"type":"NORMAL",
+"group":{
+"id":"journal-V",
+"name":"Journal V",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_V/BLOOD_STANCHING_POWDER"
+},
+{
+"id":"P088",
+"name":"Wakefulness Potion",
+"type":"NORMAL",
+"group":{
+"id":"journal-V",
+"name":"Journal V",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_V/WAKEFULNESS_POTION"
+},
+{
+"id":"P089",
+"name":"Tonic of Hydration",
+"type":"NORMAL",
+"group":{
+"id":"journal-V",
+"name":"Journal V",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_V/TONIC_OF_HYDRATION"
+},
+{
+"id":"P090",
+"name":"Lustre",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-VI",
+"name":"Journal VI",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VI/LUSTRE"
+},
+{
+"id":"P091b",
+"name":"Hexstabilized Salt",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-VI",
+"name":"Journal VI",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VI/HEXSTABILIZED_SALT"
+},
+{
+"id":"P092",
+"name":"Lamplight Gas",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-VI",
+"name":"Journal VI",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VI/LAMPLIGHT_GAS"
+},
+{
+"id":"P093",
+"name":"Conductive Enamel",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-VI",
+"name":"Journal VI",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VI/CONDUCTIVE_ENAMEL"
+},
+{
+"id":"P094",
+"name":"Welding Thermite",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-VI",
+"name":"Journal VI",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VI/WELDING_THERMITE"
+},
+{
+"id":"P095",
+"name":"Reactive Gold",
+"type":"NORMAL",
+"group":{
+"id":"journal-VII",
+"name":"Journal VII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VII/REACTIVE_GOLD"
+},
+{
+"id":"P096",
+"name":"Van Berlo's Pivots",
+"type":"NORMAL",
+"group":{
+"id":"journal-VII",
+"name":"Journal VII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VII/VAN_BERLO_S_PIVOTS"
+},
+{
+"id":"P097",
+"name":"Assassin's Filament",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-VII",
+"name":"Journal VII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VII/ASSASSIN_S_FILAMENT"
+},
+{
+"id":"P098",
+"name":"Vaporous Solvent",
+"type":"NORMAL",
+"group":{
+"id":"journal-VII",
+"name":"Journal VII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VII/VAPOROUS_SOLVENT"
+},
+{
+"id":"P099",
+"name":"Alchemical Slag",
+"type":"NORMAL",
+"group":{
+"id":"journal-VII",
+"name":"Journal VII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VII/ALCHEMICAL_SLAG"
+},
+{
+"id":"P100",
+"name":"Explosive Victrite",
+"type":"NORMAL",
+"group":{
+"id":"journal-VIII",
+"name":"Journal VIII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VIII/EXPLOSIVE_VICTRITE"
+},
+{
+"id":"P101",
+"name":"Celestial Thread",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-VIII",
+"name":"Journal VIII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VIII/CELESTIAL_THREAD"
+},
+{
+"id":"P102",
+"name":"Visillary Anaesthetic",
+"type":"NORMAL",
+"group":{
+"id":"journal-VIII",
+"name":"Journal VIII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VIII/VISILLARY_ANAESTHETIC"
+},
+{
+"id":"P103",
+"name":"Electrum Separation",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-VIII",
+"name":"Journal VIII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VIII/ELECTRUM_SEPARATION"
+},
+{
+"id":"P104",
+"name":"Animismus Buffer",
+"type":"NORMAL",
+"group":{
+"id":"journal-VIII",
+"name":"Journal VIII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_VIII/ANIMISMUS_BUFFER"
+},
+{
+"id":"P245",
+"name":"Touchstone",
+"type":"NORMAL",
+"group":{
+"id":"journal-X",
+"name":"Journal X",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_X/TOUCHSTONE"
+},
+{
+"id":"P246",
+"name":"Beauty Salve",
+"type":"NORMAL",
+"group":{
+"id":"journal-X",
+"name":"Journal X",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_X/BEAUTY_SALVE"
+},
+{
+"id":"P247",
+"name":"Luminous Vapor",
+"type":"NORMAL",
+"group":{
+"id":"journal-X",
+"name":"Journal X",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_X/LUMINOUS_VAPOR"
+},
+{
+"id":"P248",
+"name":"Bandage Thread",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-X",
+"name":"Journal X",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_X/BANDAGE_THREAD"
+},
+{
+"id":"P249",
+"name":"Cultivation Tonic",
+"type":"NORMAL",
+"group":{
+"id":"journal-X",
+"name":"Journal X",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_X/CULTIVATION_TONIC"
+},
+{
+"id":"P240",
+"name":"Green Vitriol",
+"type":"NORMAL",
+"group":{
+"id":"journal-XI",
+"name":"Journal XI",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_XI/GREEN_VITRIOL"
+},
+{
+"id":"P241",
+"name":"Blue Vitriol",
+"type":"NORMAL",
+"group":{
+"id":"journal-XI",
+"name":"Journal XI",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_XI/BLUE_VITRIOL"
+},
+{
+"id":"P242",
+"name":"Sleeping Tonic",
+"type":"NORMAL",
+"group":{
+"id":"journal-XI",
+"name":"Journal XI",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_XI/SLEEPING_TONIC"
+},
+{
+"id":"P243",
+"name":"Resonant Dust",
+"type":"NORMAL",
+"group":{
+"id":"journal-XI",
+"name":"Journal XI",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_XI/RESONANT_DUST"
+},
+{
+"id":"P244",
+"name":"Compound Anaesthetic",
+"type":"NORMAL",
+"group":{
+"id":"journal-XI",
+"name":"Journal XI",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_XI/COMPOUND_ANAESTHETIC"
+},
+{
+"id":"P250",
+"name":"Sophick Mercury",
+"type":"NORMAL",
+"group":{
+"id":"journal-XII",
+"name":"Journal XII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_XII/SOPHICK_MERCURY"
+},
+{
+"id":"P251",
+"name":"Explosive Alloy",
+"type":"NORMAL",
+"group":{
+"id":"journal-XII",
+"name":"Journal XII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_XII/EXPLOSIVE_ALLOY"
+},
+{
+"id":"P252",
+"name":"Dental Amalgam",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-XII",
+"name":"Journal XII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_XII/DENTAL_AMALGAM"
+},
+{
+"id":"P253",
+"name":"Cuprite",
+"type":"NORMAL",
+"group":{
+"id":"journal-XII",
+"name":"Journal XII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_XII/CUPRITE"
+},
+{
+"id":"P254",
+"name":"Reclaimed Gold",
+"type":"NORMAL",
+"group":{
+"id":"journal-XII",
+"name":"Journal XII",
+"collection":{
+"id":"journals",
+"name":"Journals"
+}
+},
+"path":"JOURNAL_XII/RECLAIMED_GOLD"
+},
+{
+"id":"P255",
+"name":"MOORING CABLE",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-cviii-I",
+"name":"Journal CVIII I",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_I/MOORING_CABLE"
+},
+{
+"id":"P256",
+"name":"LODESTONE",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-I",
+"name":"Journal CVIII I",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_I/LODESTONE"
+},
+{
+"id":"P257",
+"name":"ESSENCE OF CITRUS",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-I",
+"name":"Journal CVIII I",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_I/ESSENCE_OF_CITRUS"
+},
+{
+"id":"P258",
+"name":"LIGHTHOUSE MIRROR",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-I",
+"name":"Journal CVIII I",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_I/LIGHTHOUSE_MIRROR"
+},
+{
+"id":"P259",
+"name":"GRENADE PELLET",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-I",
+"name":"Journal CVIII I",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_I/GRENADE_PELLET"
+},
+{
+"id":"P260",
+"name":"Pig Iron",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-II",
+"name":"Journal CVIII II",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_II/PIG_IRON"
+},
+{
+"id":"P261",
+"name":"Prospector's Solvent",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-II",
+"name":"Journal CVIII II",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_II/PROSPECTOR_S_SOLVENT"
+},
+{
+"id":"P262",
+"name":"Surveying Magnet",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-cviii-II",
+"name":"Journal CVIII II",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_II/SURVEYING_MAGNET"
+},
+{
+"id":"P263",
+"name":"Leaching Agent",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-II",
+"name":"Journal CVIII II",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_II/LEACHING_AGENT"
+},
+{
+"id":"P264",
+"name":"Realgar Separation",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-II",
+"name":"Journal CVIII II",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_II/REALGAR_SEPARATION"
+},
+{
+"id":"P265",
+"name":"Soda Ash",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-III",
+"name":"Journal CVIII III",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_III/SODA_ASH"
+},
+{
+"id":"P266",
+"name":"Miraculous Dentifrice",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-cviii-III",
+"name":"Journal CVIII III",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_III/MIRACULOUS_DENTIFRICE"
+},
+{
+"id":"P267",
+"name":"Preserving Wax",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-cviii-III",
+"name":"Journal CVIII III",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_III/PRESERVING_WAX"
+},
+{
+"id":"P268",
+"name":"Steel Wool",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-cviii-III",
+"name":"Journal CVIII III",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_III/STEEL_WOOL"
+},
+{
+"id":"P269",
+"name":"Mirror Polish",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-III",
+"name":"Journal CVIII III",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_III/MIRROR_POLISH"
+},
+{
+"id":"P270",
+"name":"Canister Shot",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-IV",
+"name":"Journal CVIII IV",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_IV/CANISTER_SHOT"
+},
+{
+"id":"P271",
+"name":"High Explosive",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-IV",
+"name":"Journal CVIII IV",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_IV/HIGH_EXPLOSIVE"
+},
+{
+"id":"P272",
+"name":"Gunmetal",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-cviii-IV",
+"name":"Journal CVIII IV",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_IV/GUNMETAL"
+},
+{
+"id":"P273",
+"name":"Ribbed Fletching",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-IV",
+"name":"Journal CVIII IV",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_IV/RIBBED_FLETCHING"
+},
+{
+"id":"P274",
+"name":"Sparking Pyrite",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-IV",
+"name":"Journal CVIII IV",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_IV/SPARKING_PYRITE"
+},
+{
+"id":"P295",
+"name":"Shimmering Chain",
+"type":"POLYMER_WIDTH",
+"group":{
+"id":"journal-cviii-IX",
+"name":"Journal CVIII IX",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_IX/SHIMMERING_CHAIN"
+},
+{
+"id":"P296",
+"name":"Durable Stitching",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-cviii-IX",
+"name":"Journal CVIII IX",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_IX/DURABLE_STITCHING"
+},
+{
+"id":"P297",
+"name":"Xylem Substitute",
+"type":"POLYMER_WIDTH",
+"group":{
+"id":"journal-cviii-IX",
+"name":"Journal CVIII IX",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_IX/XYLEM_SUBSTITUTE"
+},
+{
+"id":"P298",
+"name":"Mirroring Amalgam",
+"type":"POLYMER_WIDTH",
+"group":{
+"id":"journal-cviii-IX",
+"name":"Journal CVIII IX",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_IX/MIRRORING_AMALGAM"
+},
+{
+"id":"P299",
+"name":"Blast Cordage",
+"type":"POLYMER_WIDTH",
+"group":{
+"id":"journal-cviii-IX",
+"name":"Journal CVIII IX",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_IX/BLAST_CORDAGE"
+},
+{
+"id":"P275",
+"name":"Glitra Paint",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-V",
+"name":"Journal CVIII V",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_V/GLITRA_PAINT"
+},
+{
+"id":"P276",
+"name":"Vermilion Pigment",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-V",
+"name":"Journal CVIII V",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_V/VERMILION_PIGMENT"
+},
+{
+"id":"P277",
+"name":"Calligrapher's Ink",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-V",
+"name":"Journal CVIII V",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_V/CALLIGRAPHER_S_INK"
+},
+{
+"id":"P278",
+"name":"Lapidary Saw",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-cviii-V",
+"name":"Journal CVIII V",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_V/LAPIDARY_SAW"
+},
+{
+"id":"P279",
+"name":"Gilding Wax",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-V",
+"name":"Journal CVIII V",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_V/GILDING_WAX"
+},
+{
+"id":"P280",
+"name":"Inductive Foil",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-VI",
+"name":"Journal CVIII VI",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VI/INDUCTIVE_FOIL"
+},
+{
+"id":"P281",
+"name":"Salt of Hartshorn",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-VI",
+"name":"Journal CVIII VI",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VI/SALT_OF_HARTSHORN"
+},
+{
+"id":"P282",
+"name":"Balanced Gold",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-cviii-VI",
+"name":"Journal CVIII VI",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VI/BALANCED_GOLD"
+},
+{
+"id":"P283",
+"name":"Mist of Glaciation",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-VI",
+"name":"Journal CVIII VI",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VI/MIST_OF_GLACIATION"
+},
+{
+"id":"P284",
+"name":"Via Media",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-VI",
+"name":"Journal CVIII VI",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VI/VIA_MEDIA"
+},
+{
+"id":"P285",
+"name":"Rosewater",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-VII",
+"name":"Journal CVIII VII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VII/ROSEWATER"
+},
+{
+"id":"P286",
+"name":"Baling Fiber",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-cviii-VII",
+"name":"Journal CVIII VII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VII/BALING_FIBER"
+},
+{
+"id":"P287",
+"name":"Leavening Agent",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-VII",
+"name":"Journal CVIII VII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VII/LEAVENING_AGENT"
+},
+{
+"id":"P288",
+"name":"Marlstone",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-VII",
+"name":"Journal CVIII VII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VII/MARLSTONE"
+},
+{
+"id":"P289",
+"name":"Fructifying Water",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-cviii-VII",
+"name":"Journal CVIII VII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VII/FRUCTIFYING_WATER"
+},
+{
+"id":"P290",
+"name":"Quickening Cordial",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-VIII",
+"name":"Journal CVIII VIII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VIII/QUICKENING_CORDIAL"
+},
+{
+"id":"P291",
+"name":"Invigorating Tonic",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-VIII",
+"name":"Journal CVIII VIII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VIII/INVIGORATING_TONIC"
+},
+{
+"id":"P292",
+"name":"Umbral Mascara",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-VIII",
+"name":"Journal CVIII VIII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VIII/UMBRAL_MASCARA"
+},
+{
+"id":"P293",
+"name":"Endurance Potion",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-cviii-VIII",
+"name":"Journal CVIII VIII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VIII/ENDURANCE_POTION"
+},
+{
+"id":"P294",
+"name":"Storm-Sensing Potion",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-VIII",
+"name":"Journal CVIII VIII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_VIII/STORM_SENSING_POTION"
+},
+{
+"id":"P300",
+"name":"Mist of Clarification",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-X",
+"name":"Journal CVIII X",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_X/MIST_OF_CLARIFICATION"
+},
+{
+"id":"P301",
+"name":"Tempered Glass",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-cviii-X",
+"name":"Journal CVIII X",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_X/TEMPERED_GLASS"
+},
+{
+"id":"P302",
+"name":"Verdigris Glaze",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-X",
+"name":"Journal CVIII X",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_X/VERDIGRIS_GLAZE"
+},
+{
+"id":"P303",
+"name":"Electrum",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-X",
+"name":"Journal CVIII X",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_X/ELECTRUM"
+},
+{
+"id":"P304",
+"name":"Mosaic Tessera",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-X",
+"name":"Journal CVIII X",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_X/MOSAIC_TESSERA"
+},
+{
+"id":"P305",
+"name":"Grindstone",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-XI",
+"name":"Journal CVIII XI",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_XI/GRINDSTONE"
+},
+{
+"id":"P306",
+"name":"Rockwool Fiber",
+"type":"POLYMER_WIDTH",
+"group":{
+"id":"journal-cviii-XI",
+"name":"Journal CVIII XI",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_XI/ROCKWOOL_FIBER"
+},
+{
+"id":"P307",
+"name":"Mineral Oil",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-XI",
+"name":"Journal CVIII XI",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_XI/MINERAL_OIL"
+},
+{
+"id":"P308",
+"name":"Mild Steel",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-XI",
+"name":"Journal CVIII XI",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_XI/MILD_STEEL"
+},
+{
+"id":"P309",
+"name":"Resin Glue",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-XI",
+"name":"Journal CVIII XI",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_XI/RESIN_GLUE"
+},
+{
+"id":"P310",
+"name":"Brazing Silver",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-cviii-XII",
+"name":"Journal CVIII XII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_XII/BRAZING_SILVER"
+},
+{
+"id":"P311",
+"name":"Brilliant Pigment",
+"type":"PRODUCTION",
+"group":{
+"id":"journal-cviii-XII",
+"name":"Journal CVIII XII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_XII/BRILLIANT_PIGMENT"
+},
+{
+"id":"P312",
+"name":"Guipure Lace",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"journal-cviii-XII",
+"name":"Journal CVIII XII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_XII/GUIPURE_LACE"
+},
+{
+"id":"P313",
+"name":"Lapis Solaris",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-XII",
+"name":"Journal CVIII XII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_XII/LAPIS_SOLARIS"
+},
+{
+"id":"P314",
+"name":"Universal Ointment",
+"type":"NORMAL",
+"group":{
+"id":"journal-cviii-XII",
+"name":"Journal CVIII XII",
+"collection":{
+"id":"journals-cviii",
+"name":"Journals CVIII"
+}
+},
+"path":"JOURNAL_CVIII_XII/UNIVERSAL_OINTMENT"
+},
+{
+"id":"P074",
+"name":"Rat Poison",
+"type":"PRODUCTION",
+"group":{
+"id":"production",
+"name":"Production",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_PRODUCTION/RAT_POISON"
+},
+{
+"id":"P075",
+"name":"Fragrant Powders",
+"type":"PRODUCTION",
+"group":{
+"id":"production",
+"name":"Production",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_PRODUCTION/FRAGRANT_POWDERS"
+},
+{
+"id":"P076",
+"name":"Silver Paint",
+"type":"PRODUCTION",
+"group":{
+"id":"production",
+"name":"Production",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_PRODUCTION/SILVER_PAINT"
+},
+{
+"id":"P077",
+"name":"Aether Detector",
+"type":"PRODUCTION",
+"group":{
+"id":"production",
+"name":"Production",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_PRODUCTION/AETHER_DETECTOR"
+},
+{
+"id":"P078",
+"name":"Vapor of Levity",
+"type":"PRODUCTION",
+"group":{
+"id":"production",
+"name":"Production",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_PRODUCTION/VAPOR_OF_LEVITY"
+},
+{
+"id":"P079",
+"name":"Abrasive Particles",
+"type":"PRODUCTION",
+"group":{
+"id":"production",
+"name":"Production",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_PRODUCTION/ABRASIVE_PARTICLES"
+},
+{
+"id":"P080",
+"name":"Viscous Sludge",
+"type":"PRODUCTION",
+"group":{
+"id":"production",
+"name":"Production",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_PRODUCTION/VISCOUS_SLUDGE"
+},
+{
+"id":"P081",
+"name":"Eyedrops of Revelation",
+"type":"PRODUCTION",
+"group":{
+"id":"production",
+"name":"Production",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_PRODUCTION/EYEDROPS_OF_REVELATION"
+},
+{
+"id":"P082",
+"name":"Parade-Rocket Fuel",
+"type":"PRODUCTION",
+"group":{
+"id":"production",
+"name":"Production",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_PRODUCTION/PARADE_ROCKET_FUEL"
+},
+{
+"id":"P083",
+"name":"Special Amaro",
+"type":"PRODUCTION",
+"group":{
+"id":"production",
+"name":"Production",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_PRODUCTION/SPECIAL_AMARO"
+},
+{
+"id":"P084",
+"name":"Reconstructed Solvent",
+"type":"PRODUCTION",
+"group":{
+"id":"production",
+"name":"Production",
+"collection":{
+"id":"om",
+"name":"Opus Magnum"
+}
+},
+"path":"CHAPTER_PRODUCTION/RECONSTRUCTED_SOLVENT"
+},
+{
+"id":"w1611998067",
+"name":"UNWINDING",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2019",
+"name":"Tournament 2019",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2019/UNWINDING"
+},
+{
+"id":"w1698784331",
+"name":"WIRE FORMING AND UNFORMING",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"tournament-2019",
+"name":"Tournament 2019",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2019/WIRE_FORMING_AND_UNFORMING"
+},
+{
+"id":"w1698785238",
+"name":"VIRULENT VECTOR",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2019",
+"name":"Tournament 2019",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2019/VIRULENT_VECTOR"
+},
+{
+"id":"w1698786588",
+"name":"DWARVEN FIRE WINE",
+"type":"PRODUCTION",
+"group":{
+"id":"tournament-2019",
+"name":"Tournament 2019",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2019/DWARVEN_FIRE_WINE"
+},
+{
+"id":"w1698787731",
+"name":"DO YOU REMEMBER",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2019",
+"name":"Tournament 2019",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2019/DO_YOU_REMEMBER"
+},
+{
+"id":"w1698788220",
+"name":"EVIL ORE",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2019",
+"name":"Tournament 2019",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2019/EVIL_ORE"
+},
+{
+"id":"w1698789743",
+"name":"PANACEA",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2019",
+"name":"Tournament 2019",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2019/PANACEA"
+},
+{
+"id":"w2501727721",
+"name":"POTENT POTABLES",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2020",
+"name":"Tournament 2020",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2020/POTENT_POTABLES"
+},
+{
+"id":"w2501727808",
+"name":"AMALGAMATED GOLD RING",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2020",
+"name":"Tournament 2020",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2020/AMALGAMATED_GOLD_RING"
+},
+{
+"id":"w2501727889",
+"name":"SWAMP FIBER",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"tournament-2020",
+"name":"Tournament 2020",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2020/SWAMP_FIBER"
+},
+{
+"id":"w2501727977",
+"name":"VOLATILITY AND TRANQUILITY",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2020",
+"name":"Tournament 2020",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2020/VOLATILITY_AND_TRANQUILITY"
+},
+{
+"id":"w2501728107",
+"name":"Overloaded",
+"type":"PRODUCTION",
+"group":{
+"id":"tournament-2020",
+"name":"Tournament 2020",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2020/OVERLOADED"
+},
+{
+"id":"w2501728219",
+"name":"ACTIVE POLYMERASE",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2020",
+"name":"Tournament 2020",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2020/ACTIVE_POLYMERASE"
+},
+{
+"id":"w2501728349",
+"name":"HIGH GLOSS FINISH",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2020",
+"name":"Tournament 2020",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2020/HIGH_GLOSS_FINISH"
+},
+{
+"id":"w3101135731",
+"name":"CONNECT THE  DOTS",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2020",
+"name":"Tournament 2020",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2020/CONNECT_THE_DOTS"
+},
+{
+"id":"w2450508212",
+"name":"IMPROVED EXPLOSIVE PHIAL",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2021",
+"name":"Tournament 2021",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2021/IMPROVED_EXPLOSIVE_PHIAL"
+},
+{
+"id":"w2450511665",
+"name":"PANACEA TO POISON",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2021",
+"name":"Tournament 2021",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2021/PANACEA_TO_POISON"
+},
+{
+"id":"w2450512232",
+"name":"EMERGENCY ANTIDOTE",
+"type":"PRODUCTION",
+"group":{
+"id":"tournament-2021",
+"name":"Tournament 2021",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2021/EMERGENCY_ANTIDOTE"
+},
+{
+"id":"w2450512434",
+"name":"CALM BEFORE THE STORM",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"tournament-2021",
+"name":"Tournament 2021",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2021/CALM_BEFORE_THE_STORM"
+},
+{
+"id":"w2450512626",
+"name":"QUINTESSENTIAL STABILIZER",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2021",
+"name":"Tournament 2021",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2021/QUINTESSENTIAL_STABILIZER"
+},
+{
+"id":"w2450512809",
+"name":"ELEMENTAL JEWEL SETTING",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2021",
+"name":"Tournament 2021",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2021/ELEMENTAL_JEWEL_SETTING"
+},
+{
+"id":"w2450560971",
+"name":"A WELCOME TO HOUSE COLVAN",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2021",
+"name":"Tournament 2021",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2021/A_WELCOME_TO_HOUSE_COLVAN"
+},
+{
+"id":"w2788066123",
+"name":"FLAKE SALT",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2022",
+"name":"Tournament 2022",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2022/FLAKE_SALT"
+},
+{
+"id":"w2788066279",
+"name":"LEAVE NO TRACE",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2022",
+"name":"Tournament 2022",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2022/LEAVE_NO_TRACE"
+},
+{
+"id":"w2788066771",
+"name":"RUST REMOVAL",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"tournament-2022",
+"name":"Tournament 2022",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2022/RUST_REMOVAL"
+},
+{
+"id":"w2788066865",
+"name":"SOOTHING SALVE",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2022",
+"name":"Tournament 2022",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2022/SOOTHING_SALVE"
+},
+{
+"id":"w2788066950",
+"name":"LUBRICATING SOLVENTS",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2022",
+"name":"Tournament 2022",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2022/LUBRICATING_SOLVENTS"
+},
+{
+"id":"w2788067038",
+"name":"FILM CRYSTAL",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2022",
+"name":"Tournament 2022",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2022/FILM_CRYSTAL"
+},
+{
+"id":"w2788067624",
+"name":"AETHER REACTOR",
+"type":"PRODUCTION",
+"group":{
+"id":"tournament-2022",
+"name":"Tournament 2022",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2022/AETHER_REACTOR"
+},
+{
+"id":"w2788067677",
+"name":"FULMINATION",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2022",
+"name":"Tournament 2022",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2022/FULMINATION"
+},
+{
+"id":"w2946682691",
+"name":"END GAME",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2023",
+"name":"Tournament 2023",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2023/END_GAME"
+},
+{
+"id":"w2946683186",
+"name":"WASTE RECLAMATION",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2023",
+"name":"Tournament 2023",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2023/WASTE_RECLAMATION"
+},
+{
+"id":"w2946684529",
+"name":"BIOSTEEL FILAMENT",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"tournament-2023",
+"name":"Tournament 2023",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2023/BIOSTEEL_FILAMENT"
+},
+{
+"id":"w2946684660",
+"name":"PROBE MODULE",
+"type":"PRODUCTION",
+"group":{
+"id":"tournament-2023",
+"name":"Tournament 2023",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2023/PROBE_MODULE"
+},
+{
+"id":"w2946687073",
+"name":"BICRYSTAL TRANSCEIVER",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2023",
+"name":"Tournament 2023",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2023/BICRYSTAL_TRANSCEIVER"
+},
+{
+"id":"w2946687209",
+"name":"WARP FUEL",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2023",
+"name":"Tournament 2023",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2023/WARP_FUEL"
+},
+{
+"id":"w2946693353",
+"name":"COOL EARRINGS",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2023",
+"name":"Tournament 2023",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2023/COOL_EARRINGS"
+},
+{
+"id":"w3210138102",
+"name":"SIMULACRUM",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2024",
+"name":"Tournament 2024",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2024/SIMULACRUM"
+},
+{
+"id":"w3210168922",
+"name":"LOCAL ANAESTHETIC",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2024",
+"name":"Tournament 2024",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2024/LOCAL_ANAESTHETIC"
+},
+{
+"id":"w3210174680",
+"name":"CHUNKY MORS",
+"type":"PRODUCTION",
+"group":{
+"id":"tournament-2024",
+"name":"Tournament 2024",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2024/CHUNKY_MORS"
+},
+{
+"id":"w3210177679",
+"name":"LATCH-HOOK FIREWORKS",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2024",
+"name":"Tournament 2024",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2024/LATCH_HOOK_FIREWORKS"
+},
+{
+"id":"w3210182753",
+"name":"PLASTIC",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2024",
+"name":"Tournament 2024",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2024/PLASTIC"
+},
+{
+"id":"w3210197400",
+"name":"CRITELLIUM",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2024",
+"name":"Tournament 2024",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2024/CRITELLIUM"
+},
+{
+"id":"w3446275126",
+"name":"HYDROPHOBIC WATER",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2025",
+"name":"Tournament 2025",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2025/HYDROPHOBIC_WATER"
+},
+{
+"id":"w3446275900",
+"name":"THERMIC CAPACITOR",
+"type":"PRODUCTION",
+"group":{
+"id":"tournament-2025",
+"name":"Tournament 2025",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2025/THERMIC_CAPACITOR"
+},
+{
+"id":"w3446276105",
+"name":"Self-Organizing Fluid",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2025",
+"name":"Tournament 2025",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2025/SELF_ORGANIZING_FLUID"
+},
+{
+"id":"w3446276940",
+"name":"MATERIAL SALVAGE",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2025",
+"name":"Tournament 2025",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2025/MATERIAL_SALVAGE"
+},
+{
+"id":"w3446278612",
+"name":"CRYSTALLIZED AIR",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2025",
+"name":"Tournament 2025",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2025/CRYSTALLIZED_AIR"
+},
+{
+"id":"w3446278995",
+"name":"BULK TRANSMUTATION",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2025",
+"name":"Tournament 2025",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2025/BULK_TRANSMUTATION"
+},
+{
+"id":"w3446279881",
+"name":"Pass-Through Alloy",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2025",
+"name":"Tournament 2025",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2025/PASS_THROUGH_ALLOY"
+},
+{
+"id":"w3728198961",
+"name":"Snow Amputation",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2026",
+"name":"Tournament 2026",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2026/SNOW_AMPUTATION"
+},
+{
+"id":"w3728199426",
+"name":"QUIET HOURS",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2026",
+"name":"Tournament 2026",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2026/QUIET_HOURS"
+},
+{
+"id":"w3728200093",
+"name":"ALCHEMIST'S CLAY",
+"type":"PRODUCTION",
+"group":{
+"id":"tournament-2026",
+"name":"Tournament 2026",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2026/ALCHEMIST_S_CLAY"
+},
+{
+"id":"w3728200145",
+"name":"Roshambonite",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2026",
+"name":"Tournament 2026",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2026/ROSHAMBONITE"
+},
+{
+"id":"w3728200215",
+"name":"TAX FRAUD",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2026",
+"name":"Tournament 2026",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2026/TAX_FRAUD"
+},
+{
+"id":"w3728200264",
+"name":"AMELIA'S CATALYST",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2026",
+"name":"Tournament 2026",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2026/AMELIA_S_CATALYST"
+},
+{
+"id":"w3728200326",
+"name":"IMMORTAL FILAMENT",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"tournament-2026",
+"name":"Tournament 2026",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2026/IMMORTAL_FILAMENT"
+},
+{
+"id":"w3728200375",
+"name":"ORANGE VITRIOL",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2026",
+"name":"Tournament 2026",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2026/ORANGE_VITRIOL"
+},
+{
+"id":"w3728200437",
+"name":"INTUMESCENT LEAD",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2026",
+"name":"Tournament 2026",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2026/INTUMESCENT_LEAD"
+},
+{
+"id":"w3728200519",
+"name":"ONE LAST FAVOR",
+"type":"NORMAL",
+"group":{
+"id":"tournament-2026",
+"name":"Tournament 2026",
+"collection":{
+"id":"tournaments",
+"name":"Tournaments"
+}
+},
+"path":"TOURNAMENT_2026/ONE_LAST_FAVOR"
+},
+{
+"id":"w2513871683",
+"name":"HORN SILVER",
+"type":"NORMAL",
+"group":{
+"id":"weeklies-1",
+"name":"Weeklies I",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_1/HORN_SILVER"
+},
+{
+"id":"w2565611826",
+"name":"FERROUS WHEEL",
+"type":"NORMAL",
+"group":{
+"id":"weeklies-1",
+"name":"Weeklies I",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_1/FERROUS_WHEEL"
+},
+{
+"id":"w2591419339",
+"name":"Artificial Ore",
+"type":"PRODUCTION",
+"group":{
+"id":"weeklies-1",
+"name":"Weeklies I",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_1/ARTIFICIAL_ORE"
+},
+{
+"id":"w2827119474",
+"name":"MARTIAL REGULUS",
+"type":"NORMAL",
+"group":{
+"id":"weeklies-1",
+"name":"Weeklies I",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_1/MARTIAL_REGULUS"
+},
+{
+"id":"w2829050875",
+"name":"nightmare fuel",
+"type":"NORMAL",
+"group":{
+"id":"weeklies-1",
+"name":"Weeklies I",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_1/NIGHTMARE_FUEL"
+},
+{
+"id":"w2839120106",
+"name":"IGNITION CORD",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"weeklies-1",
+"name":"Weeklies I",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_1/IGNITION_CORD"
+},
+{
+"id":"w2868331650",
+"name":"LUSTROUS SYRUP",
+"type":"NORMAL",
+"group":{
+"id":"weeklies-1",
+"name":"Weeklies I",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_1/LUSTROUS_SYRUP"
+},
+{
+"id":"w2868339730",
+"name":"PHILOSOPHER'S CATALYST",
+"type":"NORMAL",
+"group":{
+"id":"weeklies-1",
+"name":"Weeklies I",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_1/PHILOSOPHER_S_CATALYST"
+},
+{
+"id":"w2818265313",
+"name":"Logistics",
+"type":"PRODUCTION",
+"group":{
+"id":"weeklies-2",
+"name":"Weeklies II",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_2/LOGISTICS"
+},
+{
+"id":"w3033141056",
+"name":"Vaccine Template",
+"type":"PRODUCTION",
+"group":{
+"id":"weeklies-2",
+"name":"Weeklies II",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_2/VACCINE_TEMPLATE"
+},
+{
+"id":"w3088257476",
+"name":"BLACK POWDER",
+"type":"NORMAL",
+"group":{
+"id":"weeklies-2",
+"name":"Weeklies II",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_2/BLACK_POWDER"
+},
+{
+"id":"w3210188410",
+"name":"THERMAL FUSE",
+"type":"NORMAL",
+"group":{
+"id":"weeklies-2",
+"name":"Weeklies II",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":null
+},
+{
+"id":"w3303849741",
+"name":"Breathable Fluid",
+"type":"NORMAL",
+"group":{
+"id":"weeklies-2",
+"name":"Weeklies II",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_2/BREATHABLE_FLUID"
+},
+{
+"id":"w3584639567",
+"name":"RAVARI'S ROAD",
+"type":"NORMAL",
+"group":{
+"id":"weeklies-2",
+"name":"Weeklies II",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_2/RAVARI_S_ROAD"
+},
+{
+"id":"w3584644954",
+"name":"SMOG NEUTRALIZATION",
+"type":"NORMAL",
+"group":{
+"id":"weeklies-2",
+"name":"Weeklies II",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_2/SMOG_NEUTRALIZATION"
+},
+{
+"id":"w3817954043",
+"name":"Van Berlo's Rotor",
+"type":"NORMAL",
+"group":{
+"id":"weeklies-2",
+"name":"Weeklies II",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_2/VAN_BERLO_S_ROTOR"
+},
+{
+"id":"w3817954313",
+"name":"DOWSING RODS",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"weeklies-2",
+"name":"Weeklies II",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_2/DOWSING_RODS"
+},
+{
+"id":"w3817955175",
+"name":"PAINT PRESERVER",
+"type":"PRODUCTION",
+"group":{
+"id":"weeklies-2",
+"name":"Weeklies II",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_2/PAINT_PRESERVER"
+},
+{
+"id":"w3817955190",
+"name":"PRISMATIC CATALYST",
+"type":"NORMAL",
+"group":{
+"id":"weeklies-2",
+"name":"Weeklies II",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_2/PRISMATIC_CATALYST"
+},
+{
+"id":"w3817956797",
+"name":"FAERO FILAMENT",
+"type":"POLYMER_HEIGHT",
+"group":{
+"id":"weeklies-2",
+"name":"Weeklies II",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_2/FAERO_FILAMENT"
+},
+{
+"id":"w3817959733",
+"name":"EYEDROPS OF IRRITATION",
+"type":"NORMAL",
+"group":{
+"id":"weeklies-2",
+"name":"Weeklies II",
+"collection":{
+"id":"weeklies",
+"name":"Weekly Puzzles"
+}
+},
+"path":"WEEKLIES_2/EYEDROPS_OF_IRRITATION"
+}
+]

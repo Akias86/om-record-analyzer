@@ -1,24 +1,80 @@
-.gif-viewer-backdrop.solution-player-backdrop {
-  box-sizing: border-box;
+/* ---------------------------------------------------------------------------
+   Dialogs.
+
+   Two treatments share this file:
+
+   1. `.gif-viewer-*` — the generic modal chrome (also used by the chart's
+      "records at this point" dialog). It follows the app theme.
+   2. `.solution-player-*` — the playback dialog. Media looks best on a
+      neutral dark frame whatever the app theme is, so the player defines its
+      own theatre palette and opts out of the warm surfaces.
+
+   The footer grid (row 1 = controls, row 2 = status) and the absolutely
+   positioned media frame are load-bearing: tests/player-media.test.mjs asserts
+   the computed values that keep both playback modes pixel-identical.
+--------------------------------------------------------------------------- */
+
+/* ---- generic modal chrome ----------------------------------------------- */
+.gif-viewer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+  background: var(--scrim);
+  backdrop-filter: blur(3px);
 }
 
-/* Keep the iframe alive while the dialog is closed. */
-.gif-viewer-backdrop.solution-player-backdrop[hidden] {
-  display: none;
+.gif-viewer-panel {
+  display: flex;
+  flex-direction: column;
+  max-width: min(92vw, 760px);
+  max-height: 90vh;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-pop);
 }
 
-.gif-viewer-panel.solution-player-panel {
-  box-sizing: border-box;
-  width: min(828px, 100%);
-  max-width: 100%;
-  max-height: 100%;
+.gif-viewer-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 0 0 auto;
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.gif-viewer-title {
+  flex: 1;
   min-width: 0;
-  min-height: 0;
+  color: var(--fg);
+  font-size: var(--text-base);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
 }
 
-.solution-player-panel > .gif-viewer-header {
-  flex: none;
-  min-width: 0;
+.gif-viewer-close {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  border-radius: var(--r-sm);
+  color: var(--fg-muted);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.gif-viewer-close:hover {
+  background: var(--surface-3);
+  color: var(--fg);
 }
 
 .gif-viewer-heading {
@@ -28,10 +84,10 @@
 
 .gif-viewer-author {
   margin-top: 2px;
-  color: var(--text);
-  font-size: 11px;
-  line-height: 16px;
   overflow: hidden;
+  color: var(--fg-faint);
+  font-size: var(--text-xs);
+  line-height: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -46,15 +102,85 @@
 }
 
 .gif-viewer-author-time {
-  color: var(--text);
+  color: var(--fg-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- playback dialog: theatre palette ----------------------------------- */
+.solution-player-backdrop {
+  --player-canvas: #0d0c0b;
+  --player-surface: #171614;
+  --player-raised: #1e1c19;
+  --player-line: #2e2b26;
+  --player-line-strong: #443f38;
+  --player-fg: #ece5da;
+  --player-muted: #9d9488;
+  --player-accent: #e0a552;
+  --player-accent-soft: rgb(224 165 82 / 0.16);
+
+  box-sizing: border-box;
+  /* Literal on purpose: the viewport-fit math in usePlayerLayout reads this
+     padding back from computed style, and tests/player-media.test.mjs pins the
+     result without loading the token sheet. */
+  padding: 24px;
+  background: rgb(6 6 5 / 0.78);
+}
+
+/* Keep the iframe alive while the dialog is closed. */
+.gif-viewer-backdrop.solution-player-backdrop[hidden] {
+  display: none;
+}
+
+.gif-viewer-panel.solution-player-panel {
+  box-sizing: border-box;
+  width: min(828px, 100%);
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  min-height: 0;
+  border-color: var(--player-line-strong);
+  border-radius: var(--r-lg);
+  background: var(--player-surface);
+  color: var(--player-muted);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 0.6);
+}
+
+.solution-player-panel > .gif-viewer-header {
+  flex: none;
+  min-width: 0;
+  border-bottom-color: var(--player-line);
+  background: var(--player-raised);
 }
 
 .solution-player-panel .gif-viewer-title {
   overflow: hidden;
+  color: var(--player-fg);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.solution-player-panel .gif-viewer-author {
+  color: var(--player-muted);
+}
+
+.solution-player-panel .gif-viewer-author-time {
+  color: var(--player-muted);
+}
+
+.solution-player-panel .gif-viewer-close {
+  color: var(--player-muted);
+}
+
+.solution-player-panel .gif-viewer-close:hover {
+  background: rgb(255 255 255 / 0.08);
+  color: var(--player-fg);
+}
+
+/* ---- media frame -------------------------------------------------------- */
 .solution-player-body {
   position: relative;
   display: flex;
@@ -66,7 +192,7 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: var(--bg);
+  background: var(--player-canvas);
 }
 
 /* Iframe, GIF and video share the same scaled frame and edge rounding. */
@@ -88,50 +214,6 @@
   object-fit: fill;
 }
 
-.solution-player-mode-toggle {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--sidebar-bg);
-  color: var(--text-h);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease;
-}
-
-.solution-player-body:hover > .solution-player-mode-toggle,
-.solution-player-mode-toggle:focus-visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.solution-player-mode-toggle:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.solution-player-mode-toggle:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-@media (hover: none) {
-  .solution-player-mode-toggle {
-    opacity: 1;
-    pointer-events: auto;
-  }
-}
-
 .gif-viewer-img--pending {
   opacity: 0;
 }
@@ -143,28 +225,28 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg);
-  color: var(--text);
-  font-size: 13px;
+  background: var(--player-canvas);
+  color: var(--player-muted);
+  font-size: var(--text-base);
 }
 
 .gif-viewer-error {
-  padding: 16px;
+  padding: var(--sp-4);
   text-align: center;
   overflow-wrap: anywhere;
 }
 
 .gif-viewer-loading {
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-3);
   pointer-events: none;
 }
 
 .gif-viewer-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--player-line);
+  border-top-color: var(--player-accent);
   border-radius: 50%;
   animation: gif-viewer-spin 0.8s linear infinite;
 }
@@ -175,16 +257,65 @@
   }
 }
 
-/* Row 1 is shared by both modes' controls, row 2 is the shared status line, so the
-   offset of each row from the footer is identical whichever mode is active. */
+/* ---- mode toggle (real-time ↔ recording) -------------------------------- */
+.solution-player-mode-toggle {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--player-line-strong);
+  border-radius: var(--r-md);
+  background: rgb(20 19 17 / 0.86);
+  color: var(--player-fg);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.45);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+  backdrop-filter: blur(4px);
+}
+
+.solution-player-body:hover > .solution-player-mode-toggle,
+.solution-player-mode-toggle:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.solution-player-mode-toggle:hover {
+  border-color: var(--player-accent);
+  color: var(--player-accent);
+}
+
+.solution-player-mode-toggle:focus-visible {
+  outline: 2px solid var(--player-accent);
+  outline-offset: 2px;
+}
+
+@media (hover: none) {
+  .solution-player-mode-toggle {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* ---- footer -------------------------------------------------------------
+   Row 1 is shared by both modes' controls, row 2 is the shared status line, so
+   the offset of each row from the footer is identical whichever mode is
+   active. */
 .solution-player-footer {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 8px;
-  padding: 8px 12px;
-  border-top: 1px solid var(--border);
   flex: none;
   max-height: min(160px, 30dvh);
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--player-line);
+  background: var(--player-raised);
   overflow: auto;
 }
 
@@ -204,9 +335,53 @@
   visibility: hidden;
 }
 
+.gif-viewer-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--player-line-strong);
+  border-radius: var(--r-md);
+  background: rgb(255 255 255 / 0.03);
+  color: var(--player-fg);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.gif-viewer-btn:hover:not(:disabled) {
+  border-color: var(--player-accent);
+  background: var(--player-accent-soft);
+  color: var(--player-accent);
+}
+
+.gif-viewer-btn:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.gif-viewer-footer .gif-viewer-btn:focus-visible {
+  outline: 2px solid var(--player-accent);
+  outline-offset: 2px;
+}
+
 /* Pausing the simulator on a mode switch must not change this button's width. */
 .solution-player-play {
   display: inline-grid;
+  min-width: 78px;
+  border-color: var(--player-accent);
+  background: var(--player-accent-soft);
+  color: var(--player-accent);
+  font-weight: 600;
+}
+
+.solution-player-play:hover:not(:disabled) {
+  background: var(--player-accent);
+  color: #17150f;
 }
 
 .solution-player-play > span,
@@ -219,26 +394,17 @@
   visibility: hidden;
 }
 
-.gif-viewer-btn {
-  border: 1px solid var(--border);
-  background: none;
-  color: var(--text-h);
-  font-size: 13px;
-  line-height: 1.4;
-  padding: 4px 14px;
-  border-radius: 4px;
-  cursor: pointer;
+/* ---- transport details -------------------------------------------------- */
+.solution-player-cycle {
+  padding: 0 var(--sp-2);
+  border-left: 1px solid var(--player-line);
+  border-right: 1px solid var(--player-line);
+  color: var(--player-fg);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
-}
-
-.gif-viewer-btn:hover:not(:disabled) {
-  background: var(--accent-bg);
-  border-color: var(--accent);
-}
-
-.gif-viewer-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
+  line-height: 28px;
 }
 
 .solution-player-speed {
@@ -248,12 +414,13 @@
   flex: 0 1 270px;
   min-width: 0;
   max-width: 100%;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .solution-player-speed-label,
 .solution-player-speed-unit {
   flex: none;
+  color: var(--player-muted);
   white-space: nowrap;
 }
 
@@ -267,7 +434,7 @@
   display: block;
   width: 100%;
   margin: 0;
-  accent-color: var(--accent);
+  accent-color: var(--player-accent);
   cursor: pointer;
 }
 
@@ -285,51 +452,48 @@
 .solution-player-speed-ticks span {
   width: 1px;
   height: 4px;
-  background: color-mix(in srgb, var(--text) 45%, var(--bg));
+  background: var(--player-line-strong);
 }
 
 .solution-player-speed-input {
   box-sizing: border-box;
   flex: 0 0 64px;
   width: 64px;
-  padding: 4px 5px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--sidebar-bg);
-  color: var(--text-h);
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--player-line-strong);
+  border-radius: var(--r-sm);
+  background: var(--player-canvas);
+  color: var(--player-fg);
   font: inherit;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
 .solution-player-speed-input:focus-visible,
 .solution-player-speed-slider:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--player-accent);
   outline-offset: 2px;
 }
 
 .solution-player-speed input:disabled {
-  opacity: 0.6;
+  opacity: 0.42;
   cursor: default;
-}
-
-.solution-player-cycle {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 .solution-player-status {
   grid-area: 2 / 1;
   min-width: 0;
   overflow: hidden;
+  color: var(--player-muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.5;
 }
 
 .solution-player-status--error {
-  color: var(--danger, #e74c3c);
+  color: #e5685c;
 }
 
 @media (max-width: 600px) {
@@ -338,7 +502,12 @@
   }
 
   .solution-player-footer .gif-viewer-btn {
-    padding: 4px 7px;
-    font-size: 12px;
+    height: 28px;
+    padding: 0 var(--sp-2);
+    font-size: var(--text-xs);
+  }
+
+  .solution-player-play {
+    min-width: 66px;
   }
 }

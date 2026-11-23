@@ -12,6 +12,15 @@ async function moduleUrl(url) {
     let source;
     try { source = await readFile(url, 'utf8'); }
     catch (error) {
+      // A directory specifier (`../lib/verify`) resolves like Node: index.ts(x).
+      if (error.code === 'EISDIR') {
+        const base = url.href.endsWith('/') ? url.href : `${url.href}/`;
+        try { return await moduleUrl(new URL('index.ts', base)); }
+        catch (missing) {
+          if (missing.code !== 'ENOENT') throw missing;
+          return moduleUrl(new URL('index.tsx', base));
+        }
+      }
       if (error.code !== 'ENOENT' || /\.tsx?$/.test(url.pathname)) throw error;
       const tsUrl = new URL(`${url.href}.ts`);
       try { await readFile(tsUrl); }

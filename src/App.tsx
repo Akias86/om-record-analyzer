@@ -8,12 +8,25 @@ import type { OmPuzzleDetail } from './api/om'
 import { UserSolutionsProvider, useUserSolutions } from './state/userSolutions'
 import type { UserSolutionRecord } from './state/userSolutions'
 import { usePuzzleRecords } from './state/usePuzzleRecords'
+import { PuzzleTreeProvider } from './state/puzzleTree'
+import { SolutionUploadProvider, useSolutionUpload } from './state/solutionUpload'
 import { loadSetting, saveSetting } from './lib/settings'
 import { findPlaybackRecord, findUserPlaybackRecord, parseHash, puzzleHash, recordPlaybackTarget } from './lib/routes'
 import type { PlaybackTarget, Route } from './lib/routes'
+import { pushRecentPuzzle, readRecentPuzzles } from './lib/recentPuzzles'
+import type { RecentPuzzle } from './lib/recentPuzzles'
 import type { OmRecordDTO } from './types'
 import { GifViewer } from './components/pareto/GifViewer'
-import './App.css'
+import { AppShell } from './components/layout/AppShell'
+import { TopBar } from './components/layout/TopBar'
+import { PuzzleHeader } from './components/layout/PuzzleHeader'
+import type { MainView } from './components/layout/PuzzleHeader'
+import { WelcomeScreen } from './components/layout/WelcomeScreen'
+import { IconAlert, IconClose } from './components/ui/icons'
+
+/* Routing lives here; everything below it is presentational. The hash is the
+   single source of truth so a shared link restores the puzzle, the view and
+   any playback that was open. */
 
 function App() {
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash))
@@ -50,22 +63,27 @@ function App() {
     setRoute(parseHash(window.location.hash))
   }, [])
 
+  // The validator is a standalone page: it verifies files itself and needs
+  // none of the app-level providers, so they stay unmounted there.
   if (route.validator) return <TestPage />
+
   return (
-    <UserSolutionsProvider>
-      <MainApp
-        puzzleId={route.puzzleId}
-        playback={route.playback}
-        onSelectPuzzle={navigatePuzzle}
-        onPlayRecord={playRecord}
-        onPlayUserSolution={playUserSolution}
-        onClosePlayback={closePlayback}
-      />
-    </UserSolutionsProvider>
+    <PuzzleTreeProvider>
+      <UserSolutionsProvider>
+        <SolutionUploadProvider>
+          <MainApp
+            puzzleId={route.puzzleId}
+            playback={route.playback}
+            onSelectPuzzle={navigatePuzzle}
+            onPlayRecord={playRecord}
+            onPlayUserSolution={playUserSolution}
+            onClosePlayback={closePlayback}
+          />
+        </SolutionUploadProvider>
+      </UserSolutionsProvider>
+    </PuzzleTreeProvider>
   )
 }
-
-type MainView = 'table' | 'chart'
 
 interface PlaybackView {
   url: string | null
@@ -90,12 +108,15 @@ function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onPlayUserS
   const [detail, setDetail] = useState<OmPuzzleDetail | null>(null)
   const [expandCollectionId, setExpandCollectionId] = useState<string | null>(null)
   const [expandGroupId, setExpandGroupId] = useState<string | null>(null)
-  // Remember the last tab across puzzle changes and reloads. The shared
-  // fetch lives here so switching tabs doesn't refetch.
+  const [recent, setRecent] = useState<RecentPuzzle[]>(() => readRecentPuzzles())
+  // Remember the last view across puzzle changes and reloads. The shared
+  // fetch lives here so switching views doesn't refetch.
   const [view, setView] = useState<MainView>(() =>
     loadSetting('om-app:view', 'table') === 'chart' ? 'chart' : 'table')
   const shared = usePuzzleRecords(puzzleId)
-  const { records: userRecords } = useUserSolutions()
+  const { records: userRecords, frontierSummary } = useUserSolutions()
+  const { pickFiles } = useSolutionUpload()
+
   const playbackReady = playback?.kind === 'user' || (shared.recordsReady && !shared.loading && !shared.error)
   const playingRecord = playbackReady && puzzleId && playback
     ? findPlaybackRecord(shared.records, puzzleId, playback) : undefined
@@ -151,58 +172,83 @@ function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onPlayUserS
         setDetail(d)
         setExpandCollectionId(d.group.collection.id)
         setExpandGroupId(d.group.id)
+        setRecent(pushRecentPuzzle({ id: d.id, name: d.displayName }))
       })
       .catch(() => setDetail(null))
     return () => { cancelled = true }
   }, [puzzleId])
 
-  const title = detail?.displayName ?? puzzleId
+  const steadyStateCount = useMemo(
+    () => shared.records.reduce((count, record) => (record.score?.rate != null ? count + 1 : count), 0),
+    [shared.records],
+  )
+  const frontierCount = useMemo(() => {
+    const ids = new Set<string>()
+    for (const set of shared.userFrontierByManifold.values()) for (const id of set) ids.add(id)
+    return ids.size
+  }, [shared.userFrontierByManifold])
 
   return (
-    <div className="app-layout">
-      <Sidebar
-        selectedPuzzleId={puzzleId}
-        onSelectPuzzle={onSelectPuzzle}
-        expandCollectionId={expandCollectionId}
-        expandGroupId={expandGroupId}
-      />
-      <main className="app-main">
-        {puzzleId ? (
-          <div className="app-content">
-            <h1>{title}</h1>
-            <div className="app-tabs">
-              <button
-                type="button"
-                className={`app-tab ${view === 'table' ? 'active' : ''}`}
-                onClick={() => setView('table')}
-              >Records</button>
-              <button
-                type="button"
-                className={`app-tab ${view === 'chart' ? 'active' : ''}`}
-                onClick={() => setView('chart')}
-              >Pareto Chart</button>
-            </div>
-            {playback && playbackReady && !playbackOpen && (
-              <div className="pareto-chart-error" role="alert">
+    <AppShell
+      topBar={<TopBar onPickPuzzle={onSelectPuzzle} />}
+      sidebar={(
+        <Sidebar
+          selectedPuzzleId={puzzleId}
+          onSelectPuzzle={onSelectPuzzle}
+          expandCollectionId={expandCollectionId}
+          expandGroupId={expandGroupId}
+          recent={recent}
+        />
+      )}
+    >
+      {puzzleId ? (
+        <div className="workspace workspace--flush">
+          <PuzzleHeader
+            puzzleId={puzzleId}
+            detail={detail}
+            view={view}
+            onViewChange={setView}
+            recordCount={shared.records.length}
+            steadyStateCount={steadyStateCount}
+            userCount={shared.puzzleUserRecords.length}
+            frontierCount={frontierCount}
+            loading={shared.loading || (!shared.recordsReady && !shared.error)}
+          />
+          {playback && playbackReady && !playbackOpen && (
+            <div className="notice" role="alert">
+              <span className="notice-icon" aria-hidden="true"><IconAlert size={16} /></span>
+              <span className="notice-text">
                 {playback.kind === 'user'
                   ? 'This local solution file is unavailable in this browser. Re-upload the .solution file to play it.'
-                  : 'This record is unavailable or has no replay.'}{' '}
-                <button type="button" onClick={onClosePlayback}>Dismiss</button>
-              </div>
-            )}
-            {view === 'table' ? (
-              <RecordsTable shared={shared} onPlayRecord={onPlayRecord} onPlayUserSolution={onPlayUserSolution} />
-            ) : (
-              <ParetoChart puzzleId={puzzleId} shared={shared} onPlayRecord={onPlayRecord} onPlayUserSolution={onPlayUserSolution} playbackOpen={playbackOpen} />
-            )}
-          </div>
-        ) : (
-          <div className="app-placeholder">
-            <span>Select a puzzle from the sidebar</span>
-            <a className="app-placeholder-btn" href="#/validator">Open Solution Validator</a>
-          </div>
-        )}
-      </main>
+                  : 'This record is unavailable or has no replay.'}
+              </span>
+              <button type="button" className="btn btn--sm btn--ghost" onClick={onClosePlayback}>
+                <IconClose size={13} />
+                Dismiss
+              </button>
+            </div>
+          )}
+          {view === 'table' ? (
+            <RecordsTable shared={shared} onPlayRecord={onPlayRecord} onPlayUserSolution={onPlayUserSolution} />
+          ) : (
+            <ParetoChart
+              puzzleId={puzzleId}
+              shared={shared}
+              onPlayRecord={onPlayRecord}
+              onPlayUserSolution={onPlayUserSolution}
+              playbackOpen={playbackOpen}
+            />
+          )}
+        </div>
+      ) : (
+        <WelcomeScreen
+          recent={recent}
+          onSelectPuzzle={onSelectPuzzle}
+          onUpload={pickFiles}
+          verifiedCount={userRecords.length}
+          frontierCount={frontierSummary?.greenCount ?? 0}
+        />
+      )}
       {playbackView && (
         <GifViewer
           {...playbackView}
@@ -210,7 +256,7 @@ function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onPlayUserS
           onClose={onClosePlayback}
         />
       )}
-    </div>
+    </AppShell>
   )
 }
 

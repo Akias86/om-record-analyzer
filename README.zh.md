@@ -6,6 +6,8 @@
 
 ## 功能
 
+- **界面外壳** — 顶部固定工具栏(品牌、`⌘K`/`Ctrl+K` 关卡搜索、主题切换、验证入口)之下是两列网格:左侧导航列包含关卡树、最近打开的关卡、上传卡片与前沿列表,右侧为工作区。未选择关卡时显示欢迎页,说明工具用途并提供最快回到上次工作的入口。明暗主题默认跟随系统,也可在浏览器内固定;整套配色由 `src/styles/tokens.css` 中的 CSS 令牌驱动。
+- **离线演示数据** — 开发构建可通过内置的社区排行榜公有领域快照提供关卡与记录(`?demo=1`,按浏览器记忆),替代实时 API,便于在无网络环境下评审界面。生产构建会将该数据集替换为空桩,不会打包。
 - **帕累托前沿可视化** — 为选定关卡绘制任意两个指标(成本、周期、面积、指令、高度、宽度、包围六边形、速率及其 `@∞` 变体)的交互式二维散点图。支持对数/线性坐标、拖拽缩放、overlap/trackless/looping 过滤、多 manifold 前沿计算。设置按组收纳在左侧可折叠面板中,图表空间不足时改为覆盖展开。
 - **Records 排序** — 布尔标记按 O → T → L 优先于数值指标排序。T 和 L 默认关闭,点击依次切换为 true 优先、false 优先、关闭,并保存设置。
 - **本地解答验证** — 上传 `.solution` 文件(Opus Magnum 导出的存档),由编译为 WebAssembly 的引擎在浏览器内完成验证与评分,全程本地计算,无需服务端模拟。
@@ -44,10 +46,10 @@
    └─ libverify.wasm     (加载到 Web Worker 中,模拟并评分解答)
 ```
 
-- **路由** — 轻量哈希路由:`#/puzzle/:id` 打开关卡;`#/validator` 打开批量验证器。从记录表或图表播放时,URL 自动变为 `#/puzzle/:id?record=:recordId`,复制或刷新此链接会自动打开播放器并从头播放,不受当前视图和筛选影响。关闭播放器会清除播放参数,浏览器前进/后退也会同步播放状态。缺少记录 ID 的旧记录使用 `solution` 或 `gif` 参数定位。
+- **路由** — 轻量哈希路由:`#/` 显示欢迎页,`#/puzzle/:id` 打开关卡;`#/validator` 打开批量验证器。上次使用的视图(记录表或图表)按浏览器记忆。从记录表或图表播放时,URL 自动变为 `#/puzzle/:id?record=:recordId`,复制或刷新此链接会自动打开播放器并从头播放,不受当前视图和筛选影响。关闭播放器会清除播放参数,浏览器前进/后退也会同步播放状态。缺少记录 ID 的旧记录使用 `solution` 或 `gif` 参数定位。
 - **验证流水线** — `verifyBatch` 编排:并行预取全部唯一关卡字节(内存缓存)→ 将解答字节派发到 Web Worker 池(2–4 个 worker,共享同一份编译后的 WASM 模块)→ 通过进度回调收集结果。解答缓冲区以 transferable 形式发送(零拷贝)。worker 不可用时自动回退主线程。
 - **前沿计算** — `computeUserFrontierByManifold` 将排行榜分数与用户分数合并,按 manifold 计算非支配集,并标记「登上前沿 **且不等于任何排行榜记录**」的用户解答(即真正推进前沿的新点,而非平局)。
-- **缓存** — API 响应缓存于 localStorage(1 天 TTL)。用户解答与前沿摘要同样持久化,刷新页面后前沿列表仍然保留。
+- **缓存** — API 响应缓存于 localStorage(1 天 TTL)。用户解答与前沿摘要同样持久化,刷新页面后前沿列表仍然保留。界面偏好保存在同一存储中,统一使用 `om-app:` 前缀:`om-app:view`、`om-app:theme`、`om-app:recent-puzzles`,以及仅开发环境使用的 `om-app:demo`。
 
 ## 前置要求
 
@@ -127,12 +129,21 @@ om-record-analyzer/
 ├── worker/index.ts          Cloudflare Worker:/api/om/* → 排行榜 API 代理
 ├── public/puzzles/          264 个 .puzzle 文件(静态资源,用于验证)
 ├── src/
-│   ├── App.tsx              哈希路由
-│   ├── api/om.ts            API 客户端 + localStorage 缓存层
+│   ├── App.tsx              哈希路由 + 工作区组合
+│   ├── main.tsx             入口:先应用已保存主题,再挂载应用
+│   ├── styles/              设计令牌(light-dark)、基础层、共享 UI 原子类
+│   ├── api/
+│   │   ├── om.ts            API 客户端 + localStorage 缓存层
+│   │   └── demo.ts          仅开发环境的离线数据开关(?demo=1)
 │   ├── components/
-│   │   ├── Sidebar.tsx      关卡树、上传 UI、前沿结果列表
-│   │   └── ParetoChart.tsx  主图:散点、帕累托覆盖、缩放、用户点
-│   ├── state/userSolutions.tsx   Context:用户上传 + 前沿摘要
+│   │   ├── layout/          AppShell(顶栏/导航网格)、TopBar、PuzzleSearch、PuzzleHeader、WelcomeScreen
+│   │   ├── ui/icons.tsx     内联图标集(无图标依赖)
+│   │   ├── Sidebar.tsx      关卡树、最近关卡、上传卡片、前沿结果列表
+│   │   ├── ParetoChart.tsx  主图:散点、帕累托覆盖、缩放、用户点
+│   │   └── records/         记录表 + 自定义分类管理
+│   ├── dev/demo/            内置的公有领域排行榜快照(仅开发构建)
+│   ├── state/               Context:关卡树、用户解答、上传对话框、主题
+│   ├── lib/theme.ts         主题模式(auto/light/dark)读写与应用
 │   ├── lib/
 │   │   ├── manifold.ts      Manifold 定义 + 帕累托前沿算法
 │   │   ├── userFrontier.ts  共享前沿计算 + 批量摘要
@@ -157,10 +168,12 @@ om-record-analyzer/
 
 - 解答验证完全在客户端进行。WASM 二进制(约 180 KB)在主线程编译一次,编译后的 `WebAssembly.Module` 共享给每个 worker,worker 只需执行廉价的实例化/链接步骤。
 - 上传后的前沿列表基于**最新**排行榜数据重新计算(绕过缓存),避免排行榜更新后将过时记录误判为前沿。
-- `tests/` 使用 Node.js 内置测试运行器检查播放器客户端与协议、Worker 运行时配置、成绩、图表控件与坐标轴及内置 WASM 验证器;`src/test/` 存放的是运行时批量验证页面,而非自动化测试。
+- `tests/` 使用 Node.js 内置测试运行器检查界面外壳与搜索排序、离线演示数据解析、播放器客户端与协议、Worker 运行时配置、成绩、图表控件与坐标轴及内置 WASM 验证器;`src/test/` 存放的是运行时批量验证页面,而非自动化测试。
+- 界面不依赖组件库或图标包:配色、间距与字号集中在 `src/styles/tokens.css`,共享原子类在 `src/styles/ui.css`,各组件样式与组件同目录。播放对话框使用独立的深色「影院」配色,以免受应用主题影响。
 
 ## 感谢
 
 - [**omsim**](https://github.com/ianh/omsim) — 原始 C 模拟与评分引擎。
 - [**zachtronics-leaderboard-bot**](https://github.com/zachtronics-leaderboards/zachtronics-leaderboard-bot) — 帕累托前沿的计算规则(manifold 定义、指标偏序关系、支配判定)通过分析该项目得出。
+- [**om-leaderboard**](https://github.com/zachtronics-leaderboards/om-leaderboard) — 社区排行榜存档仓库(Unlicense);开发用的离线演示快照即取自其中。
 

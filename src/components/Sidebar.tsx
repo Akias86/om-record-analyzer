@@ -1,9 +1,23 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
-import { getPuzzleTree } from '../api/om'
-import type { CollectionTreeNode } from '../api/om'
-import { useUserSolutions } from '../state/userSolutions'
+import { demoAvailable, isDemoEnabled, setDemoEnabled } from '../api/demo'
 import { getManifold } from '../lib/manifold'
+import { puzzleTypeShort } from '../lib/puzzleType'
+import type { RecentPuzzle } from '../lib/recentPuzzles'
+import { usePuzzleTree } from '../state/puzzleTree'
+import { useSolutionUpload } from '../state/solutionUpload'
+import { useUserSolutions } from '../state/userSolutions'
+import { useAppNav } from './layout/AppShell'
+import {
+  IconAlert,
+  IconChevronRight,
+  IconClock,
+  IconGrid,
+  IconSparkle,
+  IconTarget,
+  IconTrash,
+  IconUpload,
+} from './ui/icons'
 import './Sidebar.css'
 
 interface SidebarProps {
@@ -11,46 +25,24 @@ interface SidebarProps {
   onSelectPuzzle: (puzzleId: string | null) => void
   expandCollectionId?: string | null
   expandGroupId?: string | null
+  recent?: RecentPuzzle[]
 }
 
-export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollectionId, expandGroupId }: SidebarProps) {
-  const [tree, setTree] = useState<CollectionTreeNode[]>([])
+export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollectionId, expandGroupId, recent = [] }: SidebarProps) {
+  const { tree, puzzles, loading, error, reload } = usePuzzleTree()
+  const { pickFiles, handleFiles } = useSolutionUpload()
+  const { closeNav } = useAppNav()
+  const {
+    records, uploading, progress, skipped, duplicated, storageWarning,
+    frontierSummary, frontierLoading, frontierProgress, clear,
+  } = useUserSolutions()
+
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set())
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(true)
   const [frontierExpanded, setFrontierExpanded] = useState(false)
-  const [search, setSearch] = useState('')
-  const { records, uploading, progress, skipped, duplicated, lastUploadTotal, storageWarning, frontierSummary, frontierLoading, frontierProgress, addFiles, clear } = useUserSolutions()
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    const el = inputRef.current
-    if (el) {
-      el.setAttribute('webkitdirectory', '')
-      el.setAttribute('directory', '')
-    }
-  }, [])
-
-  const handleFiles = useCallback((files: FileList | File[]) => {
-    void addFiles(files)
-  }, [addFiles])
-
-  const onDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    if (uploading) return
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(e.dataTransfer.files)
-    }
-  }, [handleFiles, uploading])
-
-  useEffect(() => {
-    getPuzzleTree()
-      .then((data) => {
-        setTree(data)
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [])
+  const [recentExpanded, setRecentExpanded] = useState(true)
+  const [dropActive, setDropActive] = useState(false)
+  const dropDepth = useRef(0)
 
   useEffect(() => {
     if (expandCollectionId) {
@@ -73,8 +65,8 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
   const prevGreenCountRef = useRef(0)
   useEffect(() => {
     const greenCount = frontierSummary?.greenCount ?? 0
-    // Auto-expand only when greens first appear; incremental merges during
-    // an upload must not re-expand a list the user collapsed manually.
+    // Auto-expand only when greens first appear; incremental merges during an
+    // upload must not re-expand a list the user collapsed manually.
     if (greenCount > 0 && prevGreenCountRef.current === 0) setFrontierExpanded(true)
     prevGreenCountRef.current = greenCount
   }, [frontierSummary])
@@ -97,191 +89,261 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
     })
   }, [])
 
-  const handlePuzzleClick = useCallback(
-    (puzzleId: string) => {
-      onSelectPuzzle(puzzleId === selectedPuzzleId ? null : puzzleId)
-    },
-    [onSelectPuzzle, selectedPuzzleId],
-  )
+  const select = useCallback((puzzleId: string) => {
+    onSelectPuzzle(puzzleId === selectedPuzzleId ? null : puzzleId)
+    closeNav()
+  }, [onSelectPuzzle, selectedPuzzleId, closeNav])
 
-  const query = search.trim().toLowerCase()
-  const searchResults = useMemo(() => {
-    if (!query) return null
-    const results: Array<{ id: string; displayName: string; type: string; path: string }> = []
-    for (const col of tree) {
-      for (const grp of col.groups) {
-        for (const puz of grp.puzzles) {
-          if (puz.displayName.toLowerCase().includes(query)) {
-            results.push({ id: puz.id, displayName: puz.displayName, type: puz.type, path: `${col.displayName} / ${grp.displayName}` })
-          }
-        }
-      }
-    }
-    return results
-  }, [tree, query])
+  const onDragEnter = useCallback((event: DragEvent<HTMLElement>) => {
+    if (uploading || !event.dataTransfer.types.includes('Files')) return
+    dropDepth.current += 1
+    setDropActive(true)
+  }, [uploading])
 
-  if (loading) {
-    return <aside className="sidebar"><div className="sidebar-loading">Loading...</div></aside>
-  }
+  const onDragLeave = useCallback(() => {
+    dropDepth.current = Math.max(0, dropDepth.current - 1)
+    if (dropDepth.current === 0) setDropActive(false)
+  }, [])
+
+  const onDrop = useCallback((event: DragEvent<HTMLElement>) => {
+    event.preventDefault()
+    dropDepth.current = 0
+    setDropActive(false)
+    if (uploading) return
+    if (event.dataTransfer.files && event.dataTransfer.files.length > 0) handleFiles(event.dataTransfer.files)
+  }, [handleFiles, uploading])
+
+  const recentIds = useMemo(() => new Set(recent.map((entry) => entry.id)), [recent])
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header">OM Record Analyzer</div>
-      <div className="sidebar-search">
-        <input
-          type="text"
-          className="sidebar-search-input"
-          placeholder="Search puzzles..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        {search && (
-          <button type="button" className="sidebar-search-clear" onClick={() => setSearch('')} aria-label="Clear search">
-            {'\u00D7'}
-          </button>
-        )}
-      </div>
-      <nav className="sidebar-nav">
-        {searchResults ? (
-          searchResults.length === 0 ? (
-            <div className="sidebar-no-results">No matching puzzles</div>
-          ) : (
-            searchResults.map((p) => (
-              <div
-                key={p.id}
-                id={`puzzle-${p.id}`}
-                className={`sidebar-item sidebar-item-puzzle ${selectedPuzzleId === p.id ? 'selected' : ''}`}
-                onClick={() => handlePuzzleClick(p.id)}
-                title={p.path}
-              >
-                <span className="sidebar-label">{p.displayName}</span>
-                <span className="sidebar-type">{p.type}</span>
-              </div>
-            ))
-          )
-        ) : (
-          tree.map((col) => {
-          const isColExpanded = expandedCollections.has(col.id)
-          return (
-            <div key={col.id} className="sidebar-node">
-              <div
-                className={`sidebar-item sidebar-item-collection ${isColExpanded ? 'expanded' : ''}`}
-                onClick={() => toggleCollection(col.id)}
-              >
-                <span className="sidebar-chevron">{isColExpanded ? '\u25BC' : '\u25B6'}</span>
-                <span className="sidebar-label">{col.displayName}</span>
-              </div>
-              {isColExpanded && (
-                <div className="sidebar-children">
-                  {col.groups.map((grp) => {
-                    const isGrpExpanded = expandedGroups.has(grp.id)
-                    return (
-                      <div key={grp.id} className="sidebar-node">
-                        <div
-                          className={`sidebar-item sidebar-item-group ${isGrpExpanded ? 'expanded' : ''}`}
-                          onClick={() => toggleGroup(grp.id)}
-                        >
-                          <span className="sidebar-chevron">{isGrpExpanded ? '\u25BC' : '\u25B6'}</span>
-                          <span className="sidebar-label">{grp.displayName}</span>
-                          <span className="sidebar-count">{grp.puzzles.length}</span>
-                        </div>
-                        {isGrpExpanded && (
-                          <div className="sidebar-children">
-                            {grp.puzzles.map((puz) => (
-                              <div
-                                key={puz.id}
-                                id={`puzzle-${puz.id}`}
-                                className={`sidebar-item sidebar-item-puzzle ${selectedPuzzleId === puz.id ? 'selected' : ''}`}
-                                onClick={() => handlePuzzleClick(puz.id)}
-                              >
-                                <span className="sidebar-label">{puz.displayName}</span>
-                                <span className="sidebar-type">{puz.type}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )
-        })
-        )}
-      </nav>
-      <div
-        className={`sidebar-footer ${uploading ? 'is-disabled' : ''}`}
-        onDragOver={(e) => { if (!uploading) e.preventDefault() }}
-        onDrop={onDrop}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".solution"
-          className="sidebar-file-input"
-          multiple
-          onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }}
-        />
-        <button
-          type="button"
-          className="sidebar-upload-btn"
-          onClick={() => { if (!uploading) inputRef.current?.click() }}
-          disabled={uploading}
-        >
-          {uploading ? `Verifying ${progress?.done ?? 0}/${progress?.total ?? 0}` : 'Upload .solution files'}
-        </button>
-        {records.length > 0 && (
-          <div className="sidebar-upload-info">
-            <span>
-              Loaded {records.length}
-              {!uploading && duplicated > 0 ? ` (dup ${duplicated})` : ''}
-              {!uploading && skipped > 0 ? ` (skipped ${skipped})` : ''}
-              {frontierLoading
-                ? ` · computing frontier ${frontierProgress?.done ?? 0}/${frontierProgress?.total ?? 0}${frontierProgress && frontierProgress.cacheHits > 0 ? ` · ${frontierProgress.cacheHits} cached` : ''}`
-                : ''}
-            </span>
-            {!uploading && <button type="button" className="sidebar-clear-btn" onClick={clear}>Clear</button>}
+    <aside
+      className={`sidebar${dropActive ? ' is-drop-target' : ''}`}
+      onDragEnter={onDragEnter}
+      onDragOver={(event) => { if (!uploading) event.preventDefault() }}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {dropActive && (
+        <div className="sidebar-drop-hint" role="status">
+          <IconUpload size={20} />
+          <span>Drop .solution files to verify</span>
+        </div>
+      )}
+
+      <div className="sidebar-scroll">
+        {loading && (
+          <div className="sidebar-loading">
+            <span className="spinner" aria-hidden="true" />
+            Loading puzzles…
           </div>
         )}
-        {storageWarning && <div className="sidebar-upload-info" role="status">{storageWarning}</div>}
-        {frontierSummary && frontierSummary.greenCount > 0 && (
-          <div className="sidebar-frontier">
+
+        {!loading && error && (
+          <div className="sidebar-error">
+            <IconAlert size={18} />
+            <p>The puzzle list could not be loaded.</p>
+            <p className="sidebar-error-detail">{error}</p>
+            <div className="sidebar-error-actions">
+              <button type="button" className="btn btn--sm" onClick={reload}>Retry</button>
+              {demoAvailable() && !isDemoEnabled() && (
+                <button type="button" className="btn btn--sm btn--primary" onClick={() => setDemoEnabled(true)}>
+                  Use demo data
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!loading && !error && recent.length > 0 && (
+          <section className="sidebar-section">
             <button
               type="button"
-              className="sidebar-frontier-toggle"
-              onClick={() => setFrontierExpanded((v) => !v)}
+              className="sidebar-head"
+              onClick={() => setRecentExpanded((value) => !value)}
+              aria-expanded={recentExpanded}
             >
-              <span className="sidebar-chevron">{frontierExpanded ? '\u25BC' : '\u25B6'}</span>
-              <span>{frontierSummary.greenCount} on Pareto frontier</span>
+              <span className="sidebar-head-icon" aria-hidden="true"><IconClock size={13} /></span>
+              <span className="sidebar-head-title">Recent</span>
+              <span className="sidebar-head-count">{recent.length}</span>
+              <span className="sidebar-chevron" aria-hidden="true"><IconChevronRight size={13} /></span>
             </button>
-            {frontierExpanded && (
-              <ul className="sidebar-frontier-list">
-                {frontierSummary.records.map((r) => (
-                  <li key={r.id} className="sidebar-frontier-item">
+            {recentExpanded && (
+              <div className="sidebar-recent">
+                {recent.map((entry) => (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    id={recentIds.has(entry.id) ? `recent-${entry.id}` : undefined}
+                    className={`tree-row tree-row--recent${selectedPuzzleId === entry.id ? ' is-selected' : ''}`}
+                    onClick={() => select(entry.id)}
+                    title={`${entry.name} (${entry.id})`}
+                  >
+                    <span className="tree-label">{entry.name}</span>
+                    <span className="tree-id">{entry.id}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {!loading && !error && (
+          <section className="sidebar-section">
+            <div className="sidebar-head sidebar-head--static">
+              <span className="sidebar-head-icon" aria-hidden="true"><IconGrid size={13} /></span>
+              <span className="sidebar-head-title">Puzzles</span>
+              <span className="sidebar-head-count">{puzzles.length}</span>
+            </div>
+            <nav className="tree" aria-label="Puzzle browser">
+              {tree.map((collection) => {
+                const collectionOpen = expandedCollections.has(collection.id)
+                return (
+                  <div key={collection.id} className="tree-node">
                     <button
                       type="button"
-                      className={`sidebar-frontier-row ${selectedPuzzleId === r.puzzleId ? 'active' : ''}`}
-                      onClick={() => onSelectPuzzle(r.puzzleId)}
+                      className="tree-row tree-row--collection"
+                      aria-expanded={collectionOpen}
+                      onClick={() => toggleCollection(collection.id)}
                     >
-                      <span className="sidebar-frontier-name">{r.solutionName ?? '(unnamed)'}</span>
-                      <span className="sidebar-frontier-puzzle">{r.puzzleId}</span>
+                      <span className="tree-chevron" aria-hidden="true"><IconChevronRight size={13} /></span>
+                      <span className="tree-label">{collection.displayName}</span>
+                      <span className="tree-count">{collection.groups.reduce((sum, group) => sum + group.puzzles.length, 0)}</span>
                     </button>
-                    <span className="sidebar-frontier-chips">
-                      {r.manifoldIds.map((mid) => (
-                        <span key={mid} className="sidebar-frontier-chip">{getManifold(mid)?.label ?? mid}</span>
+                    {collectionOpen && collection.groups.map((group) => {
+                      const groupOpen = expandedGroups.has(group.id)
+                      return (
+                        <div key={group.id} className="tree-node">
+                          <button
+                            type="button"
+                            className="tree-row tree-row--group"
+                            aria-expanded={groupOpen}
+                            onClick={() => toggleGroup(group.id)}
+                          >
+                            <span className="tree-chevron" aria-hidden="true"><IconChevronRight size={13} /></span>
+                            <span className="tree-label">{group.displayName}</span>
+                            <span className="tree-count">{group.puzzles.length}</span>
+                          </button>
+                          {groupOpen && group.puzzles.map((puzzle) => (
+                            <button
+                              key={puzzle.id}
+                              type="button"
+                              id={`puzzle-${puzzle.id}`}
+                              className={`tree-row tree-row--puzzle${selectedPuzzleId === puzzle.id ? ' is-selected' : ''}`}
+                              aria-current={selectedPuzzleId === puzzle.id ? 'true' : undefined}
+                              title={`${puzzle.displayName} (${puzzle.id})`}
+                              onClick={() => select(puzzle.id)}
+                            >
+                              <span className="tree-label">{puzzle.displayName}</span>
+                              <span className="tree-type">{puzzleTypeShort(puzzle.type) ?? puzzle.type}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })}
+            </nav>
+          </section>
+        )}
+      </div>
+
+      <div className="sidebar-dock">
+        <div className={`upload-card${uploading ? ' is-busy' : ''}`}>
+          <button
+            type="button"
+            className="upload-card-action"
+            onClick={pickFiles}
+            disabled={uploading}
+            title="Choose a folder of exported .solution files"
+          >
+            {uploading
+              ? <span className="spinner" aria-hidden="true" />
+              : <IconUpload size={16} />}
+            <span>
+              {uploading
+                ? `Verifying ${progress?.done ?? 0}/${progress?.total ?? 0}`
+                : 'Verify .solution files'}
+            </span>
+          </button>
+          {uploading && progress && (
+            <div className="progress" role="progressbar" aria-valuenow={progress.done} aria-valuemax={progress.total}>
+              <span style={{ width: `${progress.total ? Math.round((progress.done / progress.total) * 100) : 0}%` }} />
+            </div>
+          )}
+          <p className="upload-card-hint">
+            Drop a folder anywhere in this panel — scored locally, never uploaded.
+          </p>
+        </div>
+
+        {records.length > 0 && (
+          <div className="upload-summary">
+            <span className="upload-summary-text">
+              <strong>{records.length}</strong> verified
+              {!uploading && duplicated > 0 && ` · ${duplicated} duplicate`}
+              {!uploading && skipped > 0 && ` · ${skipped} skipped`}
+              {frontierLoading && ` · computing frontier ${frontierProgress?.done ?? 0}/${frontierProgress?.total ?? 0}`}
+            </span>
+            {!uploading && (
+              <button type="button" className="btn btn--sm btn--ghost btn--danger" onClick={clear} title="Remove every verified solution from this browser">
+                <IconTrash size={13} />
+                Clear
+              </button>
+            )}
+          </div>
+        )}
+
+        {!uploading && records.length === 0 && skipped > 0 && (
+          <div className="upload-summary">
+            <span className="upload-summary-text">{skipped} skipped</span>
+          </div>
+        )}
+
+        {storageWarning && (
+          <p className="sidebar-warning" role="status">
+            <IconAlert size={13} />
+            {storageWarning}
+          </p>
+        )}
+
+        {frontierSummary && frontierSummary.greenCount > 0 && (
+          <section className="frontier">
+            <button
+              type="button"
+              className="frontier-toggle"
+              onClick={() => setFrontierExpanded((value) => !value)}
+              aria-expanded={frontierExpanded}
+            >
+              <span className="frontier-toggle-icon" aria-hidden="true"><IconTarget size={13} /></span>
+              <span className="frontier-toggle-text">{frontierSummary.greenCount} on the Pareto frontier</span>
+              <span className="sidebar-chevron" aria-hidden="true"><IconChevronRight size={13} /></span>
+            </button>
+            {frontierExpanded && (
+              <ul className="frontier-list">
+                {frontierSummary.records.map((record) => (
+                  <li key={record.id} className="frontier-item">
+                    <button
+                      type="button"
+                      className={`frontier-row${selectedPuzzleId === record.puzzleId ? ' is-active' : ''}`}
+                      onClick={() => { onSelectPuzzle(record.puzzleId); closeNav() }}
+                      title={`Open ${record.puzzleId}`}
+                    >
+                      <IconSparkle size={12} className="frontier-row-icon" />
+                      <span className="frontier-name">{record.solutionName ?? '(unnamed)'}</span>
+                      <span className="frontier-puzzle">{record.puzzleId}</span>
+                    </button>
+                    <span className="frontier-chips">
+                      {record.manifoldIds.map((manifoldId) => (
+                        <span key={manifoldId} className="chip chip--accent frontier-chip">
+                          {getManifold(manifoldId)?.label ?? manifoldId}
+                        </span>
                       ))}
                     </span>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
-        )}
-        {!uploading && records.length === 0 && lastUploadTotal > 0 && (
-          <div className="sidebar-upload-info">
-            <span>skipped {skipped}</span>
-          </div>
+          </section>
         )}
       </div>
     </aside>

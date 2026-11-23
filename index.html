@@ -4,7 +4,19 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>OM Record Analyzer</title>
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="Analyse Opus Magnum leaderboard records: Pareto frontier charts, in-browser solution verification and replay."
+    />
+    <title>Opus Magnum · Record Analyzer</title>
+    <script>
+      // Set the theme before first paint (mirrors src/lib/theme.ts).
+      try {
+        var mode = localStorage.getItem('om-app:theme')
+        if (mode === 'light' || mode === 'dark') document.documentElement.dataset.theme = mode
+      } catch (e) { /* storage unavailable: fall back to the OS scheme */ }
+    </script>
   </head>
   <body>
     <div id="root"></div>

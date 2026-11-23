@@ -1,0 +1,147 @@
+/* ---------------------------------------------------------------------------
+   Design tokens — the single source of truth for colour, type, space and
+   motion. Every component stylesheet consumes these; nothing hard-codes a
+   hex value except the data-viz palette in components/pareto/constants.ts.
+
+   Theming uses CSS `light-dark()` driven by the root `color-scheme`:
+
+     auto  → color-scheme: light dark   (follows the OS, the default)
+     light → color-scheme: light
+     dark  → color-scheme: dark
+
+   lib/theme.ts writes `data-theme` on <html>, so each token is declared
+   exactly once and native widgets (scrollbars, <select>, date pickers) pick
+   the same side of the palette automatically.
+
+   Palette intent: warm paper and warm graphite with a brass accent — an
+   instrument panel, not a marketing page. Data colours (frontier green/red,
+   the O/T/L point classes) live in components/pareto/constants.ts so charts
+   and tables stay in lockstep.
+--------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light dark;
+
+  /* ---- type ------------------------------------------------------------- */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Times New Roman', serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, 'Cascadia Mono', 'Segoe UI Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 12.5px;
+  --text-base: 13.5px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: 21px;
+  --text-2xl: 27px;
+  --text-3xl: 34px;
+
+  --leading-tight: 1.25;
+  --leading-snug: 1.4;
+  --leading-normal: 1.55;
+
+  --tracking-tight: -0.015em;
+  --tracking-wide: 0.06em;
+  --tracking-wider: 0.1em;
+
+  /* ---- space ------------------------------------------------------------ */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* ---- shape ------------------------------------------------------------ */
+  --r-xs: 3px;
+  --r-sm: 5px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-pill: 999px;
+
+  /* ---- motion ----------------------------------------------------------- */
+  --dur-fast: 100ms;
+  --dur: 160ms;
+  --dur-slow: 260ms;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* ---- layout ----------------------------------------------------------- */
+  --topbar-h: 56px;
+  --sidebar-w: 296px;
+  --sidebar-w-narrow: 264px;
+  --content-pad: 24px;
+  --content-max: 1680px;
+
+  /* ---- stacking --------------------------------------------------------- */
+  --z-sidebar: 40;
+  --z-topbar: 50;
+  --z-drawer: 60;
+  --z-controls: 70;
+  --z-modal: 1000;
+  --z-toast: 1100;
+
+  /* ---- surfaces --------------------------------------------------------- */
+  --surface-0: light-dark(#f6f2ea, #131211);  /* app canvas */
+  --surface-1: light-dark(#fffcf7, #1a1817);  /* panels, cards, modals */
+  --surface-2: light-dark(#f1ebe0, #201d1b);  /* raised strips: top bar, table head */
+  --surface-3: light-dark(#e7e0d3, #2a2624);  /* hover */
+  --surface-inset: light-dark(#fbf8f2, #100f0e); /* inputs, wells */
+  --surface-sunken: light-dark(#eee8dc, #171514);
+
+  /* ---- lines ------------------------------------------------------------ */
+  --line: light-dark(#ddd5c6, #2f2a26);
+  --line-soft: light-dark(#e8e1d4, #262220);
+  --line-strong: light-dark(#c4b9a5, #453d35);
+
+  /* ---- ink -------------------------------------------------------------- */
+  --fg: light-dark(#211c15, #f1eae0);
+  --fg-muted: light-dark(#6a6053, #a89e91);
+  --fg-faint: light-dark(#8d8375, #7b7267);
+  --fg-invert: light-dark(#fffcf7, #17150f);
+
+  /* ---- accent: brass ---------------------------------------------------- */
+  --accent: light-dark(#9c6414, #e0a552);
+  --accent-strong: light-dark(#7d4f0d, #f2c078);
+  --accent-bright: light-dark(#c98a24, #ffd08a);
+  --accent-soft: light-dark(rgb(156 100 20 / 0.11), rgb(224 165 82 / 0.13));
+  --accent-line: light-dark(rgb(156 100 20 / 0.34), rgb(224 165 82 / 0.36));
+
+  /* ---- status ----------------------------------------------------------- */
+  --ok: light-dark(#2f7d3f, #5fbf6d);
+  --ok-soft: light-dark(rgb(47 125 63 / 0.12), rgb(95 191 109 / 0.14));
+  --ok-line: light-dark(rgb(47 125 63 / 0.32), rgb(95 191 109 / 0.34));
+  --danger: light-dark(#b3392f, #e5685c);
+  --danger-soft: light-dark(rgb(179 57 47 / 0.11), rgb(229 104 92 / 0.14));
+  --danger-line: light-dark(rgb(179 57 47 / 0.32), rgb(229 104 92 / 0.34));
+  --warn: light-dark(#9a6a10, #dca83f);
+  --warn-soft: light-dark(rgb(154 106 16 / 0.13), rgb(220 168 63 / 0.14));
+  --info: light-dark(#2f5f96, #7fa7dc);
+  --info-soft: light-dark(rgb(47 95 150 / 0.11), rgb(127 167 220 / 0.14));
+  --info-line: light-dark(rgb(47 95 150 / 0.32), rgb(127 167 220 / 0.34));
+
+  /* ---- effects ---------------------------------------------------------- */
+  --texture-dot: light-dark(rgb(33 28 21 / 0.055), rgb(255 240 220 / 0.05));
+  --sheen: light-dark(rgb(255 255 255 / 0.6), rgb(255 255 255 / 0.045));
+  --scrim: light-dark(rgb(28 22 14 / 0.42), rgb(8 7 6 / 0.62));
+  --focus-ring: light-dark(rgb(156 100 20 / 0.55), rgb(224 165 82 / 0.6));
+
+  --shadow-1: light-dark(0 1px 2px rgb(0 0 0 / 0.1), 0 1px 2px rgb(0 0 0 / 0.4));
+  --shadow-2: light-dark(0 2px 8px rgb(0 0 0 / 0.1), 0 2px 10px rgb(0 0 0 / 0.45));
+  --shadow-3: light-dark(0 12px 32px rgb(0 0 0 / 0.16), 0 14px 36px rgb(0 0 0 / 0.55));
+  --shadow-pop: light-dark(0 18px 48px rgb(0 0 0 / 0.22), 0 20px 56px rgb(0 0 0 / 0.66));
+}
+
+/* Explicit theme choice. `auto` leaves data-theme unset so the root
+   `color-scheme: light dark` above defers to the OS. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}

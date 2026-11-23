@@ -112,7 +112,7 @@ export default function ParetoChart({ puzzleId, shared, onPlayRecord, onPlayUser
           {ready && s.defaultDomain ? (
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart key={`${chartKey}-${playbackOpen}`} margin={MARGIN}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
                 <XAxis
                   type="number"
                   dataKey="x"
@@ -121,8 +121,8 @@ export default function ParetoChart({ puzzleId, shared, onPlayRecord, onPlayUser
                   scale={s.xScale}
                   ticks={s.xTicks}
                   tickFormatter={formatTick}
-                  label={{ value: `${s.getLabel(s.xMetric)} →`, position: 'bottom', offset: 8, style: { fill: 'var(--text-h)', fontSize: 12, fontWeight: 600 } }}
-                  tick={{ fill: 'var(--text)', fontSize: 11 }}
+                  label={{ value: `${s.getLabel(s.xMetric)} →`, position: 'bottom', offset: 8, style: { fill: 'var(--fg)', fontSize: 12, fontWeight: 600 } }}
+                  tick={{ fill: 'var(--fg-muted)', fontSize: 11 }}
                 />
                 <YAxis
                   type="number"
@@ -132,8 +132,8 @@ export default function ParetoChart({ puzzleId, shared, onPlayRecord, onPlayUser
                   scale={s.yScale}
                   ticks={s.yTicks}
                   tickFormatter={formatTick}
-                  label={{ value: `${s.getLabel(s.yMetric)} →`, angle: -90, position: 'left', offset: 4, style: { fill: 'var(--text)', fontSize: 12, fontWeight: 600 } }}
-                  tick={{ fill: 'var(--text)', fontSize: 11 }}
+                  label={{ value: `${s.getLabel(s.yMetric)} →`, angle: -90, position: 'left', offset: 4, style: { fill: 'var(--fg-muted)', fontSize: 12, fontWeight: 600 } }}
+                  tick={{ fill: 'var(--fg-muted)', fontSize: 11 }}
                 />
                 <ParetoOverlay paretoPoints={s.boundaryPoints} />
                 <ChartLegend hasUserPoints={s.userPoints.length > 0} />

@@ -6,6 +6,8 @@ A web tool for analyzing **Opus Magnum** (a Zachtronics puzzle game) records. It
 
 ## Features
 
+- **Interface Shell** — a fixed top bar (brand, `⌘K`/`Ctrl+K` puzzle search, theme toggle, verify action) above a two-column grid: a navigation column with the puzzle tree, recently opened puzzles, the upload card and your frontier list, and the workspace. With no puzzle open, a welcome screen explains the tool and offers the fastest way back in. Light/dark follow the OS by default and can be pinned per browser; the palette is driven entirely by CSS tokens in `src/styles/tokens.css`.
+- **Offline Demo Dataset** — development builds can serve puzzles and records from a bundled public-domain snapshot of the community leaderboard (`?demo=1`, remembered per browser) instead of the live API, so the UI can be reviewed without network access. The dataset is aliased out of production builds.
 - **Pareto Frontier Visualization** — interactive 2D scatter plots comparing any two metrics (cost, cycles, area, instructions, height, width, bounding hex, rate, and their `@∞` variants) for a selected puzzle. Supports log/linear scales, drag-to-zoom, overlap/trackless/looping filters, and multi-manifold frontier computation. Settings are grouped in a collapsible left panel, opening as an overlay when chart space is limited.
 - **Records Sorting** — independent O → T → L flag priority ahead of the numeric metric chain. T and L default off and cycle through true-first, false-first, then off; settings persist across reloads.
 - **Local Solution Verification** — upload `.solution` files (exported Opus Magnum saves) and verify them entirely in the browser via a compiled WebAssembly engine. Scores are computed locally — no server-side simulation.
@@ -44,10 +46,10 @@ Browser SPA ── /api/om/* ──▶ Cloudflare Worker ──▶ zlbb.faendir.
    └─ libverify.wasm     (loaded into Web Workers, simulates & scores solutions)
 ```
 
-- **Routing** — lightweight hash-based: `#/puzzle/:id` opens a puzzle; `#/validator` opens the batch verifier. Playing from either the records table or chart updates the URL to `#/puzzle/:id?record=:recordId`. Sharing or reloading it automatically opens the player and plays from the beginning, independent of the current view or filters. Closing clears the playback parameter; browser back/forward also synchronizes playback. Legacy records without IDs use a `solution` or `gif` parameter instead.
+- **Routing** — lightweight hash-based: `#/` shows the welcome screen, `#/puzzle/:id` opens a puzzle; `#/validator` opens the batch verifier. The last opened view (records table or chart) is remembered per browser. Playing from either the records table or chart updates the URL to `#/puzzle/:id?record=:recordId`. Sharing or reloading it automatically opens the player and plays from the beginning, independent of the current view or filters. Closing clears the playback parameter; browser back/forward also synchronizes playback. Legacy records without IDs use a `solution` or `gif` parameter instead.
 - **Verification pipeline** — `verifyBatch` orchestrates: prefetch all unique puzzle bytes (in-memory cached) → dispatch solution bytes to a Web Worker pool (2–4 workers, sharing one compiled WASM module) → collect results with progress callbacks. Workers receive solution buffers as transferables (zero-copy). Main-thread fallback if workers are unavailable.
 - **Frontier computation** — `computeUserFrontierByManifold` merges leaderboard scores with user scores, computes the non-dominated set per manifold, and marks user solutions that reach the frontier **without being equal to any leaderboard record** (i.e. truly new frontier points, not ties).
-- **Caching** — API responses are cached in `localStorage` (1-day TTL). User solutions and frontier summaries are also persisted, so the frontier list survives page reloads.
+- **Caching** — API responses are cached in `localStorage` (1-day TTL). User solutions and frontier summaries are also persisted, so the frontier list survives page reloads. Interface preferences live in the same store under an `om-app:` prefix: `om-app:view`, `om-app:theme`, `om-app:recent-puzzles` and the development-only `om-app:demo`.
 
 ## Prerequisites
 
@@ -127,12 +129,21 @@ om-record-analyzer/
 ├── worker/index.ts          Cloudflare Worker: /api/om/* → leaderboard API proxy
 ├── public/puzzles/          264 .puzzle files (static assets for verification)
 ├── src/
-│   ├── App.tsx              Hash-based router
-│   ├── api/om.ts            API client + localStorage cache layer
+│   ├── App.tsx              Hash-based router + workspace composition
+│   ├── main.tsx             Entry: applies the stored theme, then mounts the app
+│   ├── styles/              Design tokens (light-dark), base layer, shared UI primitives
+│   ├── api/
+│   │   ├── om.ts            API client + localStorage cache layer
+│   │   └── demo.ts          Dev-only offline dataset switch (?demo=1)
 │   ├── components/
-│   │   ├── Sidebar.tsx      Puzzle tree, upload UI, frontier results list
-│   │   └── ParetoChart.tsx  Main chart: scatter, Pareto overlay, zoom, user points
-│   ├── state/userSolutions.tsx   Context: user uploads + frontier summary
+│   │   ├── layout/          AppShell (top bar/nav grid), TopBar, PuzzleSearch, PuzzleHeader, WelcomeScreen
+│   │   ├── ui/icons.tsx     Inline icon set (no icon dependency)
+│   │   ├── Sidebar.tsx      Puzzle tree, recent puzzles, upload card, frontier results list
+│   │   ├── ParetoChart.tsx  Main chart: scatter, Pareto overlay, zoom, user points
+│   │   └── records/         Records table + custom category manager
+│   ├── dev/demo/            Bundled public-domain leaderboard snapshot (dev builds only)
+│   ├── state/               Contexts: puzzle tree, user solutions, upload dialog, theme
+│   ├── lib/theme.ts         Theme mode (auto/light/dark) read, write and apply
 │   ├── lib/
 │   │   ├── manifold.ts      Manifold definitions + Pareto frontier algorithms
 │   │   ├── userFrontier.ts  Shared frontier computation + batch summarization
@@ -157,10 +168,12 @@ om-record-analyzer/
 
 - Solution verification runs entirely client-side. The WASM binary (~180 KB) is compiled once on the main thread and the compiled `WebAssembly.Module` is shared with each worker, which only performs a cheap instantiation/link step.
 - The frontier list after upload is recomputed against the **latest** leaderboard data (cache bypassed) to avoid stale records being misclassified as frontier after the leaderboard updates.
-- `tests/` covers the embedded player client/protocol, Worker runtime configuration, scores, chart controls/axes and the bundled WASM verifier with Node.js's built-in test runner. `src/test/` holds the runtime batch-verifier page, not automated tests.
+- `tests/` covers the interface shell and search ranking, the offline demo dataset parsing, the embedded player client/protocol, Worker runtime configuration, scores, chart controls/axes and the bundled WASM verifier with Node.js's built-in test runner. `src/test/` holds the runtime batch-verifier page, not automated tests.
+- The interface has no component or icon library: colour, space and type live in `src/styles/tokens.css`, shared primitives in `src/styles/ui.css`, and each component keeps its stylesheet next to it. The playback dialog carries its own dark "theatre" palette so media looks the same in either theme.
 
 ## Thanks
 
 - [**omsim**](https://github.com/ianh/omsim) — the original C simulation and scoring engine.
 - [**zachtronics-leaderboard-bot**](https://github.com/zachtronics-leaderboards/zachtronics-leaderboard-bot) — the Pareto frontier computation rules (manifold definitions, metric partial ordering, dominance detection) were derived from analyzing this project.
+- [**om-leaderboard**](https://github.com/zachtronics-leaderboards/om-leaderboard) — the community leaderboard archive (Unlicense); the development-only offline demo snapshot is derived from it.
 

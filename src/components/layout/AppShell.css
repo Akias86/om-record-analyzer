@@ -1,0 +1,760 @@
+/* ---------------------------------------------------------------------------
+   Application frame: top bar, navigation column, workspace.
+
+   The grid keeps the brand lockup exactly as wide as the navigation column,
+   so the top bar and the sidebar read as one instrument panel rather than two
+   stacked boxes. Below 960px the column turns into an off-canvas drawer.
+--------------------------------------------------------------------------- */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  grid-template-rows: var(--topbar-h) minmax(0, 1fr);
+  grid-template-areas:
+    'topbar topbar'
+    'sidebar main';
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--surface-0);
+}
+
+/* ---- top bar ------------------------------------------------------------ */
+.app-topbar {
+  grid-area: topbar;
+  z-index: var(--z-topbar);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding-right: var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  background-color: var(--surface-2);
+  background-image: linear-gradient(var(--sheen), transparent 65%);
+  box-shadow: var(--shadow-1);
+}
+
+
+.topbar-menu {
+  display: none;
+}
+
+/* ---- brand -------------------------------------------------------------- */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: var(--sidebar-w);
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--sp-4) 0 var(--sp-5);
+  color: inherit;
+  text-decoration: none;
+  flex: 0 0 auto;
+}
+
+.brand:hover {
+  color: inherit;
+  text-decoration: none;
+}
+
+.brand-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+
+.brand-mark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(160deg, var(--sheen), transparent 60%);
+  pointer-events: none;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  line-height: 1.1;
+}
+
+.brand-title {
+  color: var(--fg);
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+}
+
+.brand-sub {
+  color: var(--fg-faint);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ---- top bar regions ---------------------------------------------------- */
+.topbar-center {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 0 0 auto;
+}
+
+.topbar-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--line);
+}
+
+/* ---- puzzle search ------------------------------------------------------ */
+.puzzle-search {
+  position: relative;
+  flex: 1 1 420px;
+  max-width: 520px;
+  min-width: 0;
+}
+
+.puzzle-search .input {
+  height: 34px;
+  border-radius: var(--r-pill);
+  background-color: var(--surface-inset);
+}
+
+.puzzle-search.is-open .input {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.puzzle-search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: var(--z-controls);
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  padding: var(--sp-1);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-pop);
+}
+
+
+.puzzle-search-option {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 7px var(--sp-2);
+  border-radius: var(--r-md);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.puzzle-search-option:hover,
+.puzzle-search-option.is-cursor {
+  background: var(--accent-soft);
+  color: var(--fg);
+}
+
+.puzzle-search-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.puzzle-search-path {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-faint);
+  font-size: var(--text-xs);
+}
+
+.puzzle-search-id {
+  flex: 0 0 auto;
+  color: var(--fg-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+}
+
+.puzzle-search-empty {
+  padding: var(--sp-4);
+  color: var(--fg-faint);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+/* ---- skip link ----------------------------------------------------------
+   Hidden until it receives keyboard focus, then pinned over the top bar. */
+.skip-link {
+  position: absolute;
+  top: var(--sp-2);
+  left: var(--sp-2);
+  z-index: calc(var(--z-topbar) + 1);
+  height: 32px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  box-shadow: var(--shadow-2);
+  transform: translateY(-160%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.skip-link:focus-visible {
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.app-main:focus {
+  outline: none;
+}
+
+/* ---- top bar action labels ---------------------------------------------- */
+.topbar-action-label {
+  white-space: nowrap;
+}
+
+/* ---- theme toggle ------------------------------------------------------- */
+.theme-toggle {
+  position: relative;
+}
+
+/* ---- offline demo switch (development builds only) ---------------------- */
+.demo-toggle {
+  border-style: dashed;
+  cursor: pointer;
+}
+
+.demo-toggle:hover {
+  border-color: var(--accent-line);
+  color: var(--fg);
+}
+
+.demo-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--fg-faint);
+  opacity: 0.6;
+}
+
+.demo-toggle.is-on {
+  border-style: solid;
+  border-color: var(--warn);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.demo-toggle.is-on .demo-dot {
+  background: currentColor;
+  box-shadow: 0 0 0 3px var(--warn-soft);
+  opacity: 1;
+}
+
+/* ---- navigation drawer scrim -------------------------------------------- */
+.app-scrim {
+  display: none;
+}
+
+.app-sidebar {
+  grid-area: sidebar;
+  z-index: var(--z-sidebar);
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+  background: var(--surface-1);
+}
+
+/* ---- workspace ---------------------------------------------------------- */
+.app-main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface-0);
+}
+
+.workspace {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+  min-height: 0;
+  padding: var(--sp-5) var(--content-pad) var(--content-pad);
+}
+
+.workspace--flush {
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--content-pad) var(--content-pad);
+}
+
+/* ---- puzzle header ------------------------------------------------------ */
+.puzzle-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.puzzle-head-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.puzzle-head-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.puzzle-crumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--fg-faint);
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+}
+
+.puzzle-crumb-sep {
+  color: var(--line-strong);
+}
+
+.puzzle-crumb-id {
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface-1);
+  color: var(--fg-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0;
+}
+
+.puzzle-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.puzzle-title {
+  overflow: hidden;
+  color: var(--fg);
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.puzzle-head-side {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 0 0 auto;
+}
+
+.puzzle-stats {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  color: var(--fg-faint);
+  font-size: var(--text-xs);
+}
+
+.puzzle-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.puzzle-stat strong {
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.puzzle-stat-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+
+/* ---- alert strip (playback link that cannot be resolved) ---------------- */
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex: 0 0 auto;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--warn-soft);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--r-md);
+  background: var(--warn-soft);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+}
+
+.notice-icon {
+  flex: 0 0 auto;
+  color: var(--warn);
+}
+
+.notice-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.notice--danger {
+  border-color: var(--danger-line);
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.notice--danger .notice-icon {
+  color: var(--danger);
+}
+
+.notice--info {
+  border-color: var(--info-line);
+  border-left-color: var(--info);
+  background: var(--info-soft);
+}
+
+.notice--info .notice-icon {
+  color: var(--info);
+}
+
+/* ---- welcome screen ----------------------------------------------------- */
+.welcome {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: clamp(16px, 5vh, 56px) var(--content-pad) var(--content-pad);
+}
+
+.welcome-inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  max-width: 1020px;
+  margin: 0 auto;
+}
+
+.welcome-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-8);
+}
+
+.welcome-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--sp-3);
+  color: var(--accent);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+}
+
+.welcome-title {
+  margin-bottom: var(--sp-3);
+  color: var(--fg);
+  font-family: var(--font-display);
+  font-size: clamp(30px, 4.4vw, 46px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+}
+
+.welcome-title em {
+  color: var(--accent);
+  font-style: italic;
+}
+
+.welcome-lede {
+  max-width: 56ch;
+  margin-bottom: var(--sp-6);
+  color: var(--fg-muted);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+}
+
+.welcome-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.welcome-art {
+  flex: 0 0 auto;
+  color: var(--accent);
+  opacity: 0.9;
+}
+
+.welcome-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--sp-4);
+}
+
+.welcome-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-1);
+  transition: border-color var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.welcome-card:hover {
+  border-color: var(--accent-line);
+  box-shadow: var(--shadow-2);
+  transform: translateY(-1px);
+}
+
+.welcome-card-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-bottom: var(--sp-1);
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.welcome-card h3 {
+  color: var(--fg);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.welcome-card p {
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.welcome-recent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--line);
+}
+
+.welcome-recent-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--fg-faint);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+}
+
+.welcome-recent-list {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.welcome-recent-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface-1);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+
+.welcome-recent-item:hover {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--fg);
+}
+
+.welcome-recent-id {
+  color: var(--fg-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+}
+
+.welcome-foot {
+  color: var(--fg-faint);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+}
+
+.welcome-foot a {
+  color: var(--fg-muted);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+/* ---- narrow viewports --------------------------------------------------- */
+@media (max-width: 1080px) {
+  .brand {
+    width: auto;
+    padding-right: var(--sp-2);
+  }
+
+  .brand-sub {
+    display: none;
+  }
+
+  /* Icon-only actions keep the search field usable at this width. */
+  .topbar-action-label {
+    display: none;
+  }
+}
+
+@media (max-width: 959px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'topbar'
+      'main';
+  }
+
+  .topbar-menu {
+    display: inline-flex;
+    margin-left: var(--sp-2);
+  }
+
+  .app-sidebar {
+    position: fixed;
+    top: var(--topbar-h);
+    bottom: 0;
+    left: 0;
+    z-index: var(--z-drawer);
+    width: min(86vw, var(--sidebar-w));
+    border-right: 1px solid var(--line-strong);
+    box-shadow: var(--shadow-3);
+    transform: translateX(-102%);
+    transition: transform var(--dur-slow) var(--ease);
+  }
+
+  .is-nav-open .app-sidebar {
+    transform: none;
+  }
+
+  .app-scrim {
+    position: fixed;
+    inset: var(--topbar-h) 0 0;
+    z-index: calc(var(--z-drawer) - 1);
+    display: none;
+    background: var(--scrim);
+    backdrop-filter: blur(2px);
+    cursor: default;
+  }
+
+  .is-nav-open .app-scrim {
+    display: block;
+  }
+
+  .workspace {
+    padding: var(--sp-4) var(--sp-4) var(--sp-4);
+  }
+
+  .welcome-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .welcome-art {
+    display: none;
+  }
+
+  .puzzle-head-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+
+  .puzzle-head-side {
+    width: 100%;
+  }
+
+  .puzzle-title {
+    font-size: var(--text-xl);
+    white-space: normal;
+  }
+}
+
+@media (max-width: 620px) {
+  .puzzle-search {
+    flex-basis: 0;
+  }
+
+  .search-hint {
+    display: none;
+  }
+}
