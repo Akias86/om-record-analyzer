@@ -468,7 +468,6 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
                 <span>{state?.playing ? 'Pause' : 'Play'}</span>
               </button>
               <button type="button" className="gif-viewer-btn" disabled={controlsDisabled || !!state?.collision} onClick={() => command((client) => client.step(1))} aria-label="Next cycle">→</button>
-              <span className="solution-player-cycle">Cycle {state?.cycle ?? 0}</span>
               <PlaybackSpeedControl
                 key={`${open}:${puzzleId}:${solutionKey ?? solutionUrl}`}
                 value={speed}

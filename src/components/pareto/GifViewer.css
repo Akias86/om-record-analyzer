@@ -312,11 +312,6 @@
   cursor: default;
 }
 
-.solution-player-cycle {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 .solution-player-status {
   grid-area: 2 / 1;
   min-width: 0;

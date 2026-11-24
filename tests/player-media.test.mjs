@@ -131,7 +131,6 @@ test('automatic victory hold and safe-cache states keep host controls usable wit
   ]) {
     await dom.publishState(update);
     assert.equal(dom.container.querySelector('.solution-player-status').textContent, 'Completed at cycle 100');
-    assert.equal(dom.container.querySelector('.solution-player-cycle').textContent, `Cycle ${update.cycle}`);
     assert.equal(dom.container.querySelector('.solution-player-play').textContent, 'Pause');
     assert.equal(dom.container.querySelector('.solution-player-play').disabled, false);
     assert.equal(dom.container.querySelector('input[type=number]').disabled, false);
