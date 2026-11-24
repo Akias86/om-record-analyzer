@@ -12,6 +12,7 @@ async function moduleUrl(url) {
     let source;
     try { source = await readFile(url, 'utf8'); }
     catch (error) {
+      if (error.code === 'EISDIR') return moduleUrl(new URL(`${url.href}/index.ts`));
       if (error.code !== 'ENOENT' || /\.tsx?$/.test(url.pathname)) throw error;
       const tsUrl = new URL(`${url.href}.ts`);
       try { await readFile(tsUrl); }

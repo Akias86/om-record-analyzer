@@ -92,6 +92,15 @@ test('custom category L admission uses the explicit flag; bare h∞ uses level/v
   assert.deepEqual([...evaluateCategoryHolders(heightCategory.category, 'NORMAL', [score({heightINF: lv(1, 0.001)}), score({heightINF: lv(0, 1e9)})])], [1]);
 });
 
+test('over-long and deeply nested expressions are rejected, never crash the parser', () => {
+  const nested = '@aV: ' + '('.repeat(20000) + 'true' + ')'.repeat(20000);
+  const result = parseCategoryCached(nested);
+  assert.equal(result.ok, false);
+  assert.match(result.error, /too long/);
+  assert.equal(parseCategoryCached('@aV: ' + 'g + '.repeat(200) + 'g').ok, false);
+  assert.equal(parseCategoryCached('@aV: true, ' + 'g,'.repeat(100) + 'g').ok, true);
+});
+
 test('finite-area categories require measured level 0 on normal puzzles and keep their official sort chains', () => {
   const candidates = [
     score({cost: 1, instructions: 1, areaINF: null, rate: 1}),

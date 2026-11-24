@@ -655,6 +655,8 @@ function parseCategory(expression: string): ParseCategoryResult {
   try {
     const src = expression.trim()
     if (src === '') return { ok: false, error: 'Expression is empty' }
+    // Bounds parser/evaluator recursion depth; deep nesting otherwise overflows the stack.
+    if (src.length > 512) return { ok: false, error: 'Expression is too long (max 512 characters)' }
     const c: Cursor = { s: src, i: 0 }
     let nameToken: string | null = null
     if (peek(c) !== '@') {

@@ -87,12 +87,15 @@ interface PendingSolution {
 // null for a brand-new solution. Matching uses puzzleId + file name; legacy
 // records persisted before the fileName field existed fall back to the
 // embedded solution name.
-function findRecordMatch(records: UserSolutionRecord[], parsed: ParsedSolutionFile): number | null {
+export function findRecordMatch(records: UserSolutionRecord[], parsed: ParsedSolutionFile): number | null {
   const { meta } = parsed
   if (!meta.puzzleId) return null
   for (let i = 0; i < records.length; i++) {
     const r = records[i]
     if (r.puzzleId !== meta.puzzleId) continue
+    // Different bytes are a different solution even when the file name matches;
+    // replacing it would silently delete the previous upload.
+    if (r.hash && parsed.hash && r.hash !== parsed.hash) continue
     if (r.fileName !== undefined) {
       if (r.fileName.toLowerCase() === parsed.file.name.toLowerCase()) return i
     } else if (r.solutionName && meta.solutionName) {
