@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { OFFICIAL_CATEGORY_NAMES, normalizeCategoryName, parseCategoryCached } from '../lib/customCategories'
+import { genId } from '../lib/genId'
 import type { CustomCategoryDef } from '../lib/customCategories'
 
 // User-defined categories, persisted like the other lightweight settings.
@@ -23,13 +24,6 @@ interface CustomCategoriesState {
 }
 
 type Validation = { ok: true; name: string; warning?: string } | { ok: false; error: string }
-
-function genId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  return Math.random().toString(36).slice(2) + Date.now().toString(36)
-}
 
 function loadCategories(): CustomCategoryDef[] {
   try {

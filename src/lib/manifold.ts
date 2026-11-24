@@ -141,6 +141,7 @@ export function partialCompare(scoreParts: MetricId[], x: OmScoreDTO, y: OmScore
     const r = compareMetric(m, x, y)
     if (r < 0) smaller = true
     else if (r > 0) bigger = true
+    if (smaller && bigger) return 'UNCOMPARABLE'
   }
   if (smaller && bigger) return 'UNCOMPARABLE'
   if (smaller) return 'SMALLER'

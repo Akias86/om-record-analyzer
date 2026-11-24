@@ -4,7 +4,7 @@ import {importTs} from './helpers/import-ts.mjs';
 
 const {normalizeScore, canReuseUserScore, USER_SCORE_VERSION} = await importTs(new URL('../src/lib/scores.ts', import.meta.url));
 const {getMetricValue, formatLevelValue, formatAreaINF} = await importTs(new URL('../src/lib/metrics.ts', import.meta.url));
-const {compareMetric, getManifold, supportsScore, computeFrontierIndices} = await importTs(new URL('../src/lib/manifold.ts', import.meta.url));
+const {compareMetric, partialCompare, getManifold, supportsScore, computeFrontierIndices} = await importTs(new URL('../src/lib/manifold.ts', import.meta.url));
 const {parseCategoryCached, evaluateCategoryHolders, formatCategoryChain, OFFICIAL_CATEGORY_NAMES} = await importTs(new URL('../src/lib/customCategories.ts', import.meta.url));
 const {parseBoolFilters, matchesScoreFilters} = await importTs(new URL('../src/lib/scoreFilters.ts', import.meta.url));
 const {parseFlags, nextFlagState, activeFlagSorting} = await importTs(new URL('../src/components/records/flags.ts', import.meta.url));
@@ -81,6 +81,15 @@ test('@∞ frontiers admit steady-state scores with looping=false; @V compares L
   assert.equal(supportsScore(getManifold('INFINITY_AREA'), nonLooping), true);
   assert.deepEqual(computeFrontierIndices(getManifold('VICTORY_AREA'), [nonLooping, score()]), [1]);
   assert.deepEqual(computeFrontierIndices(getManifold('INFINITY_AREA'), [nonLooping, score()]), [0, 1]);
+});
+
+test('partialCompare keeps its order semantics with the early uncomparable exit', () => {
+  const x = score({cost: 10, cycles: 100});
+  const y = score({cost: 20, cycles: 50});
+  assert.equal(partialCompare(['cost', 'cycles'], x, y), 'UNCOMPARABLE');
+  assert.equal(partialCompare(['cost', 'cycles'], score({cost: 10}), score({cost: 20})), 'SMALLER');
+  assert.equal(partialCompare(['cost'], score({cost: 20}), score({cost: 10})), 'BIGGER');
+  assert.equal(partialCompare(['cost'], score(), score()), 'EQUAL');
 });
 
 test('custom category L admission uses the explicit flag; bare h∞ uses level/value ordering', () => {

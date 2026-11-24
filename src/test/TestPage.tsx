@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, memo } from 'react'
 import type { DragEvent } from 'react'
 import { parseSolutionMeta, parsePuzzleMeta, customPuzzleType, formatScoreParts, verifyBatch, verifyInPool } from '../lib/verify'
 import type { BatchInput, ScoreParts, VerifyPartial, VerifySolutionResult } from '../lib/verify'
@@ -61,6 +61,45 @@ function isRowClickable(r: { result: VerifySolutionResult | null; partial: Verif
   if (r.status === 'verifying' && r.partial && r.partial.phase !== 'verifying') return true
   return false
 }
+
+// Memoized so a progress tick for one row re-renders only that row: batch
+// verification streams partials for many rows at once. Unchanged rows keep
+// their object identity through the prev.map updates.
+const ResultTableRow = memo(function ResultTableRow({ row, index, source, onOpen }: {
+  row: Row & { error?: string | null }
+  index: number
+  source: 'batch' | 'custom'
+  onOpen: (source: 'batch' | 'custom', index: number, row: Row & { error?: string | null }) => void
+}) {
+  const eff = effStatus(row)
+  const clickable = isRowClickable(row)
+  return (
+    <tr
+      className={`tp-row tp-row--${row.status} ${clickable ? 'is-clickable' : ''}`}
+      title={clickable ? 'View details' : undefined}
+      onClick={() => { if (clickable) onOpen(source, index, row) }}
+    >
+      <td className="tp-cell-id">{row.puzzleId ?? ''}</td>
+      <td className="tp-cell-name">{row.puzzleName ?? ''}</td>
+      <td className="tp-cell-name">{row.solutionName ?? ''}</td>
+      <td className={`tp-cell-score ${row.parts === null ? 'is-empty' : ''}`}>
+        {row.status === 'verifying' ? (
+          <span className="tp-spin" aria-label="verifying" />
+        ) : row.parts ? (
+          <>
+            <div>{row.parts.victory}</div>
+            {row.parts.infinity !== null && <div>{row.parts.infinity}</div>}
+          </>
+        ) : (
+          (row.error ?? '')
+        )}
+      </td>
+      <td className="tp-cell-status">
+        <span className={`tp-badge tp-badge--${eff}`}>{STATUS_LABEL[eff]}</span>
+      </td>
+    </tr>
+  )
+})
 
 const STATUS_LABEL: Record<EffStatus, string> = {
   pending: 'Pending',
@@ -311,6 +350,18 @@ export default function TestPage() {
     }
   }, [handleSolutionFiles])
 
+  const openDetail = useCallback((source: 'batch' | 'custom', index: number, row: Row & { error?: string | null }) => {
+    setDetailSource(source)
+    setDetail({
+      rowIndex: index,
+      result: row.result,
+      partial: row.partial,
+      puzzleId: row.puzzleId,
+      puzzleName: row.puzzleName,
+      solutionName: row.solutionName,
+    })
+  }, [])
+
   const total = progress?.total ?? 0
   const doneCount = progress?.done ?? 0
   const passedCount = rows.filter((r) => r.parts !== null).length
@@ -398,50 +449,9 @@ export default function TestPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => {
-              if (r.status === 'skipped') return null
-              const eff = effStatus(r)
-              const clickable = isRowClickable(r)
-              const open = (): void => {
-                if (!clickable) return
-                setDetailSource('batch')
-                setDetail({
-                  rowIndex: i,
-                  result: r.result,
-                  partial: r.partial,
-                  puzzleId: r.puzzleId,
-                  puzzleName: r.puzzleName,
-                  solutionName: r.solutionName,
-                })
-              }
-              return (
-                <tr
-                  key={i}
-                  className={`tp-row tp-row--${r.status} ${clickable ? 'is-clickable' : ''}`}
-                  title={clickable ? 'View details' : undefined}
-                  onClick={open}
-                >
-                  <td className="tp-cell-id">{r.puzzleId ?? ''}</td>
-                  <td className="tp-cell-name">{r.puzzleName ?? ''}</td>
-                  <td className="tp-cell-name">{r.solutionName ?? ''}</td>
-                  <td className={`tp-cell-score ${r.parts === null ? 'is-empty' : ''}`}>
-                    {r.status === 'verifying' ? (
-                      <span className="tp-spin" aria-label="verifying" />
-                    ) : r.parts ? (
-                      <>
-                        <div>{r.parts.victory}</div>
-                        {r.parts.infinity !== null && <div>{r.parts.infinity}</div>}
-                      </>
-                    ) : (
-                      ''
-                    )}
-                  </td>
-                  <td className="tp-cell-status">
-                    <span className={`tp-badge tp-badge--${eff}`}>{STATUS_LABEL[eff]}</span>
-                  </td>
-                </tr>
-              )
-            })}
+            {rows.map((r, i) => r.status === 'skipped' ? null : (
+              <ResultTableRow key={i} row={r} index={i} source="batch" onOpen={openDetail} />
+            ))}
           </tbody>
         </table>
       )}
@@ -556,50 +566,9 @@ export default function TestPage() {
               </tr>
             </thead>
             <tbody>
-              {customRows.map((r, i) => {
-                if (r.status === 'skipped') return null
-                const eff = effStatus(r)
-                const clickable = isRowClickable(r)
-                const open = (): void => {
-                  if (!clickable) return
-                  setDetailSource('custom')
-                  setDetail({
-                    rowIndex: i,
-                    result: r.result,
-                    partial: r.partial,
-                    puzzleId: r.puzzleId,
-                    puzzleName: r.puzzleName,
-                    solutionName: r.solutionName,
-                  })
-                }
-                return (
-                  <tr
-                    key={i}
-                    className={`tp-row tp-row--${r.status} ${clickable ? 'is-clickable' : ''}`}
-                    title={clickable ? 'View details' : undefined}
-                    onClick={open}
-                  >
-                    <td className="tp-cell-id">{r.puzzleId ?? ''}</td>
-                    <td className="tp-cell-name">{r.puzzleName ?? ''}</td>
-                    <td className="tp-cell-name">{r.solutionName ?? ''}</td>
-                    <td className={`tp-cell-score ${r.parts === null ? 'is-empty' : ''}`}>
-                      {r.status === 'verifying' ? (
-                        <span className="tp-spin" aria-label="verifying" />
-                      ) : r.parts ? (
-                        <>
-                          <div>{r.parts.victory}</div>
-                          {r.parts.infinity !== null && <div>{r.parts.infinity}</div>}
-                        </>
-                      ) : (
-                        (r.error ?? '')
-                      )}
-                    </td>
-                    <td className="tp-cell-status">
-                      <span className={`tp-badge tp-badge--${eff}`}>{STATUS_LABEL[eff]}</span>
-                    </td>
-                  </tr>
-                )
-              })}
+              {customRows.map((r, i) => r.status === 'skipped' ? null : (
+                <ResultTableRow key={i} row={r} index={i} source="custom" onOpen={openDetail} />
+              ))}
             </tbody>
           </table>
         )}

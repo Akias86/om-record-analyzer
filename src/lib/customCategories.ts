@@ -699,6 +699,8 @@ export function parseCategoryCached(expression: string): ParseCategoryResult {
   if (result === undefined) {
     result = parseCategory(expression)
     parseCache.set(expression, result)
+    // The preview parses on every keystroke; keep the cache bounded.
+    if (parseCache.size > 256) parseCache.delete(parseCache.keys().next().value!)
   }
   return result
 }

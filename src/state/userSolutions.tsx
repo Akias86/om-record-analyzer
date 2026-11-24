@@ -5,6 +5,7 @@ import { getPuzzleMap } from '../api/om'
 import { parseSolutionMeta, formatFullScore, verifyBatch } from '../lib/verify'
 import type { BatchInput, SolutionMeta } from '../lib/verify'
 import { canReuseUserScore, normalizeScore, USER_SCORE_VERSION } from '../lib/scores'
+import { genId } from '../lib/genId'
 import { clearUserSolutionFiles, deleteUserSolutionFile, saveUserSolutionFile } from '../lib/userSolutionFiles'
 import { summarizeUserFrontierPuzzles, computeFrontierDetailsForPuzzle, mergeFrontierForPuzzle } from '../lib/userFrontier'
 import type { UserFrontierSummary, FrontierProgressInfo } from '../lib/userFrontier'
@@ -50,13 +51,6 @@ const STORAGE_KEY = 'om-user-solutions'
 const FRONTIER_STORAGE_KEY = 'om-user-solutions-frontier:v2'
 
 const UserSolutionsContext = createContext<UserSolutionsContextValue | null>(null)
-
-function genId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  return Math.random().toString(36).slice(2) + Date.now().toString(36)
-}
 
 async function sha256(bytes: Uint8Array): Promise<string | null> {
   const subtle = typeof crypto !== 'undefined' ? crypto.subtle : undefined
