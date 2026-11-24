@@ -92,6 +92,7 @@ test('switching records cancels Preview, ignores the old popup and keeps the sam
   });
   const dom = await viewer(t, {puzzleId: 'P1'});
   const frame = dom.container.querySelector('iframe');
+  assert.equal(frame.getAttribute('sandbox'), 'allow-scripts allow-same-origin');
   const popups = [];
   t.mock.method(dom.window, 'open', () => {
     const child = {closed: false, postMessage: t.mock.fn()};
@@ -102,6 +103,7 @@ test('switching records cancels Preview, ignores the old popup and keeps the sam
     source: child, origin: 'https://ssk97.github.io', data: 'Hello',
   })));
   await dom.click('Preview');
+  assert.equal(popups[0].opener, null, 'the preview popup must not keep an opener link');
   await dom.render({puzzleId: 'P2', solutionUrl: '/b.solution', title: 'B'});
   assert.equal(dom.container.querySelector('iframe'), frame, 'only actions reset, not the player element');
   assert.ok(dom.button('Preview'), 'B must not inherit A pending state');

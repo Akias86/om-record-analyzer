@@ -328,3 +328,14 @@ test('recording-only records use the shared reference frame without an unavailab
   assert.equal(dom.container.querySelector('.gif-viewer-img').width, 826);
   assert.equal(dom.container.querySelector('.gif-viewer-img').height, 647);
 });
+
+test('a failed recording stops the first-frame poll', async t => {
+  const dom = await viewer(t, {url: '/broken.gif', solutionUrl: null});
+  const img = dom.container.querySelector('.gif-viewer-img');
+  const cleared = [];
+  const realClear = globalThis.clearInterval;
+  t.mock.method(globalThis, 'clearInterval', (id) => { cleared.push(id); return realClear(id); });
+  await act(async () => img.dispatchEvent(new dom.window.Event('error')));
+  assert.ok(cleared.length > 0, 'the error state must clear the polling interval');
+  assert.equal(dom.container.querySelector('.gif-viewer-error').textContent, 'Failed to load recording');
+});

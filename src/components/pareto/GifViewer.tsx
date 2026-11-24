@@ -343,6 +343,9 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
       setActionError('Could not open the replay viewer popup — try a standard browser (Chrome/Edge/Firefox).')
       return
     }
+    // Sever the popup's opener link (reverse tabnabbing); the handshake's
+    // postMessage and event.source checks keep working without it.
+    child.opener = null
     const controller = new AbortController()
     previewAbort.current = controller
     setPreviewPending(true)
@@ -422,7 +425,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
           <button type="button" className="gif-viewer-close" onClick={onClose} aria-label="Close">{'\u00D7'}</button>
         </div>
         <div className="solution-player-body">
-          <iframe ref={iframeRef} title={`${title} — real-time solution`} className="solution-player-iframe" hidden={showRecording} />
+          <iframe ref={iframeRef} title={`${title} — real-time solution`} className="solution-player-iframe" hidden={showRecording} sandbox="allow-scripts allow-same-origin" />
           {loading && (
             <div className="gif-viewer-loading" role="status">
               <div className="gif-viewer-spinner" aria-hidden="true" />
@@ -495,7 +498,7 @@ function RecordedMedia({ url, title }: { url: string; title: string }) {
 
   // Reveal GIFs as soon as the first frame decodes, without waiting for the full file.
   useEffect(() => {
-    if (isVideo) return
+    if (isVideo || status === 'error') return
     const timer = setInterval(() => {
       if (imgRef.current && imgRef.current.naturalWidth > 0) {
         clearInterval(timer)
@@ -503,7 +506,7 @@ function RecordedMedia({ url, title }: { url: string; title: string }) {
       }
     }, 100)
     return () => clearInterval(timer)
-  }, [isVideo])
+  }, [isVideo, status])
 
   const attachMediaRef = (node: HTMLImageElement | HTMLVideoElement | null) => {
     if (!node) return
