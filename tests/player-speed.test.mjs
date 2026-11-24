@@ -134,6 +134,24 @@ test('numeric drafts allow blank input and clamp invalid ranges on commit withou
   assert.deepEqual(dom.changes, [30, 0]);
 });
 
+test('Enter confirming an IME composition does not commit the speed draft', async t => {
+  const dom = await controls(t);
+  await dom.input(dom.number, 45);
+  assert.equal(dom.changes.length, 0);
+  const enter = init => act(async () => {
+    dom.number.attachEvent = () => {};
+    dom.number.detachEvent = () => {};
+    dom.number.focus();
+    dom.number.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key: 'Enter', bubbles: true, cancelable: true, ...init}));
+  });
+  await enter({isComposing: true});
+  await enter({keyCode: 229});
+  assert.equal(dom.changes.length, 0);
+  assert.equal(dom.number.value, '45');
+  await enter({});
+  assert.deepEqual(dom.changes, [30]);
+});
+
 test('slider keyboard controls snap to integers and respect endpoints', async t => {
   const dom = await controls(t, 5.2);
   await dom.key(dom.range, 'ArrowRight');

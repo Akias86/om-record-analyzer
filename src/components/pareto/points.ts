@@ -15,7 +15,7 @@ export function groupPointsByClass(points: readonly ParetoPoint[]): Record<Point
 
 export function computeParetoFrontier(points: ParetoPoint[]): ParetoPoint[] {
   if (points.length === 0) return []
-  const sorted = [...points].sort((a, b) => {
+  const sorted = points.toSorted((a, b) => {
     if (a.x !== b.x) return a.x - b.x
     return a.y - b.y
   })

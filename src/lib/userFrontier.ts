@@ -68,7 +68,7 @@ export function computeUserFrontierByManifold(
   // production has null rate/INF, making it globally "worse" than one with
   // equal shared dims and steady-state scores, so the latter wins the
   // dedup tie — matching the expectation that it covers more manifolds.
-  const sortedItems = [...userItems].sort((a, b) => {
+  const sortedItems = userItems.toSorted((a, b) => {
     const order = partialCompare(allParts, a.score, b.score)
     if (order === 'SMALLER') return -1
     if (order === 'BIGGER') return 1

@@ -8,7 +8,7 @@ export function ParetoOverlay({ paretoPoints }: { paretoPoints: ParetoPoint[] })
 
   if (!plotArea || !xScale || !yScale || paretoPoints.length === 0) return null
 
-  const sorted = [...paretoPoints].sort((a, b) => a.x - b.x)
+  const sorted = paretoPoints.toSorted((a, b) => a.x - b.x)
   const plotTop = plotArea.y
   const plotBottom = plotArea.y + plotArea.height
   const plotLeft = plotArea.x

@@ -98,7 +98,7 @@ export function PlaybackSpeedControl({ value, disabled, onChange }: PlaybackSpee
         }}
         onBlur={commitInput}
         onKeyDown={(event) => {
-          if (event.key === 'Enter') { event.preventDefault(); commitInput() }
+          if (event.key === 'Enter') { event.preventDefault(); if (!event.nativeEvent.isComposing && event.keyCode !== 229) commitInput() } // 229 = IME composing
           if (event.key === 'Escape') { event.stopPropagation(); setDraft(String(current.current.value)) }
         }}
       />

@@ -196,7 +196,7 @@ export default function CategoryManager({
           maxLength={8}
           title="Optional custom name (1-8 chars: A-Z, 0-9, _); empty keeps the name from the expression"
           onChange={(e) => { setNameInput(e.target.value); setFeedback(null) }}
-          onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (!e.nativeEvent.isComposing && e.keyCode !== 229) submit() } }} // 229 = IME composing
         />
         <input
           className="category-manager-input"
@@ -204,7 +204,7 @@ export default function CategoryManager({
           placeholder="@aV: !O, g, c, a"
           spellCheck={false}
           onChange={(e) => { setInput(e.target.value); setFeedback(null) }}
-          onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (!e.nativeEvent.isComposing && e.keyCode !== 229) submit() } }}
         />
         <button type="button" className="category-manager-save" onClick={submit} disabled={!canSave}>
           {editingId !== null ? 'Save' : 'Add'}

@@ -346,12 +346,7 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
     const controller = new AbortController()
     previewAbort.current = controller
     setPreviewPending(true)
-    let resolveHello: () => void
-    let rejectHello: (error: Error) => void
-    const hello = new Promise<void>((resolve, reject) => {
-      resolveHello = resolve
-      rejectHello = reject
-    })
+    const { promise: hello, resolve: resolveHello, reject: rejectHello } = Promise.withResolvers<void>()
     const onMessage = (event: MessageEvent) => {
       if (event.source === child && event.origin === REPLAY_VIEWER_ORIGIN && event.data === 'Hello') resolveHello()
     }
