@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Button } from '@astryxdesign/core/Button'
 import Sidebar from './components/Sidebar'
 import ParetoChart from './components/ParetoChart'
 import RecordsTable from './components/records/RecordsTable'
@@ -187,7 +188,7 @@ function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onPlayUserS
                 {playback.kind === 'user'
                   ? 'This local solution file is unavailable in this browser. Re-upload the .solution file to play it.'
                   : 'This record is unavailable or has no replay.'}{' '}
-                <button type="button" onClick={onClosePlayback}>Dismiss</button>
+                <Button label="Dismiss" variant="ghost" size="sm" onClick={onClosePlayback} />
               </div>
             )}
             {view === 'table' ? (

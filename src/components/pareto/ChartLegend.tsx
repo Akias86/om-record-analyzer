@@ -34,9 +34,10 @@ export function ChartLegend({ hasUserPoints }: { hasUserPoints: boolean }) {
       <rect x={x} y={y} width={boxW} height={boxH} rx={4}
         fill="var(--sidebar-bg)" fillOpacity={0.92} stroke="var(--border)" strokeWidth={1} />
       {items.map((it, i) => {
+        const stroke = it.color === '#FFEB3B' ? '#C9B800' : it.color
         const marker = it.shape === 'diamond'
-          ? <path d="M 5,-4.5 L 9.5,0 L 5,4.5 L 0.5,0 Z" fill={it.color} fillOpacity={it.opacity} stroke={it.color} strokeWidth={0.5} />
-          : <circle cx={5} cy={0} r={4.5} fill={it.color} fillOpacity={it.opacity} stroke={it.color} strokeWidth={0.5} />
+          ? <path d="M 5,-4.5 L 9.5,0 L 5,4.5 L 0.5,0 Z" fill={it.color} fillOpacity={it.opacity} stroke={stroke} strokeWidth={0.75} />
+          : <circle cx={5} cy={0} r={4.5} fill={it.color} fillOpacity={it.opacity} stroke={stroke} strokeWidth={0.75} />
         return (
           <g key={it.key} transform={`translate(${x + padX}, ${y + padY + i * rowH + 9})`}>
             {marker}

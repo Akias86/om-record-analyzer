@@ -7,7 +7,13 @@ interface ShapeProps {
   payload?: unknown
 }
 
+function pointStroke(color: string): string {
+  if (color === '#FFEB3B') return '#C9B800'
+  return color
+}
+
 export function makePointShape(radius: number, opacity: number, color: string, onSelectPoint?: (p: ParetoPoint) => void) {
+  const stroke = pointStroke(color)
   return (props: ShapeProps) => {
     const { cx, cy, payload } = props
     if (cx == null || cy == null) return null
@@ -18,8 +24,8 @@ export function makePointShape(radius: number, opacity: number, color: string, o
         r={radius}
         fill={color}
         fillOpacity={opacity}
-        stroke={color}
-        strokeWidth={0.5}
+        stroke={stroke}
+        strokeWidth={0.75}
         style={onSelectPoint ? { cursor: 'pointer' } : undefined}
         onClick={
           onSelectPoint && payload

@@ -309,6 +309,10 @@
   min-height: 0;
   position: relative;
   overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .pareto-chart-placeholder {

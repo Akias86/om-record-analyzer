@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import type { DragEvent } from 'react'
+import { Button } from '@astryxdesign/core/Button'
+import { TextInput } from '@astryxdesign/core/TextInput'
 import { getPuzzleTree } from '../api/om'
 import type { CollectionTreeNode } from '../api/om'
 import { useUserSolutions } from '../state/userSolutions'
@@ -128,18 +130,15 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
     <aside className="sidebar">
       <div className="sidebar-header">OM Record Analyzer</div>
       <div className="sidebar-search">
-        <input
-          type="text"
-          className="sidebar-search-input"
+        <TextInput
+          label="Search puzzles"
+          isLabelHidden
+          type="search"
           placeholder="Search puzzles..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(value) => setSearch(value)}
+          size="sm"
         />
-        {search && (
-          <button type="button" className="sidebar-search-clear" onClick={() => setSearch('')} aria-label="Clear search">
-            {'\u00D7'}
-          </button>
-        )}
       </div>
       <nav className="sidebar-nav">
         {searchResults ? (
@@ -223,14 +222,15 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
           multiple
           onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }}
         />
-        <button
-          type="button"
-          className="sidebar-upload-btn"
+        <Button
+          label={uploading ? `Verifying ${progress?.done ?? 0}/${progress?.total ?? 0}` : 'Upload .solution files'}
+          variant="secondary"
+          size="md"
+          width="100%"
           onClick={() => { if (!uploading) inputRef.current?.click() }}
-          disabled={uploading}
-        >
-          {uploading ? `Verifying ${progress?.done ?? 0}/${progress?.total ?? 0}` : 'Upload .solution files'}
-        </button>
+          isDisabled={uploading}
+          isLoading={uploading}
+        />
         {records.length > 0 && (
           <div className="sidebar-upload-info">
             <span>

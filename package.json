@@ -13,6 +13,9 @@
 		"cf-typegen": "wrangler types"
 	},
 	"dependencies": {
+		"@astryxdesign/core": "^0.7.17",
+		"@astryxdesign/theme-neutral": "^0.7.17",
+		"@stylexjs/stylex": "^0.19.2",
 		"@tanstack/react-table": "^8.21.3",
 		"react": "^19.2.7",
 		"react-dom": "^19.2.7",

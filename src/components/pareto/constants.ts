@@ -23,15 +23,14 @@ export type PointClass = 'overlap' | 'trackless' | 'looping' | 'normal'
 export const CLASS_ORDER: PointClass[] = ['overlap', 'trackless', 'looping', 'normal']
 
 export const CLASS_COLOR: Record<PointClass, string> = {
-  normal: 'var(--text)',
-  overlap: '#ff7bd7',
-  trackless: '#8389fc',
-  looping: '#76BBF9',
+  normal: '#FFEB3B',
+  overlap: '#880E4F',
+  trackless: '#558B2F',
+  looping: '#0288D1',
 }
 
 export const CLASS_FRONTIER_COLOR: Record<PointClass, string> = {
   ...CLASS_COLOR,
-  normal: 'var(--accent)',
 }
 
 export const FRONTIER_RADIUS = 5
