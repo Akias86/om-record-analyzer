@@ -206,7 +206,7 @@ test('author parser preserves spaces and only accepts unambiguous solution-file 
 
 test('HTTP errors, timeouts and malformed replies are retryable, never permanent negative KV entries', async () => {
   const failures = [
-    ...[301, 302, 403, 404, 429, 500].map(status => () => new Response(null, {status})),
+    ...[301, 302, 403, 429, 500].map(status => () => new Response(null, {status})),
     () => { throw new DOMException('Timed out', 'TimeoutError'); },
     () => Response.json({}),
     () => Response.json({...commit(), sha: 'a'.repeat(40)}),
@@ -230,6 +230,32 @@ test('HTTP errors, timeouts and malformed replies are retryable, never permanent
       assert.equal(calls, 2);
     } finally { restore(); }
   }
+});
+
+test('a 404 is a per-ref answer: no global cooldown, no KV writes, no repeat GitHub calls', async () => {
+  const kv = new MemoryKV();
+  const otherSha = 'c'.repeat(40);
+  let calls = 0;
+  const restore = mockFetch(async (url) => {
+    calls++;
+    if (url.includes(`/commits/${SHA.slice(0, 8)}?`)) return new Response(null, {status: 404});
+    return Response.json({...commit(), sha: otherSha});
+  });
+  try {
+    const handler = createAuthorHandler();
+    const missing = await handler(request(), {AUTHOR_CACHE: kv});
+    assert.equal(missing.status, 200);
+    assert.deepEqual(await missing.json(), {author: null});
+    assert.equal(kv.writes.length, 0);
+    // Another ref must not be blocked by the 404 (no isolate-wide cooldown).
+    const other = await handler(request(solution(otherSha)), {AUTHOR_CACHE: kv});
+    assert.equal(other.status, 200);
+    assert.equal((await other.json()).author?.name, 'andytampan');
+    assert.equal(calls, 2);
+    // The missing ref is remembered locally without re-hitting GitHub.
+    assert.deepEqual(await (await handler(request(), {AUTHOR_CACHE: kv})).json(), {author: null});
+    assert.equal(calls, 2);
+  } finally { restore(); }
 });
 
 test('concurrent lookups of the same SHA share one GitHub request and one KV write pair', async () => {

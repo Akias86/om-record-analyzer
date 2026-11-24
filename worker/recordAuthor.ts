@@ -85,6 +85,13 @@ export function createAuthorHandler(now: () => number = Date.now) {
       const response = await fetch(`https://api.github.com/repos/${AUTHOR_REPOSITORY}/commits/${ref}?per_page=1`, {
         headers, redirect: 'manual', signal: AbortSignal.timeout(8000),
       })
+      if (response.status === 404) {
+        // A missing commit is a permanent answer for this ref, not an outage:
+        // remember it locally without triggering the global GitHub cooldown.
+        const missing: CommitSummary = { sha: ref, name: null, recordId: null, committedAt: null }
+        remember(ref, missing)
+        return missing
+      }
       if (!response.ok) throw new Error(`GitHub HTTP ${response.status}`)
       result = summarize(await response.json() as GitHubCommit, ref, /rel="next"/.test(response.headers.get('link') ?? ''))
     } catch (error) {

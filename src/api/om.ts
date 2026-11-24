@@ -55,7 +55,10 @@ function writeCache(key: string, entry: CacheEntry): void {
 async function getWithStatus<T>(url: string, options?: RequestOptions): Promise<FetchResult<T>> {
   const { useCache = true, ttl = DEFAULT_TTL, localCache = true } = options ?? {}
 
-  const pending = inflight.get(url)
+  // Fresh (bypass) and cached requests for the same URL must not share a
+  // result: the chart's freshness guarantee would silently become a cache hit.
+  const inflightKey = useCache ? url : `${url}#fresh`
+  const pending = inflight.get(inflightKey)
   if (pending) return pending as Promise<FetchResult<T>>
 
   // Local (localStorage) fast path for stable endpoints.
@@ -84,10 +87,10 @@ async function getWithStatus<T>(url: string, options?: RequestOptions): Promise<
     return { data, cache }
   })()
 
-  inflight.set(url, p as Promise<FetchResult<unknown>>)
+  inflight.set(inflightKey, p as Promise<FetchResult<unknown>>)
   // A detached finally() would create an unhandled rejected promise on API
   // failure, even when the caller handles it (including during local playback).
-  void p.then(() => { inflight.delete(url) }, () => { inflight.delete(url) })
+  void p.then(() => { inflight.delete(inflightKey) }, () => { inflight.delete(inflightKey) })
   return p as Promise<FetchResult<T>>
 }
 
