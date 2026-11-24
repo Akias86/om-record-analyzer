@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {importTs} from './helpers/import-ts.mjs';
 
-const {saveUserSolutionFile, readUserSolutionFile, clearUserSolutionFiles} = await importTs(new URL('../src/lib/userSolutionFiles.ts', import.meta.url));
+const {saveUserSolutionFile, readUserSolutionFile, deleteUserSolutionFile, clearUserSolutionFiles} = await importTs(new URL('../src/lib/userSolutionFiles.ts', import.meta.url));
 const {loadSolutionBytes} = await importTs(new URL('../src/lib/player/solution.ts', import.meta.url));
 
 // Small IDB transaction double; the browser smoke checks also use real IndexedDB.
@@ -38,6 +38,7 @@ function fakeIndexedDB() {
           tx.objectStore = () => ({
             put: (file, key) => action(() => { values.set(key, structuredClone(file)); return key; }, true),
             get: key => action(() => values.get(key)),
+            delete: key => action(() => values.delete(key), true),
             clear: () => action(() => values.clear(), true),
           });
           return tx;
@@ -61,6 +62,15 @@ test('solution blobs persist separately from score metadata and survive a reopen
   assert.ok(db.values.get('test-persist') instanceof Blob);
   db.close();
   assert.deepEqual([...new Uint8Array(await readUserSolutionFile('test-persist'))], [3, 1, 4, 1, 5]);
+});
+
+test('deleting a replaced file removes both the persisted blob and the session copy', async () => {
+  await saveUserSolutionFile('test-delete', sample());
+  assert.ok(db.values.has('test-delete'));
+  await deleteUserSolutionFile('test-delete');
+  assert.equal(db.values.has('test-delete'), false);
+  assert.equal(await readUserSolutionFile('test-delete'), null);
+  await deleteUserSolutionFile('test-delete'); // idempotent
 });
 
 test('each playback/download gets a fresh buffer; transferring one never detaches the stored file', async () => {

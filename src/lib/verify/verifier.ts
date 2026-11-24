@@ -95,6 +95,7 @@ async function init(module?: WebAssembly.Module): Promise<VerifierModule> {
   const view = (): Uint8Array => new Uint8Array(e.memory.buffer)
   const writeBytes = (b: Uint8Array): number => {
     const ptr = e.malloc(b.byteLength)
+    if (ptr === 0) throw new Error('verifier out of memory')
     new Uint8Array(e.memory.buffer, ptr, b.byteLength).set(b)
     return ptr
   }
@@ -103,7 +104,8 @@ async function init(module?: WebAssembly.Module): Promise<VerifierModule> {
     if (ptr === 0) return null
     const m = view()
     let end = ptr
-    while (m[end] !== 0) end++
+    // Bound the scan: a non-terminated string must not loop past the buffer.
+    while (end < m.length && m[end] !== 0) end++
     return new TextDecoder('latin1').decode(m.subarray(ptr, end))
   }
 

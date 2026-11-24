@@ -56,6 +56,12 @@ export async function readUserSolutionFile(key: string): Promise<ArrayBuffer | n
   return file instanceof Blob ? file.arrayBuffer() : null
 }
 
+export async function deleteUserSolutionFile(key: string): Promise<void> {
+  sessionFiles.delete(key)
+  try { await transaction('readwrite', (store) => store.delete(key)) }
+  catch { /* Storage may be disabled; nothing persisted to remove. */ }
+}
+
 export async function clearUserSolutionFiles(): Promise<void> {
   sessionFiles.clear()
   try { await transaction('readwrite', (store) => store.clear()) }

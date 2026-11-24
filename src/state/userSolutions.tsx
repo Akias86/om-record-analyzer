@@ -5,7 +5,7 @@ import { getPuzzleMap } from '../api/om'
 import { parseSolutionMeta, formatFullScore, verifyBatch } from '../lib/verify'
 import type { BatchInput, SolutionMeta } from '../lib/verify'
 import { canReuseUserScore, normalizeScore, USER_SCORE_VERSION } from '../lib/scores'
-import { clearUserSolutionFiles, saveUserSolutionFile } from '../lib/userSolutionFiles'
+import { clearUserSolutionFiles, deleteUserSolutionFile, saveUserSolutionFile } from '../lib/userSolutionFiles'
 import { summarizeUserFrontierPuzzles, computeFrontierDetailsForPuzzle, mergeFrontierForPuzzle } from '../lib/userFrontier'
 import type { UserFrontierSummary, FrontierProgressInfo } from '../lib/userFrontier'
 
@@ -105,15 +105,17 @@ export function findRecordMatch(records: UserSolutionRecord[], parsed: ParsedSol
   return null
 }
 
-function loadRecords(): UserSolutionRecord[] {
+export function loadRecords(): UserSolutionRecord[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) return []
-    return (parsed as UserSolutionRecord[]).map((record) => {
-      const score = normalizeScore(record.score)
-      return { ...record, score, fullScore: formatFullScore(score, record.puzzleType) }
+    return (parsed as UserSolutionRecord[]).flatMap((record) => {
+      try {
+        const score = normalizeScore(record.score)
+        return [{ ...record, score, fullScore: formatFullScore(score, record.puzzleType) }]
+      } catch { return [] } // one corrupt entry must not wipe the rest
     })
   } catch {
     return []
@@ -305,13 +307,17 @@ export function UserSolutionsProvider({ children }: { children: ReactNode }) {
               if (!result || !result.passed || !result.score || !result.puzzleId) {
                 skippedCount++
               } else {
+                const previousKey = plan.index !== null ? records[plan.index].solutionKey : undefined
+                const solutionKey = keepFile(plan.file, plan.hash ? `sha256:${plan.hash}` : genId())
+                // A re-verified replacement must not orphan the old file bytes.
+                if (previousKey && previousKey !== solutionKey) writes.push(deleteUserSolutionFile(previousKey))
                 const record: UserSolutionRecord = {
                   id: plan.index !== null ? records[plan.index].id : genId(),
                   puzzleId: result.puzzleId,
                   puzzleType: result.puzzleType ?? '',
                   solutionName: plan.meta.solutionName,
                   fileName: plan.file.name,
-                  solutionKey: keepFile(plan.file, plan.hash ? `sha256:${plan.hash}` : genId()),
+                  solutionKey,
                   hash: plan.hash ?? undefined,
                   scoreVersion: USER_SCORE_VERSION,
                   score: { ...result.score },
