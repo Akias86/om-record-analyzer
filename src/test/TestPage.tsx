@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
-import { parseSolutionMeta, parsePuzzleMeta, formatScoreParts, verifyBatch, verifyInPool } from '../lib/verify'
+import { parseSolutionMeta, parsePuzzleMeta, customPuzzleType, formatScoreParts, verifyBatch, verifyInPool } from '../lib/verify'
 import type { BatchInput, ScoreParts, VerifyPartial, VerifySolutionResult } from '../lib/verify'
 import { getPuzzleMap } from '../api/om'
 import { SolutionDetailModal } from './SolutionDetailModal'
@@ -41,7 +41,7 @@ interface DetailState {
 interface LoadedPuzzle {
   id: string
   name: string | null
-  isProduction: boolean
+  puzzleType: string
   bytes: Uint8Array
 }
 
@@ -193,12 +193,14 @@ export default function TestPage() {
   const handlePuzzleFiles = useCallback(async (fileList: FileList | File[]) => {
     const files = Array.from(fileList).filter((f) => f.name.endsWith('.puzzle'))
     if (files.length === 0) return
+    const puzzleMap = await getPuzzleMap().catch(() => null)
     const loaded = await Promise.all(
       files.map(async (file) => {
         const bytes = new Uint8Array(await file.arrayBuffer())
         const id = file.name.replace(/\.puzzle$/i, '')
         const meta = parsePuzzleMeta(bytes)
-        return { id, name: meta.name, isProduction: meta.isProduction, bytes }
+        const known = puzzleMap?.get(id)
+        return { id, name: meta.name, puzzleType: customPuzzleType(meta, known?.id === id ? known.type : undefined), bytes }
       }),
     )
     setPuzzles((prev) => {
@@ -262,7 +264,7 @@ export default function TestPage() {
         const result = await verifyInPool(
           {
             puzzleId: meta.puzzleId as string,
-            puzzleType: puzzle.isProduction ? 'PRODUCTION' : '',
+            puzzleType: puzzle.puzzleType,
             solutionBytes: bytes,
             puzzleBytes: puzzle.bytes,
           },

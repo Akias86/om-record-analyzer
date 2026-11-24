@@ -5,6 +5,7 @@ import {importTs} from './helpers/import-ts.mjs';
 
 const {getPuzzleMap} = await importTs(new URL('../src/api/om.ts', import.meta.url));
 const {parseSolutionMeta} = await importTs(new URL('../src/lib/verify/solution-parse.ts', import.meta.url));
+const {parsePuzzleMeta, customPuzzleType} = await importTs(new URL('../src/lib/verify/puzzle-parse.ts', import.meta.url));
 const {verifyBatch} = await importTs(new URL('../src/lib/verify/batch.ts', import.meta.url));
 
 function withPuzzleId(bytes, id) {
@@ -40,4 +41,23 @@ test('an old solution header resolves to the official puzzle and verifies the sa
   assert.equal(missing.error, 'puzzle file not found: unknown');
   assert.deepEqual(requests.filter(url => url.startsWith('/puzzles/')), ['/puzzles/P007.puzzle']);
   assert.equal(parseSolutionMeta(legacy).puzzleId, 'old-p007', 'the original solution bytes are not rewritten');
+});
+
+test('custom puzzle type prefers the API, else derives production and polymer from the file', async () => {
+  const read = id => readFile(new URL(`../public/puzzles/${id}.puzzle`, import.meta.url)).then(bytes => new Uint8Array(bytes));
+  const normal = parsePuzzleMeta(await read('P007'));
+  const polymer = parsePuzzleMeta(await read('P020'));
+  const production = parsePuzzleMeta(await read('P076'));
+  assert.equal(normal.polymerOutput, false);
+  assert.equal(normal.isProduction, false);
+  assert.equal(polymer.polymerOutput, true, 'polymer output chain carries atom type 15');
+  assert.equal(polymer.isProduction, false);
+  assert.equal(production.isProduction, true);
+  // Known puzzles use the authoritative API type, including polymer direction.
+  assert.equal(customPuzzleType(polymer, 'POLYMER_HEIGHT'), 'POLYMER_HEIGHT');
+  assert.equal(customPuzzleType(production, 'PRODUCTION'), 'PRODUCTION');
+  // Unknown files fall back to what the format actually stores.
+  assert.equal(customPuzzleType(production), 'PRODUCTION');
+  assert.equal(customPuzzleType(normal), 'NORMAL');
+  assert.equal(customPuzzleType(polymer), '', 'polymer direction is not in the file; all geometry stays measured');
 });

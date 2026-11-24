@@ -1,6 +1,7 @@
-interface PuzzleMeta {
+export interface PuzzleMeta {
   name: string | null
   isProduction: boolean
+  polymerOutput: boolean
 }
 
 class ByteReader {
@@ -65,27 +66,57 @@ function skipMolecule(r: ByteReader): boolean {
   return true
 }
 
+// Atom type 15 marks a polymer output chain: across all 264 official and
+// workshop puzzles it appears exactly in the POLYMER_* types.
+function skipMoleculeDetectingPolymer(r: ByteReader): boolean | null {
+  const atomCount = r.u32()
+  if (atomCount === null) return null
+  let polymer = false
+  for (let i = 0; i < atomCount; i++) {
+    const type = r.u8()
+    if (type === null || !r.skip(2)) return null
+    if (type === 15) polymer = true
+  }
+  const bondCount = r.u32()
+  if (bondCount === null || !r.skip(bondCount * 5)) return null
+  return polymer
+}
+
 export function parsePuzzleMeta(puzzleBytes: Uint8Array): PuzzleMeta {
   try {
     const r = new ByteReader(puzzleBytes)
     const version = r.u32()
-    if (version !== 3) return { name: null, isProduction: false }
+    if (version !== 3) return { name: null, isProduction: false, polymerOutput: false }
     const name = r.str()
-    if (!r.skip(16)) return { name, isProduction: false }
+    if (!r.skip(16)) return { name, isProduction: false, polymerOutput: false }
     const inputs = r.u32()
-    if (inputs === null) return { name, isProduction: false }
+    if (inputs === null) return { name, isProduction: false, polymerOutput: false }
     for (let i = 0; i < inputs; i++) {
-      if (!skipMolecule(r)) return { name, isProduction: false }
+      if (!skipMolecule(r)) return { name, isProduction: false, polymerOutput: false }
     }
     const outputs = r.u32()
-    if (outputs === null) return { name, isProduction: false }
+    if (outputs === null) return { name, isProduction: false, polymerOutput: false }
+    let polymerOutput = false
     for (let i = 0; i < outputs; i++) {
-      if (!skipMolecule(r)) return { name, isProduction: false }
+      const polymer = skipMoleculeDetectingPolymer(r)
+      if (polymer === null) return { name, isProduction: false, polymerOutput }
+      polymerOutput = polymerOutput || polymer
     }
-    if (r.u32() === null) return { name, isProduction: false }
+    if (r.u32() === null) return { name, isProduction: false, polymerOutput }
     const productionFlag = r.u8()
-    return { name, isProduction: productionFlag !== null && productionFlag !== 0 }
+    return { name, isProduction: productionFlag !== null && productionFlag !== 0, polymerOutput }
   } catch {
-    return { name: null, isProduction: false }
+    return { name: null, isProduction: false, polymerOutput: false }
   }
+}
+
+// The .puzzle format stores no geometry type; the leaderboard API knows every
+// official and workshop puzzle. For unknown files only production and the
+// polymer marker are derivable.
+export function customPuzzleType(meta: PuzzleMeta, apiType?: string): string {
+  if (apiType) return apiType
+  if (meta.isProduction) return 'PRODUCTION'
+  // shortcut: polymer direction (height/width/skew) is not in the file format;
+  // unknown polymers keep all geometry measured. Upgrade if a direction parser lands.
+  return meta.polymerOutput ? '' : 'NORMAL'
 }
