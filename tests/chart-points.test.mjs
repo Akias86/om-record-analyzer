@@ -3,16 +3,24 @@ import assert from 'node:assert/strict';
 import {importTs} from './helpers/import-ts.mjs';
 
 const {classifyPoint, groupPointsByClass} = await importTs(new URL('../src/components/pareto/points.ts', import.meta.url));
-const {CLASS_ORDER, CLASS_COLOR, CLASS_FRONTIER_COLOR} = await importTs(new URL('../src/components/pareto/constants.ts', import.meta.url));
+const {CLASS_ORDER, CLASS_COLOR, CLASS_FRONTIER_COLOR, USER_GREEN, USER_RED} = await importTs(new URL('../src/components/pareto/constants.ts', import.meta.url));
 const point = (overrides = {}) => ({
   x: 1, y: 1, id: 'point', score: null, categories: null, recordIndex: 0,
   overlap: false, trackless: false, looping: false, ...overrides,
 });
 
-test('Looping legend follows O → T → L and uses #76BBF9 for both ordinary and frontier points', () => {
+test('Pareto legend follows O → T → L → normal with updated class colors and unchanged user colors', () => {
   assert.deepEqual(CLASS_ORDER, ['overlap', 'trackless', 'looping', 'normal']);
-  assert.equal(CLASS_COLOR.looping, '#76BBF9');
-  assert.equal(CLASS_FRONTIER_COLOR.looping, '#76BBF9');
+  const expected = {
+    normal: '#FFEB3B',
+    looping: '#0288D1',
+    trackless: '#558B2F',
+    overlap: '#880E4F',
+  };
+  assert.deepEqual(CLASS_COLOR, expected);
+  assert.deepEqual(CLASS_FRONTIER_COLOR, expected);
+  assert.equal(USER_GREEN, '#22c55e');
+  assert.equal(USER_RED, '#ef4444');
 });
 
 test('point flag color precedence is O → T → L for every flag combination', () => {

@@ -7,6 +7,8 @@ packages:
 # bindings. Required on CI (e.g. Cloudflare's pnpm 10.x) where there is no
 # interactive prompt to approve builds.
 allowBuilds:
+  '@astryxdesign/cli': true
+  '@astryxdesign/core': true
   esbuild: true
   workerd: true
   sharp: true

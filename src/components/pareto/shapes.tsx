@@ -18,8 +18,8 @@ export function makePointShape(radius: number, opacity: number, color: string, o
         r={radius}
         fill={color}
         fillOpacity={opacity}
-        stroke={color}
-        strokeWidth={0.5}
+        stroke="var(--chart-point-stroke, rgba(15, 23, 42, 0.4))"
+        strokeWidth={0.75}
         style={onSelectPoint ? { cursor: 'pointer' } : undefined}
         onClick={
           onSelectPoint && payload

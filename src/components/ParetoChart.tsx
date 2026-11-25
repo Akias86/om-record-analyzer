@@ -8,6 +8,13 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts'
+import { Badge } from '@astryxdesign/core/Badge'
+import { Banner } from '@astryxdesign/core/Banner'
+import { EmptyState } from '@astryxdesign/core/EmptyState'
+import { HStack } from '@astryxdesign/core/HStack'
+import { Spinner } from '@astryxdesign/core/Spinner'
+import { Text } from '@astryxdesign/core/Text'
+import { ScatterChart as ScatterChartIcon } from 'lucide-react'
 import { supportsScore } from '../lib/manifold'
 import type { ParetoPoint } from './pareto/constants'
 import './ParetoChart.css'
@@ -37,6 +44,9 @@ import { useChartControlsPanel } from './pareto/useChartControlsPanel'
 import type { PuzzleRecordsData } from '../state/usePuzzleRecords'
 import type { OmRecordDTO } from '../types'
 import type { UserSolutionRecord } from '../state/userSolutions'
+
+const GreenCardMarker = makeDiamondShape(USER_GREEN)
+const RedCardMarker = makeDiamondShape(USER_RED)
 
 interface ParetoChartProps {
   puzzleId: string
@@ -88,15 +98,29 @@ export default function ParetoChart({ puzzleId, shared, onPlayRecord, onPlayUser
   )
 
   if (s.loading) {
-    return <div className="pareto-chart-container"><div className="pareto-chart-loading">Loading records...</div></div>
+    return (
+      <div className="pareto-chart-container pareto-chart-state-wrap">
+        <Spinner size="lg" label="Loading records..." />
+      </div>
+    )
   }
 
   if (s.error) {
-    return <div className="pareto-chart-container"><div className="pareto-chart-error">Error: {s.error}</div></div>
+    return (
+      <div className="pareto-chart-container">
+        <div className="pareto-chart-banner-wrap">
+          <Banner status="error" title="Failed to load records" description={s.error} />
+        </div>
+      </div>
+    )
   }
 
   if (!shared.recordsReady) {
-    return <div className="pareto-chart-container"><div className="pareto-chart-loading">Loading records...</div></div>
+    return (
+      <div className="pareto-chart-container pareto-chart-state-wrap">
+        <Spinner size="lg" label="Loading records..." />
+      </div>
+    )
   }
 
   const ready = s.xMetric !== '' && s.yMetric !== ''
@@ -132,7 +156,7 @@ export default function ParetoChart({ puzzleId, shared, onPlayRecord, onPlayUser
                   scale={s.yScale}
                   ticks={s.yTicks}
                   tickFormatter={formatTick}
-                  label={{ value: `${s.getLabel(s.yMetric)} →`, angle: -90, position: 'left', offset: 4, style: { fill: 'var(--text)', fontSize: 12, fontWeight: 600 } }}
+                  label={{ value: `${s.getLabel(s.yMetric)} →`, angle: -90, position: 'left', offset: 4, style: { fill: 'var(--text-h)', fontSize: 12, fontWeight: 600 } }}
                   tick={{ fill: 'var(--text)', fontSize: 11 }}
                 />
                 <ParetoOverlay paretoPoints={s.boundaryPoints} />
@@ -164,49 +188,85 @@ export default function ParetoChart({ puzzleId, shared, onPlayRecord, onPlayUser
                     ? [<Scatter key={`nf-${cls}`} name={`non-frontier-${cls}`} data={nf} shape={makePointShape(NORMAL_RADIUS, NORMAL_OPACITY, CLASS_COLOR[cls], handleSelectPoint)} isAnimationActive={false} />]
                     : []
                 })}
-                <Tooltip cursor={false} isAnimationActive={false} active={playbackOpen || selectedPoint !== null ? false : undefined} content={<CustomTooltip pointMap={s.pointMap} xLabel={s.getLabel(s.xMetric)} yLabel={s.getLabel(s.yMetric)} />} />
+                <Tooltip
+                  cursor={false}
+                  isAnimationActive={false}
+                  active={playbackOpen || selectedPoint !== null ? false : undefined}
+                  content={<CustomTooltip pointMap={s.pointMap} xLabel={s.getLabel(s.xMetric)} yLabel={s.getLabel(s.yMetric)} />}
+                />
               </ScatterChart>
             </ResponsiveContainer>
           ) : (
             <div className="pareto-chart-placeholder">
-              {ready ? 'No data' : 'Select X and Y metrics to display the chart'}
+              <EmptyState
+                isCompact
+                icon={<ScatterChartIcon size={32} strokeWidth={1.6} />}
+                title={ready ? 'No records match current filters' : 'Select X and Y metrics'}
+                description={
+                  ready
+                    ? 'Try widening boolean filters or switching manifolds in Chart settings.'
+                    : 'Choose an X axis and a Y axis in the Chart settings panel to plot the Pareto frontier.'
+                }
+              />
             </div>
           )}
         </div>
         {s.puzzleUserRecords.length > 0 && (
           <div className="pareto-chart-user-summary">
-            {s.puzzleUserRecords.map((r) => {
-              const greenManifolds = s.availableManifolds.filter(
-                (m) => supportsScore(m, r.score) && (s.userFrontierByManifold.get(m.id)?.has(r.id) ?? false),
-              )
-              const parts = r.fullScore.split(' ')
-              return (
-                <div
-                  key={r.id}
-                  className="pareto-chart-user-card"
-                  onMouseEnter={() => setHoveredUserRecordId(r.id)}
-                  onMouseLeave={() => setHoveredUserRecordId(null)}
-                >
-                  <button type="button" className="pareto-chart-user-name" title="Play local solution" onClick={() => onPlayUserSolution(r)}>{r.solutionName ?? '(unnamed)'}</button>
-                  <span className="pareto-chart-user-score">{parts[0]}</span>
-                  {parts[1] && <span className="pareto-chart-user-score">{parts[1]}</span>}
-                  {greenManifolds.length > 0 && (
-                    <span className="pareto-chart-user-chips">
-                      {greenManifolds.map((m) => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          className={`pareto-chart-user-chip ${s.manifoldId === m.id ? 'active' : ''}`}
-                          onClick={() => s.selectManifold(m.id)}
-                        >
-                          {m.label}
-                        </button>
-                      ))}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
+            <HStack justify="between" vAlign="center" className="pareto-chart-user-summary-header">
+              <Text type="label" size="sm">Your Solutions</Text>
+              <Badge variant="neutral" label={s.puzzleUserRecords.length} />
+            </HStack>
+            <div className="pareto-chart-user-list">
+              {s.puzzleUserRecords.map((r) => {
+                const greenManifolds = s.availableManifolds.filter(
+                  (m) => supportsScore(m, r.score) && (s.userFrontierByManifold.get(m.id)?.has(r.id) ?? false),
+                )
+                const isGreen = s.manifold
+                  ? (s.userFrontierByManifold.get(s.manifold.id)?.has(r.id) ?? false)
+                  : greenManifolds.length > 0
+                const CardMarker = isGreen ? GreenCardMarker : RedCardMarker
+                const parts = r.fullScore.split(' ')
+                return (
+                  <div
+                    key={r.id}
+                    className="pareto-chart-user-card"
+                    onMouseEnter={() => setHoveredUserRecordId(r.id)}
+                    onMouseLeave={() => setHoveredUserRecordId(null)}
+                  >
+                    <HStack gap={1.5} vAlign="center">
+                      <svg width={11} height={11} viewBox="-6 -6 12 12" aria-hidden="true" className="pareto-chart-user-diamond">
+                        <CardMarker cx={0} cy={0} />
+                      </svg>
+                      <button
+                        type="button"
+                        className="pareto-chart-user-name"
+                        title="Play local solution"
+                        onClick={() => onPlayUserSolution(r)}
+                      >
+                        {r.solutionName ?? '(unnamed)'}
+                      </button>
+                    </HStack>
+                    <span className="pareto-chart-user-score">{parts[0]}</span>
+                    {parts[1] && <span className="pareto-chart-user-score">{parts[1]}</span>}
+                    {greenManifolds.length > 0 && (
+                      <span className="pareto-chart-user-chips">
+                        {greenManifolds.map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            className={`pareto-chart-user-chip ${s.manifoldId === m.id ? 'active' : ''}`}
+                            onClick={() => s.selectManifold(m.id)}
+                          >
+                            {m.label}
+                          </button>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>

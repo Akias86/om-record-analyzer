@@ -1,8 +1,19 @@
 import { useCallback, useEffect, useRef, useState, memo } from 'react'
 import type { DragEvent } from 'react'
+import { Badge } from '@astryxdesign/core/Badge'
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
+import { Heading } from '@astryxdesign/core/Heading'
+import { HStack } from '@astryxdesign/core/HStack'
+import { ProgressBar } from '@astryxdesign/core/ProgressBar'
+import { Spinner } from '@astryxdesign/core/Spinner'
+import { Text } from '@astryxdesign/core/Text'
+import { VStack } from '@astryxdesign/core/VStack'
+import { ArrowLeft, FileArchive, FolderUp, Puzzle, ShieldCheck } from 'lucide-react'
 import { parseSolutionMeta, parsePuzzleMeta, customPuzzleType, formatScoreParts, verifyBatch, verifyInPool } from '../lib/verify'
 import type { BatchInput, ScoreParts, VerifyPartial, VerifySolutionResult } from '../lib/verify'
 import { getPuzzleMap } from '../api/om'
+import { ThemeModeSwitch } from '../components/ThemeModeSwitch'
 import { SolutionDetailModal } from './SolutionDetailModal'
 import './test.css'
 
@@ -56,6 +67,13 @@ function effStatus(r: { status: RowStatus; parts: ScoreParts | null; partial: Ve
   return r.status
 }
 
+function badgeVariantForStatus(eff: EffStatus): 'success' | 'error' | 'info' | 'neutral' {
+  if (eff === 'pass') return 'success'
+  if (eff === 'fail' || eff === 'error') return 'error'
+  if (eff === 'verifying') return 'info'
+  return 'neutral'
+}
+
 function isRowClickable(r: { result: VerifySolutionResult | null; partial: VerifyPartial | null; status: RowStatus }): boolean {
   if (r.result) return true
   if (r.status === 'verifying' && r.partial && r.partial.phase !== 'verifying') return true
@@ -84,7 +102,7 @@ const ResultTableRow = memo(function ResultTableRow({ row, index, source, onOpen
       <td className="tp-cell-name">{row.solutionName ?? ''}</td>
       <td className={`tp-cell-score ${row.parts === null ? 'is-empty' : ''}`}>
         {row.status === 'verifying' ? (
-          <span className="tp-spin" aria-label="verifying" />
+          <Spinner size="sm" label="Verifying" />
         ) : row.parts ? (
           <>
             <div>{row.parts.victory}</div>
@@ -95,7 +113,7 @@ const ResultTableRow = memo(function ResultTableRow({ row, index, source, onOpen
         )}
       </td>
       <td className="tp-cell-status">
-        <span className={`tp-badge tp-badge--${eff}`}>{STATUS_LABEL[eff]}</span>
+        <Badge variant={badgeVariantForStatus(eff)} label={STATUS_LABEL[eff]} />
       </td>
     </tr>
   )
@@ -366,224 +384,258 @@ export default function TestPage() {
   const doneCount = progress?.done ?? 0
   const passedCount = rows.filter((r) => r.parts !== null).length
   const failedCount = rows.filter((r) => r.status === 'error' || (r.status === 'done' && r.parts === null)).length
-  const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0
 
   const cTotal = customProgress?.total ?? 0
   const cDoneCount = customProgress?.done ?? 0
   const cPassedCount = customRows.filter((r) => r.parts !== null).length
   const cFailedCount = customRows.filter((r) => r.status === 'error' || (r.status === 'done' && r.parts === null)).length
-  const cPct = cTotal > 0 ? Math.round((cDoneCount / cTotal) * 100) : 0
   const solDisabled = puzzles.length === 0 || customRunning
 
   return (
-    <div className="tp">
-      <header className="tp-header">
-        <div>
-          <h1 className="tp-title">Opus Magnum Batch Verification</h1>
-          <p className="tp-sub">Drop a folder of .solution files to verify all at once</p>
-        </div>
-        <a className="tp-back" href="#/">← Back</a>
-      </header>
+    <div className="tp-page">
+      <div className="tp">
+        <header className="tp-header">
+          <HStack gap={3} vAlign="center">
+            <span className="tp-brand-mark" aria-hidden="true">
+              <ShieldCheck size={20} />
+            </span>
+            <VStack gap={0.5}>
+              <Heading level={1}>Opus Magnum Batch Verification</Heading>
+              <Text type="supporting">
+                Verify local .solution files against official or custom .puzzle definitions using the in-browser simulator.
+              </Text>
+            </VStack>
+          </HStack>
+          <HStack gap={2} vAlign="center">
+            <ThemeModeSwitch />
+            <Button
+              variant="secondary"
+              size="sm"
+              href="#/"
+              icon={<ArrowLeft size={14} />}
+              label="Back to Analyzer"
+            />
+          </HStack>
+        </header>
 
-      <div
-        className={`tp-drop ${running ? 'is-disabled' : ''} ${isOver ? 'is-over' : ''}`}
-        onDragOver={(e) => { if (!running) e.preventDefault() }}
-        onDragEnter={() => { if (!running) setIsOver(true) }}
-        onDragLeave={() => setIsOver(false)}
-        onDrop={onDrop}
-        onClick={() => { if (!running) inputRef.current?.click() }}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".solution"
-          className="tp-file"
-          multiple
-          onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }}
-        />
-        {running ? (
-          <>
-            <div className="tp-drop-main">Verifying… {doneCount}/{total}</div>
-            <div className="tp-progress-bar">
-              <div className="tp-progress-fill" style={{ width: `${pct}%` }} />
-            </div>
-          </>
-        ) : (
-          <>
-            <svg className="tp-drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 16V4M12 4L7 9M12 4L17 9" />
-              <path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" />
-            </svg>
-            <div className="tp-drop-main">Click to select a folder</div>
-            <div className="tp-drop-sub">or drag .solution files here</div>
-          </>
+        <VStack gap={5}>
+          <Card padding={5} elevation="low">
+            <VStack gap={4}>
+              <VStack gap={0.5}>
+                <Heading level={2}>Official Puzzle Batch Verification</Heading>
+                <Text type="supporting">
+                  Drop a folder of .solution files or click below to verify and score all solutions at once.
+                </Text>
+              </VStack>
+
+              <div
+                className={`tp-drop ${running ? 'is-disabled' : ''} ${isOver ? 'is-over' : ''}`}
+                onDragOver={(e) => { if (!running) e.preventDefault() }}
+                onDragEnter={() => { if (!running) setIsOver(true) }}
+                onDragLeave={() => setIsOver(false)}
+                onDrop={onDrop}
+                onClick={() => { if (!running) inputRef.current?.click() }}
+              >
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept=".solution"
+                  className="tp-file"
+                  multiple
+                  onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }}
+                />
+                {running ? (
+                  <div className="tp-progress-wrap">
+                    <div className="tp-drop-main">Verifying… {doneCount}/{total}</div>
+                    <ProgressBar
+                      label="Batch verification progress"
+                      isLabelHidden
+                      value={doneCount}
+                      max={Math.max(1, total)}
+                      variant="accent"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <FolderUp className="tp-drop-icon" strokeWidth={1.6} aria-hidden="true" />
+                    <div className="tp-drop-main">Click to select a folder</div>
+                    <div className="tp-drop-sub">or drag .solution files here</div>
+                  </>
+                )}
+              </div>
+
+              {progress && (
+                <div className="tp-stats">
+                  <div className="tp-stat">
+                    <span className="tp-stat-num">{total}</span>
+                    <span className="tp-stat-label">Total</span>
+                  </div>
+                  <div className="tp-stat tp-stat--ok">
+                    <span className="tp-stat-num">{passedCount}</span>
+                    <span className="tp-stat-label">Passed</span>
+                  </div>
+                  <div className="tp-stat tp-stat--fail">
+                    <span className="tp-stat-num">{failedCount}</span>
+                    <span className="tp-stat-label">Failed</span>
+                  </div>
+                </div>
+              )}
+
+              {rows.some((r) => r.status !== 'skipped') && (
+                <div className="tp-table-wrap">
+                  <table className="tp-batch">
+                    <thead>
+                      <tr>
+                        <th>Puzzle ID</th>
+                        <th>Puzzle Name</th>
+                        <th>Save Name</th>
+                        <th>Score</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r, i) => r.status === 'skipped' ? null : (
+                        <ResultTableRow key={i} row={r} index={i} source="batch" onOpen={openDetail} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </VStack>
+          </Card>
+
+          <Card padding={5} elevation="low">
+            <VStack gap={4}>
+              <VStack gap={0.5}>
+                <Heading level={2}>Custom Puzzle Verification</Heading>
+                <Text type="supporting">
+                  Upload .puzzle files first, then their .solution files. Solutions are matched by the puzzle ID
+                  embedded in each file — the .puzzle filename is its ID (e.g. <code>P007.puzzle</code>).
+                </Text>
+              </VStack>
+
+              <div
+                className={`tp-drop tp-drop--small ${isPuzzleOver ? 'is-over' : ''}`}
+                onDragOver={(e) => e.preventDefault()}
+                onDragEnter={() => setIsPuzzleOver(true)}
+                onDragLeave={() => setIsPuzzleOver(false)}
+                onDrop={onPuzzleDrop}
+                onClick={() => puzzleInputRef.current?.click()}
+              >
+                <input
+                  ref={puzzleInputRef}
+                  type="file"
+                  accept=".puzzle"
+                  className="tp-file"
+                  multiple
+                  onChange={(e) => { if (e.target.files) void handlePuzzleFiles(e.target.files); e.target.value = '' }}
+                />
+                <Puzzle className="tp-drop-icon" strokeWidth={1.6} aria-hidden="true" />
+                <div className="tp-drop-main">Click to select .puzzle files</div>
+                <div className="tp-drop-sub">or drag them here</div>
+              </div>
+
+              {puzzles.length > 0 && (
+                <ul className="tp-puzzles">
+                  {puzzles.map((p) => (
+                    <li key={p.id} className="tp-puzzle">
+                      <Badge variant="info" label={p.id} />
+                      <span className="tp-puzzle-name">{p.name ?? '(unknown name)'}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div
+                className={`tp-drop tp-drop--small ${solDisabled ? 'is-disabled' : ''} ${isSolOver ? 'is-over' : ''}`}
+                onDragOver={(e) => { if (!solDisabled) e.preventDefault() }}
+                onDragEnter={() => { if (!solDisabled) setIsSolOver(true) }}
+                onDragLeave={() => setIsSolOver(false)}
+                onDrop={onSolDrop}
+                onClick={() => { if (!solDisabled) solInputRef.current?.click() }}
+              >
+                <input
+                  ref={solInputRef}
+                  type="file"
+                  accept=".solution"
+                  className="tp-file"
+                  multiple
+                  onChange={(e) => { if (e.target.files) void handleSolutionFiles(e.target.files); e.target.value = '' }}
+                />
+                {customRunning ? (
+                  <div className="tp-progress-wrap">
+                    <div className="tp-drop-main">Verifying… {cDoneCount}/{cTotal}</div>
+                    <ProgressBar
+                      label="Custom verification progress"
+                      isLabelHidden
+                      value={cDoneCount}
+                      max={Math.max(1, cTotal)}
+                      variant="accent"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <FileArchive className="tp-drop-icon" strokeWidth={1.6} aria-hidden="true" />
+                    <div className="tp-drop-main">
+                      {puzzles.length === 0 ? 'Load .puzzle files first' : 'Click to select .solution files'}
+                    </div>
+                    <div className="tp-drop-sub">or drag them here</div>
+                  </>
+                )}
+              </div>
+
+              {customProgress && (
+                <div className="tp-stats">
+                  <div className="tp-stat">
+                    <span className="tp-stat-num">{cTotal}</span>
+                    <span className="tp-stat-label">Total</span>
+                  </div>
+                  <div className="tp-stat tp-stat--ok">
+                    <span className="tp-stat-num">{cPassedCount}</span>
+                    <span className="tp-stat-label">Passed</span>
+                  </div>
+                  <div className="tp-stat tp-stat--fail">
+                    <span className="tp-stat-num">{cFailedCount}</span>
+                    <span className="tp-stat-label">Failed</span>
+                  </div>
+                </div>
+              )}
+
+              {customRows.some((r) => r.status !== 'skipped') && (
+                <div className="tp-table-wrap">
+                  <table className="tp-batch">
+                    <thead>
+                      <tr>
+                        <th>Puzzle ID</th>
+                        <th>Puzzle Name</th>
+                        <th>Save Name</th>
+                        <th>Score</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {customRows.map((r, i) => r.status === 'skipped' ? null : (
+                        <ResultTableRow key={i} row={r} index={i} source="custom" onOpen={openDetail} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </VStack>
+          </Card>
+        </VStack>
+
+        {detail && (
+          <SolutionDetailModal
+            result={detail.result}
+            partial={detail.partial}
+            puzzleId={detail.puzzleId}
+            puzzleName={detail.puzzleName}
+            solutionName={detail.solutionName}
+            onClose={() => setDetail(null)}
+          />
         )}
       </div>
-
-      {progress && (
-        <div className="tp-stats">
-          <div className="tp-stat">
-            <span className="tp-stat-num">{total}</span>
-            <span className="tp-stat-label">Total</span>
-          </div>
-          <div className="tp-stat tp-stat--ok">
-            <span className="tp-stat-num">{passedCount}</span>
-            <span className="tp-stat-label">Passed</span>
-          </div>
-          <div className="tp-stat tp-stat--fail">
-            <span className="tp-stat-num">{failedCount}</span>
-            <span className="tp-stat-label">Failed</span>
-          </div>
-        </div>
-      )}
-
-      {rows.some((r) => r.status !== 'skipped') && (
-        <table className="tp-batch">
-          <thead>
-            <tr>
-              <th>Puzzle ID</th>
-              <th>Puzzle Name</th>
-              <th>Save Name</th>
-              <th>Score</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => r.status === 'skipped' ? null : (
-              <ResultTableRow key={i} row={r} index={i} source="batch" onOpen={openDetail} />
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      <section className="tp-section">
-        <div className="tp-section-head">
-          <h2 className="tp-section-title">Custom Puzzle Verification</h2>
-          <p className="tp-sub">
-            Upload .puzzle files, then their .solution files. Solutions are matched by the puzzle ID
-            embedded in each file — the .puzzle filename is its ID (e.g. <code>P007.puzzle</code>).
-          </p>
-        </div>
-
-        <div
-          className={`tp-drop tp-drop--small ${isPuzzleOver ? 'is-over' : ''}`}
-          onDragOver={(e) => e.preventDefault()}
-          onDragEnter={() => setIsPuzzleOver(true)}
-          onDragLeave={() => setIsPuzzleOver(false)}
-          onDrop={onPuzzleDrop}
-          onClick={() => puzzleInputRef.current?.click()}
-        >
-          <input
-            ref={puzzleInputRef}
-            type="file"
-            accept=".puzzle"
-            className="tp-file"
-            multiple
-            onChange={(e) => { if (e.target.files) void handlePuzzleFiles(e.target.files); e.target.value = '' }}
-          />
-          <svg className="tp-drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M12 16V4M12 4L7 9M12 4L17 9" />
-            <path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" />
-          </svg>
-          <div className="tp-drop-main">Click to select .puzzle files</div>
-          <div className="tp-drop-sub">or drag them here</div>
-        </div>
-
-        {puzzles.length > 0 && (
-          <ul className="tp-puzzles">
-            {puzzles.map((p) => (
-              <li key={p.id} className="tp-puzzle">
-                <span className="tp-puzzle-id">{p.id}</span>
-                <span className="tp-puzzle-name">{p.name ?? '(unknown name)'}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div
-          className={`tp-drop tp-drop--small tp-drop--spaced ${solDisabled ? 'is-disabled' : ''} ${isSolOver ? 'is-over' : ''}`}
-          onDragOver={(e) => { if (!solDisabled) e.preventDefault() }}
-          onDragEnter={() => { if (!solDisabled) setIsSolOver(true) }}
-          onDragLeave={() => setIsSolOver(false)}
-          onDrop={onSolDrop}
-          onClick={() => { if (!solDisabled) solInputRef.current?.click() }}
-        >
-          <input
-            ref={solInputRef}
-            type="file"
-            accept=".solution"
-            className="tp-file"
-            multiple
-            onChange={(e) => { if (e.target.files) void handleSolutionFiles(e.target.files); e.target.value = '' }}
-          />
-          {customRunning ? (
-            <>
-              <div className="tp-drop-main">Verifying… {cDoneCount}/{cTotal}</div>
-              <div className="tp-progress-bar">
-                <div className="tp-progress-fill" style={{ width: `${cPct}%` }} />
-              </div>
-            </>
-          ) : (
-            <>
-              <svg className="tp-drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M12 16V4M12 4L7 9M12 4L17 9" />
-                <path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" />
-              </svg>
-              <div className="tp-drop-main">
-                {puzzles.length === 0 ? 'Load .puzzle files first' : 'Click to select .solution files'}
-              </div>
-              <div className="tp-drop-sub">or drag them here</div>
-            </>
-          )}
-        </div>
-
-        {customProgress && (
-          <div className="tp-stats">
-            <div className="tp-stat">
-              <span className="tp-stat-num">{cTotal}</span>
-              <span className="tp-stat-label">Total</span>
-            </div>
-            <div className="tp-stat tp-stat--ok">
-              <span className="tp-stat-num">{cPassedCount}</span>
-              <span className="tp-stat-label">Passed</span>
-            </div>
-            <div className="tp-stat tp-stat--fail">
-              <span className="tp-stat-num">{cFailedCount}</span>
-              <span className="tp-stat-label">Failed</span>
-            </div>
-          </div>
-        )}
-
-        {customRows.some((r) => r.status !== 'skipped') && (
-          <table className="tp-batch">
-            <thead>
-              <tr>
-                <th>Puzzle ID</th>
-                <th>Puzzle Name</th>
-                <th>Save Name</th>
-                <th>Score</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customRows.map((r, i) => r.status === 'skipped' ? null : (
-                <ResultTableRow key={i} row={r} index={i} source="custom" onOpen={openDetail} />
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-
-      {detail && (
-        <SolutionDetailModal
-          result={detail.result}
-          partial={detail.partial}
-          puzzleId={detail.puzzleId}
-          puzzleName={detail.puzzleName}
-          solutionName={detail.solutionName}
-          onClose={() => setDetail(null)}
-        />
-      )}
     </div>
   )
 }

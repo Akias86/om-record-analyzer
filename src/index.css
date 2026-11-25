@@ -1,53 +1,47 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --sidebar-bg: #faf9fb;
-  --sidebar-hover: rgba(0, 0, 0, 0.04);
+@import '@astryxdesign/core/reset.css';
+@import '@astryxdesign/core/astryx.css';
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+:root,
+[data-astryx-theme] {
+  --bg: var(--color-background-body, #eef1f5);
+  --surface-bg: var(--color-background-surface, #ffffff);
+  --card-bg: var(--color-background-card, #ffffff);
+  --popover-bg: var(--color-background-popover, #ffffff);
+  --muted-bg: var(--color-background-muted, #eef1f5);
+  --sidebar-bg: var(--color-background-surface, #ffffff);
+  --sidebar-hover: var(--color-overlay-hover, rgba(0, 0, 0, 0.05));
+  --text: var(--color-text-secondary, #39485b);
+  --text-h: var(--color-text-primary, #0b111a);
+  --border: var(--color-border, rgba(0, 0, 0, 0.1));
+  --border-strong: var(--color-border-emphasized, #ced5e0);
+  --accent: var(--color-accent, #4f46e5);
+  --accent-text: var(--color-text-accent, #4639d4);
+  --accent-bg: color-mix(in srgb, var(--color-accent, #4f46e5) 14%, transparent);
+  --danger: var(--color-text-error, #c0262c);
 
-  font: 14px/150% var(--sans);
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
+  --sans: var(--font-family-body, Figtree, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+  --heading: var(--font-family-heading, Figtree, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+  --mono: var(--font-family-code, ui-monospace, 'SF Mono', Consolas, monospace);
+
+  --chart-point-stroke: light-dark(rgba(15, 23, 42, 0.42), rgba(255, 255, 255, 0.32));
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-family-body, var(--sans));
+  font-size: var(--text-body-size, 14px);
+  line-height: var(--text-body-leading, 1.5);
+  color: var(--color-text-primary, var(--text-h));
+  background: var(--color-background-body, var(--bg));
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --sidebar-bg: #1a1b23;
-    --sidebar-hover: rgba(255, 255, 255, 0.05);
-  }
-}
-
-#root {
-  width: 100%;
-  margin: 0 auto;
-}
-
-body {
-  margin: 0;
-}
-
-h1 {
-  font-family: var(--heading);
-  font-weight: 600;
-  font-size: 28px;
-  color: var(--text-h);
-  margin: 0 0 16px;
 }
