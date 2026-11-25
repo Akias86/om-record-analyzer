@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import { createPlayerClient, type PlayerClient, type PlayerError, type PlayerState } from '../../lib/player/client.js'
 import { fetchPlayerUrl } from '../../api/config'
 import { fetchRecordAuthor } from '../../api/recordAuthor'
@@ -422,7 +423,9 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
               </div>
             )}
           </div>
-          <button type="button" className="gif-viewer-close" onClick={onClose} aria-label="Close">{'\u00D7'}</button>
+          <button type="button" className="gif-viewer-close" onClick={onClose} aria-label="Close">
+            <X size={16} aria-hidden="true" />
+          </button>
         </div>
         <div className="solution-player-body">
           <iframe ref={iframeRef} title={`${title} — real-time solution`} className="solution-player-iframe" hidden={showRecording} sandbox="allow-scripts allow-same-origin" />

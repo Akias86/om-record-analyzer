@@ -1,4 +1,10 @@
-import { useEffect } from 'react'
+import { Badge } from '@astryxdesign/core/Badge'
+import { Banner } from '@astryxdesign/core/Banner'
+import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
+import { HStack } from '@astryxdesign/core/HStack'
+import { Spinner } from '@astryxdesign/core/Spinner'
+import { Text } from '@astryxdesign/core/Text'
+import { VStack } from '@astryxdesign/core/VStack'
 import { trackedGeometry } from '../lib/verify'
 import { getMetricValue, getSum } from '../lib/metrics'
 import type { VerifyPartial, VerifySolutionResult } from '../lib/verify'
@@ -90,16 +96,9 @@ function buildFinalSections(result: VerifySolutionResult, partial: VerifyPartial
   }
 
   const infinity: DetailCell[] = []
-  // @∞ estimation fallback — ONLY while the loop question is genuinely undecided:
-  // the run was truncated at the cycle limit, not converged, and no collision
-  // ever halted the sim.  Any collision (post-win or not) or a settled non-loop
-  // outcome freezes the answer for good (advance sim stops there permanently),
-  // so those cases keep the earlier rule: official @∞ missing means '-'.
   const loopUndecided =
     result.passed && result.analysis?.steadyState === false && result.analysis?.collisionCycle == null
   const inf = loopUndecided ? (partial?.infinity ?? null) : null
-  // full-precision display: official rates are 7-decimal fixed-point (see
-  // analyzeSolution / metrics.ts); never shorten them to 3 decimals.
   const fmtExact = (n: number): string => (n === Infinity ? '\u221E' : String(n))
   const est = (finalVal: number | null, liveVal: number | null | undefined): string => {
     if (finalVal !== null && finalVal !== undefined && !Number.isNaN(finalVal)) return fmtExact(finalVal)
@@ -138,8 +137,6 @@ function buildFinalSections(result: VerifySolutionResult, partial: VerifyPartial
   }
 
   const analysis = result.analysis
-  // without convergence the observed last-product cycle is only a lower bound:
-  // more deliveries may be coming, so keep the '≥' the live view already used.
   const lastProduct = analysis
     ? analysis.infiniteOutputs
       ? { value: '\u221E', sub: undefined }
@@ -207,18 +204,11 @@ function buildLiveSections(partial: VerifyPartial, type: string | null): DetailS
   victoryCells.push({ label: 'Sum', value: fmtNum(sum) })
   if (!production) victoryCells.push({ label: 'Sum4', value: fmtNum(sum !== null && basic ? sum + basic.instructions : null) })
 
-  // estimates are only honest while the loop question is still open: once a
-  // collision was observed (sim frozen -> steady state out of reach for good)
-  // or the board converges (official values arrive with the final result),
-  // the @∞ metrics are missing, not estimated.
   const inf = partial.collisionCycle != null || partial.converged ? null : partial.infinity
   const approx = (n: number | null | undefined): string => (n == null || Number.isNaN(n) ? '-' : `\u2248 ${String(n)}`)
   const infinityCells: DetailCell[] = []
   infinityCells.push(
     { label: 'Rate', value: approx(inf?.rate) },
-    // live Area estimate stays '-' on purpose: the final is a growth-order value
-    // (e.g. 134a''), not the plain current-board area, so there is no honest
-    // intermediate to stream before convergence classifies it.
     { label: 'Area', value: '-' },
   )
   if (tracked.height) infinityCells.push({ label: 'Height', value: approx(inf?.height) })
@@ -255,13 +245,6 @@ function buildLiveSections(partial: VerifyPartial, type: string | null): DetailS
 }
 
 export function SolutionDetailModal({ result, partial, puzzleId, puzzleName, solutionName, onClose }: SolutionDetailModalProps) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
   const type = result?.puzzleType ?? null
   const sections = result
     ? buildFinalSections(result, partial)
@@ -269,25 +252,37 @@ export function SolutionDetailModal({ result, partial, puzzleId, puzzleName, sol
       ? buildLiveSections(partial, type)
       : []
   const errorText = result?.error ?? (partial?.phase === 'failed' ? partial.collisionReason ?? undefined : undefined)
+  const resolvedId = result?.puzzleId ?? puzzleId
 
   return (
-    <div className="tp-detail-backdrop" onClick={onClose}>
-      <div className="tp-detail-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="tp-detail-header">
-          <div className="tp-detail-heading">
-            <div className="tp-detail-title-row">
-              <span className="tp-detail-title">{puzzleName ?? puzzleId ?? result?.puzzleId ?? '(unknown puzzle)'}</span>
-              {(result?.puzzleId ?? puzzleId) && <span className="tp-detail-id">{result?.puzzleId ?? puzzleId}</span>}
-              {result?.puzzleType && <span className="tp-detail-type">{result.puzzleType}</span>}
-            </div>
-            {solutionName && <div className="tp-detail-solution-name">{solutionName}</div>}
-          </div>
-          <button type="button" className="tp-detail-close" onClick={onClose} aria-label="Close">{'\u00D7'}</button>
-        </div>
+    <Dialog
+      isOpen
+      onOpenChange={(open) => { if (!open) onClose() }}
+      width={660}
+      purpose="info"
+    >
+      <DialogHeader
+        title={puzzleName ?? puzzleId ?? result?.puzzleId ?? '(unknown puzzle)'}
+        subtitle={solutionName ?? undefined}
+        onOpenChange={(open) => { if (!open) onClose() }}
+      />
+      <VStack gap={3} padding={4} className="tp-detail-body">
+        {(resolvedId || result?.puzzleType) && (
+          <HStack gap={1.5} wrap="wrap">
+            {resolvedId && <Badge variant="neutral" label={resolvedId} />}
+            {result?.puzzleType && <Badge variant="info" label={result.puzzleType} />}
+          </HStack>
+        )}
 
-        {errorText && <div className="tp-detail-error">{errorText}</div>}
+        {errorText && (
+          <Banner status="error" title="Verification failed" description={errorText} />
+        )}
+
         {!result && partial && partial.phase === 'verifying' && (
-          <div className="tp-detail-note">Verifying\u2026</div>
+          <HStack gap={2} vAlign="center">
+            <Spinner size="sm" label="Verifying…" />
+            <Text type="supporting">Verifying…</Text>
+          </HStack>
         )}
 
         {sections.map((s) => (
@@ -307,7 +302,7 @@ export function SolutionDetailModal({ result, partial, puzzleId, puzzleName, sol
             </div>
           </section>
         ))}
-      </div>
-    </div>
+      </VStack>
+    </Dialog>
   )
 }

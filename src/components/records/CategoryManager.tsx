@@ -1,4 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Badge } from '@astryxdesign/core/Badge'
+import { Button } from '@astryxdesign/core/Button'
+import { Collapsible } from '@astryxdesign/core/Collapsible'
+import { IconButton } from '@astryxdesign/core/IconButton'
+import { Text } from '@astryxdesign/core/Text'
+import { Pencil, Trash2, X } from 'lucide-react'
 import { OFFICIAL_CATEGORY_NAMES, formatCategoryChain, normalizeCategoryName, parseCategoryCached } from '../../lib/customCategories'
 import type { CustomCategoryDef } from '../../lib/customCategories'
 import type { CategorySaveResult } from '../../state/useCustomCategories'
@@ -145,8 +151,14 @@ export default function CategoryManager({
       style={{ top: position.top, right: position.right }}
     >
       <div className="category-manager-header">
-        <span className="category-manager-title">Custom Categories</span>
-        <button type="button" className="category-manager-close" onClick={onClose} aria-label="Close">{'\u00D7'}</button>
+        <Text type="label">Custom Categories</Text>
+        <IconButton
+          variant="ghost"
+          size="sm"
+          label="Close"
+          icon={<X size={15} />}
+          onClick={onClose}
+        />
       </div>
 
       <div className="category-manager-list">
@@ -178,8 +190,22 @@ export default function CategoryManager({
                 {def.expression}
               </span>
               <span className="category-manager-row-actions">
-                <button type="button" onClick={() => startEdit(def)} title="Edit expression">Edit</button>
-                <button type="button" onClick={() => removeCategory(def.id)} title="Delete category">{'\u00D7'}</button>
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  label="Edit expression"
+                  tooltip="Edit expression"
+                  icon={<Pencil size={12} />}
+                  onClick={() => startEdit(def)}
+                />
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  label="Delete category"
+                  tooltip="Delete category"
+                  icon={<Trash2 size={12} />}
+                  onClick={() => removeCategory(def.id)}
+                />
               </span>
             </div>
           )
@@ -206,11 +232,15 @@ export default function CategoryManager({
           onChange={(e) => { setInput(e.target.value); setFeedback(null) }}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (!e.nativeEvent.isComposing && e.keyCode !== 229) submit() } }}
         />
-        <button type="button" className="category-manager-save" onClick={submit} disabled={!canSave}>
-          {editingId !== null ? 'Save' : 'Add'}
-        </button>
+        <Button
+          variant="primary"
+          size="sm"
+          label={editingId !== null ? 'Save' : 'Add'}
+          isDisabled={!canSave}
+          onClick={submit}
+        />
         {editingId !== null && (
-          <button type="button" className="category-manager-cancel" onClick={cancelEdit}>Cancel</button>
+          <Button variant="secondary" size="sm" label="Cancel" onClick={cancelEdit} />
         )}
       </div>
 
@@ -220,7 +250,7 @@ export default function CategoryManager({
             <>
               <div className="category-manager-preview-head">
                 <span className="category-manager-preview-name">{effectiveName ?? preview.category.name}</span>
-                {explicitName === null && nameError === null && <span className="category-manager-preview-auto">auto name</span>}
+                {explicitName === null && nameError === null && <Badge variant="neutral" label="auto name" />}
                 <span className="category-manager-preview-manifold">{preview.category.manifold.label}</span>
               </div>
               <div className="category-manager-preview-chain">
@@ -248,10 +278,11 @@ export default function CategoryManager({
       {officialNameWarning !== null && <div className="category-manager-note is-warning">{officialNameWarning}</div>}
       {feedback !== null && <div className={`category-manager-note is-${feedback.kind}`}>{feedback.text}</div>}
 
-      <details className="category-manager-help">
-        <summary>Syntax</summary>
-        <pre>{HELP_TEXT}</pre>
-      </details>
+      <div className="category-manager-help">
+        <Collapsible trigger="Syntax reference" chevronPosition="start">
+          <pre>{HELP_TEXT}</pre>
+        </Collapsible>
+      </div>
     </div>
   )
 }

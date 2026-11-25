@@ -1,5 +1,17 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import type { DragEvent } from 'react'
+import { Badge } from '@astryxdesign/core/Badge'
+import { Button } from '@astryxdesign/core/Button'
+import { Collapsible } from '@astryxdesign/core/Collapsible'
+import { EmptyState } from '@astryxdesign/core/EmptyState'
+import { HStack } from '@astryxdesign/core/HStack'
+import { ProgressBar } from '@astryxdesign/core/ProgressBar'
+import { SideNav, SideNavHeading, SideNavItem } from '@astryxdesign/core/SideNav'
+import { Spinner } from '@astryxdesign/core/Spinner'
+import { Text } from '@astryxdesign/core/Text'
+import { TextInput } from '@astryxdesign/core/TextInput'
+import { VStack } from '@astryxdesign/core/VStack'
+import { FlaskConical, Sparkles, Trash2, Upload } from 'lucide-react'
 import { getPuzzleTree } from '../api/om'
 import type { CollectionTreeNode } from '../api/om'
 import { useUserSolutions } from '../state/userSolutions'
@@ -13,14 +25,34 @@ interface SidebarProps {
   expandGroupId?: string | null
 }
 
+function shortTypeLabel(type: string): string {
+  if (type === 'PRODUCTION') return 'PROD'
+  if (type === 'POLYMER') return 'POLY'
+  return type
+}
+
 export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollectionId, expandGroupId }: SidebarProps) {
   const [tree, setTree] = useState<CollectionTreeNode[]>([])
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set())
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [frontierExpanded, setFrontierExpanded] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
   const [search, setSearch] = useState('')
-  const { records, uploading, progress, skipped, duplicated, lastUploadTotal, storageWarning, frontierSummary, frontierLoading, frontierProgress, addFiles, clear } = useUserSolutions()
+  const {
+    records,
+    uploading,
+    progress,
+    skipped,
+    duplicated,
+    lastUploadTotal,
+    storageWarning,
+    frontierSummary,
+    frontierLoading,
+    frontierProgress,
+    addFiles,
+    clear,
+  } = useUserSolutions()
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -37,6 +69,7 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
 
   const onDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
+    setDragOver(false)
     if (uploading) return
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFiles(e.dataTransfer.files)
@@ -79,20 +112,20 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
     prevGreenCountRef.current = greenCount
   }, [frontierSummary])
 
-  const toggleCollection = useCallback((collectionId: string) => {
+  const setCollectionOpen = useCallback((collectionId: string, isOpen: boolean) => {
     setExpandedCollections((prev) => {
       const next = new Set(prev)
-      if (next.has(collectionId)) next.delete(collectionId)
-      else next.add(collectionId)
+      if (isOpen) next.add(collectionId)
+      else next.delete(collectionId)
       return next
     })
   }, [])
 
-  const toggleGroup = useCallback((groupId: string) => {
+  const setGroupOpen = useCallback((groupId: string, isOpen: boolean) => {
     setExpandedGroups((prev) => {
       const next = new Set(prev)
-      if (next.has(groupId)) next.delete(groupId)
-      else next.add(groupId)
+      if (isOpen) next.add(groupId)
+      else next.delete(groupId)
       return next
     })
   }, [])
@@ -111,7 +144,7 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
     for (const col of tree) {
       for (const grp of col.groups) {
         for (const puz of grp.puzzles) {
-          if (puz.displayName.toLowerCase().includes(query)) {
+          if (puz.displayName.toLowerCase().includes(query) || puz.id.toLowerCase().includes(query)) {
             results.push({ id: puz.id, displayName: puz.displayName, type: puz.type, path: `${col.displayName} / ${grp.displayName}` })
           }
         }
@@ -120,170 +153,232 @@ export default function Sidebar({ selectedPuzzleId, onSelectPuzzle, expandCollec
     return results
   }, [tree, query])
 
-  if (loading) {
-    return <aside className="sidebar"><div className="sidebar-loading">Loading...</div></aside>
-  }
+  const footerContent = (
+    <div
+      className={`sidebar-upload-panel${uploading ? ' is-disabled' : ''}${dragOver ? ' is-drag-over' : ''}`}
+      onDragOver={(e) => {
+        if (!uploading) {
+          e.preventDefault()
+          setDragOver(true)
+        }
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={onDrop}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".solution"
+        className="sidebar-file-input"
+        multiple
+        onChange={(e) => {
+          if (e.target.files) handleFiles(e.target.files)
+          e.target.value = ''
+        }}
+      />
+      <Button
+        variant="primary"
+        size="sm"
+        width="100%"
+        icon={<Upload size={14} />}
+        isLoading={uploading}
+        isDisabled={uploading}
+        label={uploading ? `Verifying ${progress?.done ?? 0}/${progress?.total ?? 0}` : 'Upload .solution folder'}
+        onClick={() => { if (!uploading) inputRef.current?.click() }}
+      />
+      {uploading && progress && progress.total > 0 && (
+        <ProgressBar
+          label="Verifying solutions"
+          isLabelHidden
+          value={progress.done}
+          max={Math.max(1, progress.total)}
+          variant="accent"
+        />
+      )}
+      {records.length > 0 && (
+        <HStack justify="between" vAlign="center" gap={1.5} className="sidebar-upload-meta">
+          <Text type="supporting" size="xsm" hasTabularNumbers>
+            Loaded {records.length}
+            {!uploading && duplicated > 0 ? ` · dup ${duplicated}` : ''}
+            {!uploading && skipped > 0 ? ` · skip ${skipped}` : ''}
+            {frontierLoading
+              ? ` · frontier ${frontierProgress?.done ?? 0}/${frontierProgress?.total ?? 0}${frontierProgress && frontierProgress.cacheHits > 0 ? ` (${frontierProgress.cacheHits} cached)` : ''}`
+              : ''}
+          </Text>
+          {!uploading && (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Trash2 size={12} />}
+              label="Clear"
+              onClick={clear}
+            />
+          )}
+        </HStack>
+      )}
+      {storageWarning && (
+        <div className="sidebar-warning" role="status">
+          {storageWarning}
+        </div>
+      )}
+      {frontierSummary && frontierSummary.greenCount > 0 && (
+        <div className="sidebar-frontier-card">
+          <Collapsible
+            isOpen={frontierExpanded}
+            onOpenChange={setFrontierExpanded}
+            chevronPosition="start"
+            trigger={
+              <HStack gap={1.5} vAlign="center">
+                <Sparkles size={13} className="sidebar-frontier-icon" />
+                <Text type="label" size="sm" color="accent">
+                  {frontierSummary.greenCount} on Pareto frontier
+                </Text>
+              </HStack>
+            }
+          >
+            <ul className="sidebar-frontier-list">
+              {frontierSummary.records.map((r) => (
+                <li key={r.id} className="sidebar-frontier-item">
+                  <button
+                    type="button"
+                    className={`sidebar-frontier-row${selectedPuzzleId === r.puzzleId ? ' active' : ''}`}
+                    onClick={() => onSelectPuzzle(r.puzzleId)}
+                  >
+                    <span className="sidebar-frontier-name">{r.solutionName ?? '(unnamed)'}</span>
+                    <span className="sidebar-frontier-puzzle">{r.puzzleId}</span>
+                  </button>
+                  <span className="sidebar-frontier-chips">
+                    {r.manifoldIds.map((mid) => (
+                      <Badge key={mid} variant="green" label={getManifold(mid)?.label ?? mid} />
+                    ))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Collapsible>
+        </div>
+      )}
+      {!uploading && records.length === 0 && lastUploadTotal > 0 && (
+        <Text type="supporting" size="xsm">
+          Skipped {skipped} file{skipped === 1 ? '' : 's'}
+        </Text>
+      )}
+    </div>
+  )
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header">OM Record Analyzer</div>
-      <div className="sidebar-search">
-        <input
-          type="text"
-          className="sidebar-search-input"
-          placeholder="Search puzzles..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+    <SideNav
+      aria-label="Puzzle navigation"
+      resizable={{ defaultWidth: 296, minWidth: 244, maxWidth: 420, autoSaveId: 'om-sidebar-width' }}
+      header={
+        <SideNavHeading
+          heading="OM Record Analyzer"
+          subheading="Opus Magnum Leaderboard"
+          icon={
+            <span className="sidebar-brand-mark" aria-hidden="true">
+              <FlaskConical size={17} />
+            </span>
+          }
         />
-        {search && (
-          <button type="button" className="sidebar-search-clear" onClick={() => setSearch('')} aria-label="Clear search">
-            {'\u00D7'}
-          </button>
-        )}
-      </div>
-      <nav className="sidebar-nav">
-        {searchResults ? (
-          searchResults.length === 0 ? (
-            <div className="sidebar-no-results">No matching puzzles</div>
-          ) : (
-            searchResults.map((p) => (
-              <div
-                key={p.id}
-                id={`puzzle-${p.id}`}
-                className={`sidebar-item sidebar-item-puzzle ${selectedPuzzleId === p.id ? 'selected' : ''}`}
-                onClick={() => handlePuzzleClick(p.id)}
-                title={p.path}
-              >
-                <span className="sidebar-label">{p.displayName}</span>
-                <span className="sidebar-type">{p.type}</span>
-              </div>
-            ))
-          )
+      }
+      topContent={
+        <div className="sidebar-search-box">
+          <TextInput
+            type="search"
+            label="Search puzzles"
+            isLabelHidden
+            startIcon="search"
+            hasClear
+            size="sm"
+            width="100%"
+            placeholder="Search puzzles..."
+            value={search}
+            onChange={(val) => setSearch(val)}
+          />
+        </div>
+      }
+      footer={footerContent}
+    >
+      {loading ? (
+        <VStack padding={4} align="center">
+          <Spinner size="md" label="Loading puzzles..." />
+        </VStack>
+      ) : searchResults ? (
+        searchResults.length === 0 ? (
+          <div className="sidebar-empty-wrap">
+            <EmptyState
+              isCompact
+              title="No matching puzzles"
+              description="Try searching by puzzle name or ID."
+            />
+          </div>
         ) : (
-          tree.map((col) => {
+          <div className="sidebar-search-results">
+            {searchResults.map((p) => (
+              <div key={p.id} id={`puzzle-${p.id}`} title={p.path}>
+                <SideNavItem
+                  size="sm"
+                  label={p.displayName}
+                  isSelected={selectedPuzzleId === p.id}
+                  onClick={() => handlePuzzleClick(p.id)}
+                  endContent={
+                    p.type !== 'NORMAL' ? (
+                      <span className="sidebar-type-tag">{shortTypeLabel(p.type)}</span>
+                    ) : undefined
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
+        tree.map((col) => {
           const isColExpanded = expandedCollections.has(col.id)
           return (
-            <div key={col.id} className="sidebar-node">
-              <div
-                className={`sidebar-item sidebar-item-collection ${isColExpanded ? 'expanded' : ''}`}
-                onClick={() => toggleCollection(col.id)}
-              >
-                <span className="sidebar-chevron">{isColExpanded ? '\u25BC' : '\u25B6'}</span>
-                <span className="sidebar-label">{col.displayName}</span>
-              </div>
-              {isColExpanded && (
-                <div className="sidebar-children">
-                  {col.groups.map((grp) => {
-                    const isGrpExpanded = expandedGroups.has(grp.id)
-                    return (
-                      <div key={grp.id} className="sidebar-node">
-                        <div
-                          className={`sidebar-item sidebar-item-group ${isGrpExpanded ? 'expanded' : ''}`}
-                          onClick={() => toggleGroup(grp.id)}
-                        >
-                          <span className="sidebar-chevron">{isGrpExpanded ? '\u25BC' : '\u25B6'}</span>
-                          <span className="sidebar-label">{grp.displayName}</span>
-                          <span className="sidebar-count">{grp.puzzles.length}</span>
-                        </div>
-                        {isGrpExpanded && (
-                          <div className="sidebar-children">
-                            {grp.puzzles.map((puz) => (
-                              <div
-                                key={puz.id}
-                                id={`puzzle-${puz.id}`}
-                                className={`sidebar-item sidebar-item-puzzle ${selectedPuzzleId === puz.id ? 'selected' : ''}`}
-                                onClick={() => handlePuzzleClick(puz.id)}
-                              >
-                                <span className="sidebar-label">{puz.displayName}</span>
-                                <span className="sidebar-type">{puz.type}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+            <SideNavItem
+              key={col.id}
+              label={col.displayName}
+              collapsible={{
+                isCollapsed: !isColExpanded,
+                onCollapsedChange: (collapsed) => setCollectionOpen(col.id, !collapsed),
+              }}
+            >
+              {col.groups.map((grp) => {
+                const grpKey = grp.id
+                const isGrpExpanded = expandedGroups.has(grpKey)
+                return (
+                  <SideNavItem
+                    key={grp.id}
+                    size="sm"
+                    label={grp.displayName}
+                    endContent={<span className="sidebar-count-pill">{grp.puzzles.length}</span>}
+                    collapsible={{
+                      isCollapsed: !isGrpExpanded,
+                      onCollapsedChange: (collapsed) => setGroupOpen(grpKey, !collapsed),
+                    }}
+                  >
+                    {grp.puzzles.map((puz) => (
+                      <div key={puz.id} id={`puzzle-${puz.id}`}>
+                        <SideNavItem
+                          size="sm"
+                          label={puz.displayName}
+                          isSelected={selectedPuzzleId === puz.id}
+                          onClick={() => handlePuzzleClick(puz.id)}
+                          endContent={
+                            puz.type !== 'NORMAL' ? (
+                              <span className="sidebar-type-tag">{shortTypeLabel(puz.type)}</span>
+                            ) : undefined
+                          }
+                        />
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </SideNavItem>
+                )
+              })}
+            </SideNavItem>
           )
         })
-        )}
-      </nav>
-      <div
-        className={`sidebar-footer ${uploading ? 'is-disabled' : ''}`}
-        onDragOver={(e) => { if (!uploading) e.preventDefault() }}
-        onDrop={onDrop}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".solution"
-          className="sidebar-file-input"
-          multiple
-          onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }}
-        />
-        <button
-          type="button"
-          className="sidebar-upload-btn"
-          onClick={() => { if (!uploading) inputRef.current?.click() }}
-          disabled={uploading}
-        >
-          {uploading ? `Verifying ${progress?.done ?? 0}/${progress?.total ?? 0}` : 'Upload .solution files'}
-        </button>
-        {records.length > 0 && (
-          <div className="sidebar-upload-info">
-            <span>
-              Loaded {records.length}
-              {!uploading && duplicated > 0 ? ` (dup ${duplicated})` : ''}
-              {!uploading && skipped > 0 ? ` (skipped ${skipped})` : ''}
-              {frontierLoading
-                ? ` · computing frontier ${frontierProgress?.done ?? 0}/${frontierProgress?.total ?? 0}${frontierProgress && frontierProgress.cacheHits > 0 ? ` · ${frontierProgress.cacheHits} cached` : ''}`
-                : ''}
-            </span>
-            {!uploading && <button type="button" className="sidebar-clear-btn" onClick={clear}>Clear</button>}
-          </div>
-        )}
-        {storageWarning && <div className="sidebar-upload-info" role="status">{storageWarning}</div>}
-        {frontierSummary && frontierSummary.greenCount > 0 && (
-          <div className="sidebar-frontier">
-            <button
-              type="button"
-              className="sidebar-frontier-toggle"
-              onClick={() => setFrontierExpanded((v) => !v)}
-            >
-              <span className="sidebar-chevron">{frontierExpanded ? '\u25BC' : '\u25B6'}</span>
-              <span>{frontierSummary.greenCount} on Pareto frontier</span>
-            </button>
-            {frontierExpanded && (
-              <ul className="sidebar-frontier-list">
-                {frontierSummary.records.map((r) => (
-                  <li key={r.id} className="sidebar-frontier-item">
-                    <button
-                      type="button"
-                      className={`sidebar-frontier-row ${selectedPuzzleId === r.puzzleId ? 'active' : ''}`}
-                      onClick={() => onSelectPuzzle(r.puzzleId)}
-                    >
-                      <span className="sidebar-frontier-name">{r.solutionName ?? '(unnamed)'}</span>
-                      <span className="sidebar-frontier-puzzle">{r.puzzleId}</span>
-                    </button>
-                    <span className="sidebar-frontier-chips">
-                      {r.manifoldIds.map((mid) => (
-                        <span key={mid} className="sidebar-frontier-chip">{getManifold(mid)?.label ?? mid}</span>
-                      ))}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-        {!uploading && records.length === 0 && lastUploadTotal > 0 && (
-          <div className="sidebar-upload-info">
-            <span>skipped {skipped}</span>
-          </div>
-        )}
-      </div>
-    </aside>
+      )}
+    </SideNav>
   )
 }

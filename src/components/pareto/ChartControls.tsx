@@ -1,4 +1,9 @@
 import { useId } from 'react'
+import { Divider } from '@astryxdesign/core/Divider'
+import { IconButton } from '@astryxdesign/core/IconButton'
+import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
+import { Text } from '@astryxdesign/core/Text'
+import { ChevronLeft, ChevronRight, SlidersHorizontal, X } from 'lucide-react'
 import { BOOL_SCORE_KEYS } from '../../types'
 import type { useParetoChartState } from './useParetoChartState'
 import type { useChartControlsPanel } from './useChartControlsPanel'
@@ -6,16 +11,6 @@ import type { useChartControlsPanel } from './useChartControlsPanel'
 interface ChartControlsProps {
   state: ReturnType<typeof useParetoChartState>
   panel: ReturnType<typeof useChartControlsPanel>
-}
-
-function SettingsIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-      <path d="M4 7h5m4 0h7M4 17h9m4 0h3" strokeLinecap="round" />
-      <circle cx="11" cy="7" r="2" />
-      <circle cx="15" cy="17" r="2" />
-    </svg>
-  )
 }
 
 export function ChartControls({ state: s, panel }: ChartControlsProps) {
@@ -30,7 +25,13 @@ export function ChartControls({ state: s, panel }: ChartControlsProps) {
   return (
     <>
       {panel.overlay && panel.open && (
-        <button className="pareto-chart-controls-backdrop" type="button" tabIndex={-1} aria-label="Dismiss chart settings" onClick={panel.close} />
+        <button
+          className="pareto-chart-controls-backdrop"
+          type="button"
+          tabIndex={-1}
+          aria-label="Dismiss chart settings"
+          onClick={panel.close}
+        />
       )}
       <div className="pareto-chart-settings">
         <button
@@ -44,9 +45,9 @@ export function ChartControls({ state: s, panel }: ChartControlsProps) {
           aria-controls={panelId}
           title="Open chart settings"
         >
-          <SettingsIcon />
+          <SlidersHorizontal size={15} aria-hidden="true" />
           <span aria-hidden="true">Settings</span>
-          <span className="pareto-chart-controls-chevron" aria-hidden="true">›</span>
+          <ChevronRight size={14} className="pareto-chart-controls-chevron" aria-hidden="true" />
         </button>
         <aside
           ref={panel.panelRef}
@@ -58,19 +59,16 @@ export function ChartControls({ state: s, panel }: ChartControlsProps) {
           aria-labelledby={`${id}-title`}
         >
           <header className="pareto-chart-controls-header">
-            <SettingsIcon />
+            <SlidersHorizontal size={15} className="pareto-chart-controls-header-icon" aria-hidden="true" />
             <h2 id={`${id}-title`}>Chart settings</h2>
-            <button
-              type="button"
-              className="pareto-chart-controls-close"
+            <IconButton
+              variant="ghost"
+              size="sm"
+              label={panel.overlay ? 'Close chart settings' : 'Collapse chart settings'}
+              tooltip={panel.overlay ? 'Close chart settings' : 'Collapse chart settings'}
+              icon={panel.overlay ? <X size={14} /> : <ChevronLeft size={15} />}
               onClick={panel.close}
-              aria-label={panel.overlay ? 'Close chart settings' : 'Collapse chart settings'}
-              aria-expanded={panel.open}
-              aria-controls={panelId}
-              title={panel.overlay ? 'Close chart settings' : 'Collapse chart settings'}
-            >
-              <span aria-hidden="true">{panel.overlay ? '×' : '‹'}</span>
-            </button>
+            />
           </header>
           <div className="pareto-chart-controls-content">
             <section className="pareto-chart-control-section" aria-labelledby={`${id}-manifold`}>
@@ -82,43 +80,48 @@ export function ChartControls({ state: s, panel }: ChartControlsProps) {
                 className="pareto-chart-select"
               >
                 <option value="">All (no frontier)</option>
-                {s.availableManifolds.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+                {s.availableManifolds.map((m) => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
+                ))}
               </select>
             </section>
+            <Divider />
             <section className="pareto-chart-control-section" aria-labelledby={`${id}-axes`}>
               <h3 id={`${id}-axes`}>Axes</h3>
               {axes.map((axis) => (
                 <div key={axis.key} className="pareto-chart-axis-control">
                   <div className="pareto-chart-field-heading">
                     <label htmlFor={`${id}-${axis.key}`}>{axis.label}</label>
-                    <div className="pareto-chart-segmented" role="group" aria-label={`${axis.label} scale`}>
-                      {(['linear', 'log'] as const).map((scale) => (
-                        <button
-                          key={scale}
-                          type="button"
-                          className="pareto-chart-segment-btn"
-                          aria-pressed={axis.scale === scale}
-                          aria-label={scale === 'linear' ? 'Linear' : 'Logarithmic'}
-                          title={scale === 'linear' ? 'Linear scale' : 'Logarithmic scale'}
-                          onClick={() => axis.onScale(scale)}
-                        >
-                          {scale === 'linear' ? 'lin' : 'log'}
-                        </button>
-                      ))}
-                    </div>
+                    <SegmentedControl
+                      size="sm"
+                      label={`${axis.label} scale`}
+                      value={axis.scale}
+                      onChange={(next) => axis.onScale(next as 'linear' | 'log')}
+                    >
+                      <SegmentedControlItem value="linear" label="lin" />
+                      <SegmentedControlItem value="log" label="log" />
+                    </SegmentedControl>
                   </div>
-                  <select id={`${id}-${axis.key}`} value={axis.metric} onChange={axis.onMetric} className="pareto-chart-select">
+                  <select
+                    id={`${id}-${axis.key}`}
+                    value={axis.metric}
+                    onChange={axis.onMetric}
+                    className="pareto-chart-select"
+                  >
                     <option value="">Select metric…</option>
-                    {s.metricOptions.map(({ key, label }) => <option key={key} value={key}>{label}</option>)}
+                    {s.metricOptions.map(({ key, label }) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
                   </select>
                 </div>
               ))}
             </section>
+            <Divider />
             <section className="pareto-chart-control-section" aria-labelledby={`${id}-filters`}>
               <h3 id={`${id}-filters`}>Filters</h3>
               {BOOL_SCORE_KEYS.map((key) => (
                 <div key={key} className="pareto-chart-filter-control" role="group" aria-labelledby={`${id}-${key}`}>
-                  <span id={`${id}-${key}`}>{s.getLabel(key)}</span>
+                  <span id={`${id}-${key}`} className="pareto-chart-filter-label">{s.getLabel(key)}</span>
                   <div className="pareto-chart-segmented pareto-chart-filter-options">
                     {(['any', 'true', 'false'] as const).map((value) => (
                       <button
@@ -139,11 +142,23 @@ export function ChartControls({ state: s, panel }: ChartControlsProps) {
           <footer className="pareto-chart-info" role="status" aria-live="polite" aria-atomic="true">
             {ready ? (
               <>
-                <span className="pareto-chart-record-count"><strong>{s.allPoints.length}</strong> records</span>
-                <span>{s.manifold ? `On ${s.manifold.label} frontier` : 'No frontier selected'}</span>
-                {s.manifold && <span>{s.boundaryPoints.length} on 2D boundary</span>}
+                <span className="pareto-chart-record-count">
+                  <strong>{s.allPoints.length}</strong> records
+                </span>
+                <Text type="supporting" size="xsm">
+                  {s.manifold ? `On ${s.manifold.label} frontier` : 'No frontier selected'}
+                </Text>
+                {s.manifold && (
+                  <Text type="supporting" size="xsm" hasTabularNumbers>
+                    {s.boundaryPoints.length} on 2D boundary
+                  </Text>
+                )}
               </>
-            ) : <span>Select both axes to display the chart.</span>}
+            ) : (
+              <Text type="supporting" size="xsm">
+                Select both axes to display the chart.
+              </Text>
+            )}
           </footer>
         </aside>
       </div>

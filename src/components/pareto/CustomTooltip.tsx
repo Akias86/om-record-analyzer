@@ -1,3 +1,4 @@
+import { Badge } from '@astryxdesign/core/Badge'
 import { formatTick } from './ticks'
 import type { ParetoPoint } from './constants'
 
@@ -30,12 +31,12 @@ export function CustomTooltip({ active, payload, pointMap, xLabel, yLabel }: Cus
         return (
           <div key={gi} className="pareto-chart-tooltip-group">
             <div className="pareto-chart-tooltip-pos">
-              {xLabel}: {formatTick(pts[0].x)} / {yLabel}: {formatTick(pts[0].y)}
+              {xLabel}: {formatTick(pts[0].x)} · {yLabel}: {formatTick(pts[0].y)}
             </div>
             {leaderboardPts.map((p, pi) => (
               <div key={pi} className="pareto-chart-tooltip-row">
-                <span>{p.score || `${p.x} / ${p.y}`}</span>
-                {p.categories && <span className="pareto-chart-tooltip-cat">{p.categories}</span>}
+                <span className="pareto-chart-tooltip-score">{p.score || `${p.x} / ${p.y}`}</span>
+                {p.categories && <Badge variant="info" label={p.categories} />}
               </div>
             ))}
             {userPts.map((p, pi) => (

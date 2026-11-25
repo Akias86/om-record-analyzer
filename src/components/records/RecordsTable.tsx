@@ -5,6 +5,11 @@ import {
   getSortedRowModel,
 } from '@tanstack/react-table'
 import type { ColumnDef, SortingFn, SortingState } from '@tanstack/react-table'
+import { Badge } from '@astryxdesign/core/Badge'
+import { Banner } from '@astryxdesign/core/Banner'
+import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
+import { Spinner } from '@astryxdesign/core/Spinner'
+import { Settings2 } from 'lucide-react'
 import { METRIC_LABELS } from '../../types'
 import type { BoolScoreKey, OmRecordDTO, OmScoreDTO } from '../../types'
 import { formatAreaINF, formatLevelValue, formatScoreNumber, getMetricValue, isInfinityScoreKey } from '../../lib/metrics'
@@ -377,10 +382,18 @@ export default function RecordsTable({ shared, onPlayRecord, onPlayUserSolution 
     : 'No sort keys.'
 
   if (shared.loading || (!shared.error && !shared.recordsReady)) {
-    return <div className="records-table"><div className="pareto-chart-loading">Loading records...</div></div>
+    return (
+      <div className="records-table records-table-state-wrap">
+        <Spinner size="lg" label="Loading records..." />
+      </div>
+    )
   }
   if (shared.error) {
-    return <div className="records-table"><div className="pareto-chart-error">Error: {shared.error}</div></div>
+    return (
+      <div className="records-table">
+        <Banner status="error" title="Failed to load records" description={shared.error} />
+      </div>
+    )
   }
 
   let leaderboardRank = 0
@@ -388,15 +401,23 @@ export default function RecordsTable({ shared, onPlayRecord, onPlayUserSolution 
   return (
     <div className="records-table">
       <div className="records-table-toolbar">
-        <span className="records-table-modes">
-          <button type="button" className={`records-table-mode-btn ${mode === 'v' ? 'active' : ''}`} onClick={() => switchMode('v')}>@V</button>
-          <button type="button" className={`records-table-mode-btn ${mode === 'inf' ? 'active' : ''}`} onClick={() => switchMode('inf')}>@∞</button>
-        </span>
+        <SegmentedControl
+          size="sm"
+          label="Table metric mode"
+          value={mode}
+          onChange={(next) => switchMode(next as TableMode)}
+        >
+          <SegmentedControlItem value="v" label="@V" />
+          <SegmentedControlItem value="inf" label="@∞" />
+        </SegmentedControl>
         <span className="records-table-sort" title={sortTitle}>
           {sortParts.length > 0 ? `Sorted by ${sortParts.join(' → ')}` : 'No sort keys'}
         </span>
         <span className="records-table-count">
-          {leaderboardCount} records{userCount > 0 ? ` · ${userCount} yours` : ''}
+          <Badge
+            variant="neutral"
+            label={`${leaderboardCount} records${userCount > 0 ? ` · ${userCount} yours` : ''}`}
+          />
         </span>
       </div>
       <div className="records-table-wrap">
@@ -463,7 +484,7 @@ export default function RecordsTable({ shared, onPlayRecord, onPlayUserSolution 
                       aria-label="Custom categories"
                       onClick={toggleManager}
                     >
-                      {'\u2699'}
+                      <Settings2 size={13} aria-hidden="true" />
                     </button>
                   </span>
                 </th>

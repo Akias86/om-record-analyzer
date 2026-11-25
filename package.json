@@ -13,12 +13,17 @@
 		"cf-typegen": "wrangler types"
 	},
 	"dependencies": {
+		"@astryxdesign/core": "^0.7.17",
+		"@astryxdesign/theme-neutral": "^0.7.17",
+		"@stylexjs/stylex": "^0.19.2",
 		"@tanstack/react-table": "^8.21.3",
+		"lucide-react": "^1.78.0",
 		"react": "^19.2.7",
 		"react-dom": "^19.2.7",
 		"recharts": "^3.9.2"
 	},
 	"devDependencies": {
+		"@astryxdesign/cli": "^0.7.17",
 		"@cloudflare/vite-plugin": "^1.44.0",
 		"@types/node": "^24.13.2",
 		"@types/react": "^19.2.17",

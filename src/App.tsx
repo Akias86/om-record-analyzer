@@ -1,4 +1,20 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Theme } from '@astryxdesign/core/theme'
+import { AppShell } from '@astryxdesign/core/AppShell'
+import { Badge } from '@astryxdesign/core/Badge'
+import { Banner } from '@astryxdesign/core/Banner'
+import { Button } from '@astryxdesign/core/Button'
+import { EmptyState } from '@astryxdesign/core/EmptyState'
+import { Heading } from '@astryxdesign/core/Heading'
+import { HStack } from '@astryxdesign/core/HStack'
+import { TabList, Tab } from '@astryxdesign/core/TabList'
+import { Text } from '@astryxdesign/core/Text'
+import { VStack } from '@astryxdesign/core/VStack'
+import { FlaskConical, ScatterChart as ScatterChartIcon, ShieldCheck, Table2 } from 'lucide-react'
+import { analyzerTheme } from './themes'
+import { ThemeModeContext } from './state/themeMode'
+import type { ThemeMode } from './state/themeMode'
+import { ThemeModeSwitch } from './components/ThemeModeSwitch'
 import Sidebar from './components/Sidebar'
 import ParetoChart from './components/ParetoChart'
 import RecordsTable from './components/records/RecordsTable'
@@ -15,8 +31,31 @@ import type { OmRecordDTO } from './types'
 import { GifViewer } from './components/pareto/GifViewer'
 import './App.css'
 
+function loadInitialThemeMode(): ThemeMode {
+  const saved = loadSetting('om-app:themeMode', 'system')
+  return saved === 'light' || saved === 'dark' ? saved : 'system'
+}
+
+function puzzleTypeBadgeVariant(type: string | undefined): 'blue' | 'purple' | 'teal' | 'neutral' {
+  if (type === 'PRODUCTION') return 'purple'
+  if (type === 'POLYMER') return 'teal'
+  if (type === 'NORMAL') return 'blue'
+  return 'neutral'
+}
+
 function App() {
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash))
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(loadInitialThemeMode)
+
+  const setThemeMode = useCallback((next: ThemeMode) => {
+    setThemeModeState(next)
+    saveSetting('om-app:themeMode', next)
+  }, [])
+
+  const themeContextValue = useMemo(
+    () => ({ mode: themeMode, setMode: setThemeMode }),
+    [themeMode, setThemeMode],
+  )
 
   useEffect(() => {
     const onChange = () => setRoute(parseHash(window.location.hash))
@@ -50,18 +89,25 @@ function App() {
     setRoute(parseHash(window.location.hash))
   }, [])
 
-  if (route.validator) return <TestPage />
   return (
-    <UserSolutionsProvider>
-      <MainApp
-        puzzleId={route.puzzleId}
-        playback={route.playback}
-        onSelectPuzzle={navigatePuzzle}
-        onPlayRecord={playRecord}
-        onPlayUserSolution={playUserSolution}
-        onClosePlayback={closePlayback}
-      />
-    </UserSolutionsProvider>
+    <Theme theme={analyzerTheme} mode={themeMode}>
+      <ThemeModeContext.Provider value={themeContextValue}>
+        {route.validator ? (
+          <TestPage />
+        ) : (
+          <UserSolutionsProvider>
+            <MainApp
+              puzzleId={route.puzzleId}
+              playback={route.playback}
+              onSelectPuzzle={navigatePuzzle}
+              onPlayRecord={playRecord}
+              onPlayUserSolution={playUserSolution}
+              onClosePlayback={closePlayback}
+            />
+          </UserSolutionsProvider>
+        )}
+      </ThemeModeContext.Provider>
+    </Theme>
   )
 }
 
@@ -156,53 +202,125 @@ function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onPlayUserS
     return () => { cancelled = true }
   }, [puzzleId])
 
-  const title = detail?.displayName ?? puzzleId
+  const title = detail?.displayName ?? puzzleId ?? ''
+  const puzzleType = detail?.type ?? shared.puzzleType ?? undefined
 
   return (
-    <div className="app-layout">
-      <Sidebar
-        selectedPuzzleId={puzzleId}
-        onSelectPuzzle={onSelectPuzzle}
-        expandCollectionId={expandCollectionId}
-        expandGroupId={expandGroupId}
-      />
-      <main className="app-main">
+    <>
+      <AppShell
+        height="fill"
+        variant="surface"
+        contentPadding={0}
+        sideNav={
+          <Sidebar
+            selectedPuzzleId={puzzleId}
+            onSelectPuzzle={onSelectPuzzle}
+            expandCollectionId={expandCollectionId}
+            expandGroupId={expandGroupId}
+          />
+        }
+      >
         {puzzleId ? (
           <div className="app-content">
-            <h1>{title}</h1>
-            <div className="app-tabs">
-              <button
-                type="button"
-                className={`app-tab ${view === 'table' ? 'active' : ''}`}
-                onClick={() => setView('table')}
-              >Records</button>
-              <button
-                type="button"
-                className={`app-tab ${view === 'chart' ? 'active' : ''}`}
-                onClick={() => setView('chart')}
-              >Pareto Chart</button>
-            </div>
+            <header className="app-page-header">
+              <div className="app-page-header-top">
+                <VStack gap={0.5} className="app-title-stack">
+                  {detail && (
+                    <Text type="supporting" maxLines={1}>
+                      {detail.group.collection.displayName} · {detail.group.displayName}
+                    </Text>
+                  )}
+                  <HStack gap={2} vAlign="center" wrap="wrap">
+                    <Heading level={1}>{title}</Heading>
+                    {puzzleType && (
+                      <Badge variant={puzzleTypeBadgeVariant(puzzleType)} label={puzzleType} />
+                    )}
+                    <Badge variant="neutral" label={puzzleId} />
+                  </HStack>
+                </VStack>
+                <HStack gap={2} vAlign="center" className="app-header-actions">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    href="#/validator"
+                    icon={<ShieldCheck size={14} />}
+                    label="Validator"
+                  />
+                  <ThemeModeSwitch />
+                </HStack>
+              </div>
+              <div className="app-view-tabs">
+                <TabList
+                  value={view}
+                  onChange={(next) => setView(next as MainView)}
+                  size="md"
+                  hasDivider
+                >
+                  <Tab value="table" label="Records" icon={<Table2 size={15} />} />
+                  <Tab value="chart" label="Pareto Chart" icon={<ScatterChartIcon size={15} />} />
+                </TabList>
+              </div>
+            </header>
+
             {playback && playbackReady && !playbackOpen && (
-              <div className="pareto-chart-error" role="alert">
-                {playback.kind === 'user'
-                  ? 'This local solution file is unavailable in this browser. Re-upload the .solution file to play it.'
-                  : 'This record is unavailable or has no replay.'}{' '}
-                <button type="button" onClick={onClosePlayback}>Dismiss</button>
+              <div className="app-banner-slot">
+                <Banner
+                  status="error"
+                  title={
+                    playback.kind === 'user'
+                      ? 'Local solution file unavailable'
+                      : 'Replay unavailable'
+                  }
+                  description={
+                    playback.kind === 'user'
+                      ? 'This local solution file is unavailable in this browser. Re-upload the .solution file to play it.'
+                      : 'This record is unavailable or has no replay.'
+                  }
+                  isDismissable
+                  dismissLabel="Dismiss"
+                  onDismiss={onClosePlayback}
+                />
               </div>
             )}
-            {view === 'table' ? (
-              <RecordsTable shared={shared} onPlayRecord={onPlayRecord} onPlayUserSolution={onPlayUserSolution} />
-            ) : (
-              <ParetoChart puzzleId={puzzleId} shared={shared} onPlayRecord={onPlayRecord} onPlayUserSolution={onPlayUserSolution} playbackOpen={playbackOpen} />
-            )}
+
+            <div className="app-workspace-body">
+              {view === 'table' ? (
+                <RecordsTable shared={shared} onPlayRecord={onPlayRecord} onPlayUserSolution={onPlayUserSolution} />
+              ) : (
+                <ParetoChart
+                  puzzleId={puzzleId}
+                  shared={shared}
+                  onPlayRecord={onPlayRecord}
+                  onPlayUserSolution={onPlayUserSolution}
+                  playbackOpen={playbackOpen}
+                />
+              )}
+            </div>
           </div>
         ) : (
           <div className="app-placeholder">
-            <span>Select a puzzle from the sidebar</span>
-            <a className="app-placeholder-btn" href="#/validator">Open Solution Validator</a>
+            <div className="app-placeholder-toolbar">
+              <ThemeModeSwitch />
+            </div>
+            <div className="app-placeholder-center">
+              <EmptyState
+                headingLevel={1}
+                icon={<FlaskConical size={40} strokeWidth={1.6} />}
+                title="Select an Opus Magnum puzzle"
+                description="Browse campaigns, journal chapters, and tournaments in the sidebar to inspect leaderboard records, custom categories, and multi-dimensional Pareto frontiers."
+                actions={
+                  <Button
+                    variant="primary"
+                    href="#/validator"
+                    icon={<ShieldCheck size={16} />}
+                    label="Open Solution Validator"
+                  />
+                }
+              />
+            </div>
           </div>
         )}
-      </main>
+      </AppShell>
       {playbackView && (
         <GifViewer
           {...playbackView}
@@ -210,7 +328,7 @@ function MainApp({ puzzleId, playback, onSelectPuzzle, onPlayRecord, onPlayUserS
           onClose={onClosePlayback}
         />
       )}
-    </div>
+    </>
   )
 }
 
