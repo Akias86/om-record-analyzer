@@ -343,9 +343,8 @@ export function GifViewer({ open, url, title, solutionUrl, solutionKey, fileName
       setActionError('Could not open the replay viewer popup — try a standard browser (Chrome/Edge/Firefox).')
       return
     }
-    // Sever the popup's opener link (reverse tabnabbing); the handshake's
-    // postMessage and event.source checks keep working without it.
-    child.opener = null
+    // Keep the opener link: the viewer's on_init only registers the load
+    // listener and sends "Hello" when window.opener is set.
     const controller = new AbortController()
     previewAbort.current = controller
     setPreviewPending(true)
